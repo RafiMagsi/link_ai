@@ -4,14 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../providers/auth_providers.dart';
 
-class LoginPage extends ConsumerStatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends ConsumerStatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  ConsumerState<LoginPage> createState() => _LoginPageState();
+  ConsumerState<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _RegisterPageState extends ConsumerState<RegisterPage> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -19,21 +20,29 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _register() async {
+    final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      _showError('Email and password are required.');
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+      _showError('Name, email, and password are required.');
       return;
     }
 
-    await ref.read(authControllerProvider.notifier).login(
+    if (password.length < 6) {
+      _showError('Password must be at least 6 characters.');
+      return;
+    }
+
+    await ref.read(authControllerProvider.notifier).register(
+          name: name,
           email: email,
           password: password,
         );
@@ -41,7 +50,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final state = ref.read(authControllerProvider);
 
     if (state.hasError) {
-      _showError('Invalid email or password.');
+      _showError('Unable to create account.');
     }
   }
 
@@ -69,23 +78,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'LinkAI',
+                    'Create LinkAI Account',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 36,
+                      fontSize: 30,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Find and connect with AI people.',
+                    'Show what you are building in AI.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white70),
                   ),
                   const SizedBox(height: 32),
                   TextField(
+                    controller: _nameController,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Name',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Email',
                       border: OutlineInputBorder(),
@@ -114,23 +133,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 20),
                   FilledButton(
-                    onPressed: isLoading ? null : _login,
+                    onPressed: isLoading ? null : _register,
                     child: isLoading
                         ? const SizedBox(
                             height: 18,
                             width: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Login'),
+                        : const Text('Create Account'),
                   ),
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: isLoading
                         ? null
                         : () {
-                            context.go('/register');
+                            context.go('/login');
                           },
-                    child: const Text('Create account'),
+                    child: const Text('Already have account? Login'),
                   ),
                 ],
               ),
