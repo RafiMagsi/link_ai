@@ -14,6 +14,8 @@ import '../features/profile/presentation/pages/public_profile_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/admin/presentation/pages/admin_settings_page.dart';
 import '../features/admin/presentation/providers/admin_providers.dart';
+import '../features/feed/presentation/pages/create_post_page.dart';
+import '../features/main/presentation/pages/main_shell_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -73,7 +75,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/feed',
         name: 'feed',
-        builder: (context, state) => const FeedPage(),
+        builder: (context, state) => const MainShellPage(),
       ),
       GoRoute(
         path: '/profile',
@@ -102,6 +104,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/admin/settings',
         name: 'admin-settings',
         builder: (context, state) => const AdminSettingsPage(),
+      ),
+      GoRoute(
+        path: '/posts/create',
+        name: 'create-post',
+        builder: (context, state) => const CreatePostPage(),
       ),
     ],
   );
