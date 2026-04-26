@@ -12,9 +12,7 @@ class ConnectRequestsPage extends ConsumerWidget {
     final outgoingState = ref.watch(outgoingConnectRequestsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Connect Requests'),
-      ),
+      appBar: AppBar(title: const Text('Connect Requests')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -52,8 +50,7 @@ class ConnectRequestsPage extends ConsumerWidget {
                       ),
                       subtitle: Text(
                         [
-                          if (request.senderRole.isNotEmpty)
-                            request.senderRole,
+                          if (request.senderRole.isNotEmpty) request.senderRole,
                           if (request.message.isNotEmpty) request.message,
                         ].join('\n'),
                       ),
@@ -91,7 +88,8 @@ class ConnectRequestsPage extends ConsumerWidget {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, __) => const Text('Unable to load incoming requests.'),
+            error: (error, stackTrace) =>
+                const Text('Unable to load incoming requests.'),
           ),
           const SizedBox(height: 28),
           const Text(
@@ -136,7 +134,8 @@ class ConnectRequestsPage extends ConsumerWidget {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, __) => const Text('Unable to load outgoing requests.'),
+            error: (error, stackTrace) =>
+                const Text('Unable to load outgoing requests.'),
           ),
         ],
       ),
@@ -153,10 +152,7 @@ class _EmptyText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Text(
-        text,
-        style: const TextStyle(color: Color(0xFF94A3B8)),
-      ),
+      child: Text(text, style: const TextStyle(color: Color(0xFF94A3B8))),
     );
   }
 }
