@@ -6,6 +6,7 @@ import '../../data/models/post_model.dart';
 import '../providers/post_providers.dart';
 import 'post_comments_page.dart';
 import '../widgets/feed_post_card.dart';
+import '../../../notifications/presentation/providers/notification_providers.dart';
 
 class FeedPage extends ConsumerWidget {
   const FeedPage({super.key});
@@ -31,13 +32,51 @@ class FeedPage extends ConsumerWidget {
           ),
           actions: [
             IconButton(onPressed: () {}, icon: const Icon(Icons.search)),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.notifications_none),
+            Consumer(
+              builder: (context, ref, _) {
+                final unreadState = ref.watch(unreadNotificationsCountProvider);
+                final unreadCount = unreadState.asData?.value ?? 0;
+
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: () => context.push('/notifications'),
+                      icon: const Icon(Icons.notifications_none),
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
+          heroTag: 'feed_fab',
           onPressed: () => context.push('/posts/create'),
           icon: const Icon(Icons.add),
           label: const Text('Post'),

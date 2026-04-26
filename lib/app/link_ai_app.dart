@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/auth/presentation/providers/auth_providers.dart';
+import '../features/notifications/presentation/providers/notification_providers.dart';
 
 import '../router/app_router.dart';
 
@@ -9,7 +11,18 @@ class LinkAiApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+    final authState = ref.watch(authStateProvider);
 
+    authState.whenData((user) {
+      if (user != null) {
+        Future.microtask(() {
+          ref
+              .read(notificationControllerProvider.notifier)
+              .initializeForCurrentUser();
+        });
+      }
+    });
+    
     return MaterialApp.router(
       title: 'LinkAI',
       debugShowCheckedModeBanner: false,

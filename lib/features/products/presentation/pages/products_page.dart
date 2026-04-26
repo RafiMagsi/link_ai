@@ -19,6 +19,7 @@ class ProductsPage extends ConsumerWidget {
         actions: [IconButton(onPressed: () {}, icon: const Icon(Icons.search))],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'products_fab',
         onPressed: () {
           Navigator.of(
             context,

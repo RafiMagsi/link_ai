@@ -16,6 +16,7 @@ import '../features/admin/presentation/providers/admin_providers.dart';
 import '../features/feed/presentation/pages/create_post_page.dart';
 import '../features/main/presentation/pages/main_shell_page.dart';
 import '../features/connect/presentation/pages/connect_requests_page.dart';
+import '../features/notifications/presentation/pages/notifications_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -115,6 +116,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/connect/requests',
         name: 'connect-requests',
         builder: (context, state) => const ConnectRequestsPage(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationsPage(),
       ),
     ],
   );

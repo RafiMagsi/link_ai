@@ -1,9 +1,117 @@
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
+import {
+  onDocumentCreated,
+  onDocumentUpdated,
+} from "firebase-functions/v2/firestore";
 
 admin.initializeApp();
 
 const db = admin.firestore();
+
+/**
+ * Loads all FCM tokens for a user.
+ * @param {string} uid user id
+ * @return {Promise<string[]>} FCM tokens
+ */
+async function getUserTokens(uid: string): Promise<string[]> {
+  const snapshot = await admin
+    .firestore()
+    .collection("users")
+    .doc(uid)
+    .collection("fcmTokens")
+    .get();
+
+  return snapshot.docs
+    .map((doc) => doc.data().token as string | undefined)
+    .filter((token): token is string => Boolean(token));
+}
+
+/**
+ * Creates an in-app notification doc and sends a push notification.
+ * @param {object} params notification payload
+ */
+async function createNotification(params: {
+  receiverUid: string;
+  senderUid: string;
+  senderName: string;
+  senderAvatarUrl?: string | null;
+  type: string;
+  title: string;
+  body: string;
+  postId?: string | null;
+  productId?: string | null;
+  connectRequestId?: string | null;
+}) {
+  if (params.receiverUid === params.senderUid) {
+    return;
+  }
+
+  const notificationRef = admin.firestore().collection("notifications").doc();
+
+  await notificationRef.set({
+    id: notificationRef.id,
+    receiverUid: params.receiverUid,
+    senderUid: params.senderUid,
+    senderName: params.senderName,
+    senderAvatarUrl: params.senderAvatarUrl || null,
+    type: params.type,
+    title: params.title,
+    body: params.body,
+    postId: params.postId || null,
+    productId: params.productId || null,
+    connectRequestId: params.connectRequestId || null,
+    isRead: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const tokens = await getUserTokens(params.receiverUid);
+
+  if (tokens.length === 0) {
+    return;
+  }
+
+  await admin.messaging().sendEachForMulticast({
+    tokens,
+    notification: {
+      title: params.title,
+      body: params.body,
+    },
+    data: {
+      type: params.type,
+      postId: params.postId || "",
+      productId: params.productId || "",
+      connectRequestId: params.connectRequestId || "",
+    },
+  });
+}
+
+/**
+ * Best-effort profile lookup used for notification sender labels.
+ * @param {string} uid user id
+ * @return {Promise<Object>} safe sender fields
+ */
+async function getProfileSafe(uid: string) {
+  const snapshot = await admin
+    .firestore()
+    .collection("profiles")
+    .doc(uid)
+    .get();
+
+  if (!snapshot.exists) {
+    return {
+      name: "Someone",
+      avatarUrl: null,
+    };
+  }
+
+  const data = snapshot.data() || {};
+
+  return {
+    name: data.name || "Someone",
+    avatarUrl: data.avatarUrl || null,
+  };
+}
 
 /**
  * Builds a deterministic week key (used for weekly connect limits).
@@ -269,3 +377,239 @@ export const respondConnectRequest = onCall(async (request) => {
     action,
   };
 });
+
+export const onPostLikeCreated = onDocumentCreated(
+  "postLikes/{likeId}",
+  async (event) => {
+    const like = event.data?.data();
+
+    if (!like) return;
+
+    const postId = like.postId as string;
+    const senderUid = like.uid as string;
+
+    const postSnapshot = await admin
+      .firestore()
+      .collection("posts")
+      .doc(postId)
+      .get();
+
+    if (!postSnapshot.exists) return;
+
+    const post = postSnapshot.data() || {};
+    const receiverUid = post.authorUid as string;
+
+    const senderProfile = await getProfileSafe(senderUid);
+
+    await createNotification({
+      receiverUid,
+      senderUid,
+      senderName: senderProfile.name,
+      senderAvatarUrl: senderProfile.avatarUrl,
+      type: "post_like",
+      title: "New like",
+      body: `${senderProfile.name} liked your post.`,
+      postId,
+    });
+  }
+);
+
+export const onPostRepostCreated = onDocumentCreated(
+  "postReposts/{repostId}",
+  async (event) => {
+    const repost = event.data?.data();
+
+    if (!repost) return;
+
+    const postId = repost.postId as string;
+    const senderUid = repost.uid as string;
+
+    const postSnapshot = await admin
+      .firestore()
+      .collection("posts")
+      .doc(postId)
+      .get();
+
+    if (!postSnapshot.exists) return;
+
+    const post = postSnapshot.data() || {};
+    const receiverUid = post.authorUid as string;
+
+    const senderProfile = await getProfileSafe(senderUid);
+
+    await createNotification({
+      receiverUid,
+      senderUid,
+      senderName: senderProfile.name,
+      senderAvatarUrl: senderProfile.avatarUrl,
+      type: "post_repost",
+      title: "New repost",
+      body: `${senderProfile.name} reposted your post.`,
+      postId,
+    });
+  }
+);
+
+export const onPostSaveCreated = onDocumentCreated(
+  "postSaves/{saveId}",
+  async (event) => {
+    const save = event.data?.data();
+
+    if (!save) return;
+
+    const postId = save.postId as string;
+    const senderUid = save.uid as string;
+
+    const postSnapshot = await admin
+      .firestore()
+      .collection("posts")
+      .doc(postId)
+      .get();
+
+    if (!postSnapshot.exists) return;
+
+    const post = postSnapshot.data() || {};
+    const receiverUid = post.authorUid as string;
+
+    const senderProfile = await getProfileSafe(senderUid);
+
+    await createNotification({
+      receiverUid,
+      senderUid,
+      senderName: senderProfile.name,
+      senderAvatarUrl: senderProfile.avatarUrl,
+      type: "post_save",
+      title: "Post saved",
+      body: `${senderProfile.name} saved your post.`,
+      postId,
+    });
+  }
+);
+
+export const onPostCommentCreated = onDocumentCreated(
+  "posts/{postId}/comments/{commentId}",
+  async (event) => {
+    const comment = event.data?.data();
+
+    if (!comment) return;
+
+    const postId = event.params.postId;
+    const senderUid = comment.authorUid as string;
+
+    const postSnapshot = await admin
+      .firestore()
+      .collection("posts")
+      .doc(postId)
+      .get();
+
+    if (!postSnapshot.exists) return;
+
+    const post = postSnapshot.data() || {};
+    const receiverUid = post.authorUid as string;
+
+    const senderName = comment.authorName || "Someone";
+    const senderAvatarUrl = comment.authorAvatarUrl || null;
+
+    await createNotification({
+      receiverUid,
+      senderUid,
+      senderName,
+      senderAvatarUrl,
+      type: "post_comment",
+      title: "New comment",
+      body: `${senderName} commented on your post.`,
+      postId,
+    });
+  }
+);
+
+
+export const onConnectRequestCreated = onDocumentCreated(
+  "connectRequests/{requestId}",
+  async (event) => {
+    const request = event.data?.data();
+
+    if (!request) return;
+
+    const receiverUid = request.receiverUid as string;
+    const senderUid = request.senderUid as string;
+    const senderName = request.senderName || "Someone";
+    const senderAvatarUrl = request.senderAvatarUrl || null;
+
+    await createNotification({
+      receiverUid,
+      senderUid,
+      senderName,
+      senderAvatarUrl,
+      type: "connect_request",
+      title: "New connect request",
+      body: `${senderName} wants to connect with you.`,
+      connectRequestId: event.params.requestId,
+    });
+  }
+);
+
+export const onConnectRequestAccepted = onDocumentUpdated(
+  "connectRequests/{requestId}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+
+    if (!before || !after) return;
+
+    if (before.status === after.status) return;
+    if (after.status !== "accepted") return;
+
+    const receiverUid = after.senderUid as string;
+    const senderUid = after.receiverUid as string;
+    const senderName = after.receiverName || "Someone";
+    const senderAvatarUrl = after.receiverAvatarUrl || null;
+
+    await createNotification({
+      receiverUid,
+      senderUid,
+      senderName,
+      senderAvatarUrl,
+      type: "connect_accepted",
+      title: "Connect request accepted",
+      body: `${senderName} accepted your connect request.`,
+      connectRequestId: event.params.requestId,
+    });
+  }
+);
+
+export const onProductSaveCreated = onDocumentCreated(
+  "productSaves/{saveId}",
+  async (event) => {
+    const save = event.data?.data();
+
+    if (!save) return;
+
+    const productId = save.productId as string;
+    const senderUid = save.uid as string;
+
+    const productSnapshot = await admin
+      .firestore()
+      .collection("products")
+      .doc(productId)
+      .get();
+
+    if (!productSnapshot.exists) return;
+
+    const product = productSnapshot.data() || {};
+    const receiverUid = product.ownerUid as string;
+
+    const senderProfile = await getProfileSafe(senderUid);
+
+    await createNotification({
+      receiverUid,
+      senderUid,
+      senderName: senderProfile.name,
+      senderAvatarUrl: senderProfile.avatarUrl,
+      type: "product_save",
+      title: "Product saved",
+      body: `${senderProfile.name} saved your product.`,
+      productId,
+    });
+  }
+);

@@ -9,10 +9,7 @@ import '../models/post_comment_model.dart';
 import '../models/post_model.dart';
 
 class PostRemoteDataSource {
-  PostRemoteDataSource(
-    this._firestore,
-    this._storage,
-  );
+  PostRemoteDataSource(this._firestore, this._storage);
 
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
@@ -35,16 +32,12 @@ class PostRemoteDataSource {
     return _firestore.collection('postSaves');
   }
 
-  Stream<List<PostModel>> watchLatestPosts({
-    int limit = 50,
-  }) {
+  Stream<List<PostModel>> watchLatestPosts({int limit = 50}) {
     return _posts
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs.map(PostModel.fromFirestore).toList(),
-        );
+        .map((snapshot) => snapshot.docs.map(PostModel.fromFirestore).toList());
   }
 
   Stream<List<PostCommentModel>> watchComments(String postId) {
@@ -73,29 +66,20 @@ class PostRemoteDataSource {
       final fileName = '${_uuid.v4()}.jpg';
 
       final ref = _storage.ref().child(
-            'posts/${profile.uid}/$postId/$fileName',
-          );
+        'postMedia/${profile.uid}/$postId/$fileName',
+      );
 
       await ref.putFile(
         file,
         SettableMetadata(
           contentType: 'image/jpeg',
-          customMetadata: {
-            'uid': profile.uid,
-            'postId': postId,
-          },
+          customMetadata: {'uid': profile.uid, 'postId': postId},
         ),
       );
 
       final url = await ref.getDownloadURL();
 
-      uploadedMedia.add(
-        PostMediaModel(
-          url: url,
-          type: 'image',
-          order: i,
-        ),
-      );
+      uploadedMedia.add(PostMediaModel(url: url, type: 'image', order: i));
     }
 
     final post = PostModel(
@@ -117,10 +101,7 @@ class PostRemoteDataSource {
     await _posts.doc(postId).set(post.toCreateMap());
   }
 
-  Future<bool> hasLiked({
-    required String postId,
-    required String uid,
-  }) async {
+  Future<bool> hasLiked({required String postId, required String uid}) async {
     final doc = await _postLikes.doc('${postId}_$uid').get();
     return doc.exists;
   }
@@ -133,18 +114,12 @@ class PostRemoteDataSource {
     return doc.exists;
   }
 
-  Future<bool> hasSaved({
-    required String postId,
-    required String uid,
-  }) async {
+  Future<bool> hasSaved({required String postId, required String uid}) async {
     final doc = await _postSaves.doc('${postId}_$uid').get();
     return doc.exists;
   }
 
-  Future<void> toggleLike({
-    required String postId,
-    required String uid,
-  }) async {
+  Future<void> toggleLike({required String postId, required String uid}) async {
     final likeId = '${postId}_$uid';
     final likeRef = _postLikes.doc(likeId);
     final postRef = _posts.doc(postId);
@@ -205,10 +180,7 @@ class PostRemoteDataSource {
     });
   }
 
-  Future<void> toggleSave({
-    required String postId,
-    required String uid,
-  }) async {
+  Future<void> toggleSave({required String postId, required String uid}) async {
     final saveId = '${postId}_$uid';
     final saveRef = _postSaves.doc(saveId);
     final postRef = _posts.doc(postId);

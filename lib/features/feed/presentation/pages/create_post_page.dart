@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/config/app_limits_provider.dart';
+import '../providers/post_providers.dart';
 
 class CreatePostPage extends ConsumerStatefulWidget {
   const CreatePostPage({super.key});
@@ -115,27 +116,39 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
       return;
     }
 
+    final hasVideo = _selectedMedia.any((file) => _isVideoPath(file.path));
+    if (hasVideo) {
+      _showMessage(
+        'Video posts are not supported yet. Remove the video to post.',
+      );
+      return;
+    }
+
+    final imageFiles = _selectedMedia;
+
     setState(() {
       _isUploading = true;
-      _uploadProgress = 0.3;
+      _uploadProgress = 0;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 450));
+    await ref
+        .read(postControllerProvider.notifier)
+        .createPost(text: text, imageFiles: imageFiles);
 
-    setState(() {
-      _uploadProgress = 0.75;
-    });
-
-    await Future<void>.delayed(const Duration(milliseconds: 450));
-
-    setState(() {
-      _uploadProgress = 1;
-      _isUploading = false;
-    });
+    final state = ref.read(postControllerProvider);
 
     if (!mounted) return;
 
-    _showMessage('Post composer UI ready. Firestore submit comes next.');
+    setState(() {
+      _isUploading = false;
+      _uploadProgress = 0;
+    });
+
+    if (state.hasError) {
+      _showMessage('Unable to create post.');
+      return;
+    }
+
     Navigator.of(context).pop();
   }
 
