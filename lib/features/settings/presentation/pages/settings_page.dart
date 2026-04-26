@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/settings_providers.dart';
+import '../../../admin/presentation/providers/admin_providers.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -24,9 +25,7 @@ class SettingsPage extends ConsumerWidget {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Delete'),
             ),
@@ -50,9 +49,9 @@ class SettingsPage extends ConsumerWidget {
           ? 'Please logout and login again before deleting your account.'
           : 'Unable to delete account.';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -60,16 +59,30 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsState = ref.watch(userSettingsProvider);
     final controllerState = ref.watch(settingsControllerProvider);
+    final adminStatus = ref.watch(adminStatusProvider);
+    final isAdmin = adminStatus.asData?.value == true;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: settingsState.when(
         data: (settings) {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (isAdmin)
+                _SettingsSection(
+                  title: 'Admin',
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.admin_panel_settings),
+                      title: const Text('Global Settings'),
+                      subtitle: const Text('Limits, feature flags, throttles'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/admin/settings'),
+                    ),
+                  ],
+                ),
+              if (isAdmin) const SizedBox(height: 18),
               _SettingsSection(
                 title: 'Account & Profile',
                 children: [
@@ -103,8 +116,9 @@ class SettingsPage extends ConsumerWidget {
                   SwitchListTile(
                     value: settings.notifyReposts,
                     title: const Text('Reposts'),
-                    subtitle:
-                        const Text('Notify when someone reposts your post'),
+                    subtitle: const Text(
+                      'Notify when someone reposts your post',
+                    ),
                     onChanged: controllerState.isLoading
                         ? null
                         : (value) {
@@ -118,8 +132,9 @@ class SettingsPage extends ConsumerWidget {
                   SwitchListTile(
                     value: settings.notifyComments,
                     title: const Text('Comments'),
-                    subtitle:
-                        const Text('Notify when someone comments on your post'),
+                    subtitle: const Text(
+                      'Notify when someone comments on your post',
+                    ),
                     onChanged: controllerState.isLoading
                         ? null
                         : (value) {
@@ -133,8 +148,7 @@ class SettingsPage extends ConsumerWidget {
                   SwitchListTile(
                     value: settings.notifySaves,
                     title: const Text('Saves'),
-                    subtitle:
-                        const Text('Notify when someone saves your post'),
+                    subtitle: const Text('Notify when someone saves your post'),
                     onChanged: controllerState.isLoading
                         ? null
                         : (value) {
@@ -148,8 +162,9 @@ class SettingsPage extends ConsumerWidget {
                   SwitchListTile(
                     value: settings.notifyConnectRequests,
                     title: const Text('Connect Requests'),
-                    subtitle:
-                        const Text('Notify when someone wants to connect'),
+                    subtitle: const Text(
+                      'Notify when someone wants to connect',
+                    ),
                     onChanged: controllerState.isLoading
                         ? null
                         : (value) {
@@ -189,8 +204,9 @@ class SettingsPage extends ConsumerWidget {
                   SwitchListTile(
                     value: settings.videoAutoplay,
                     title: const Text('Video Autoplay'),
-                    subtitle:
-                        const Text('Automatically play videos in the feed'),
+                    subtitle: const Text(
+                      'Automatically play videos in the feed',
+                    ),
                     onChanged: controllerState.isLoading
                         ? null
                         : (value) {
@@ -204,17 +220,16 @@ class SettingsPage extends ConsumerWidget {
                   SwitchListTile(
                     value: settings.muteVideosByDefault,
                     title: const Text('Mute Videos by Default'),
-                    subtitle:
-                        const Text('Videos start muted unless you unmute them'),
+                    subtitle: const Text(
+                      'Videos start muted unless you unmute them',
+                    ),
                     onChanged: controllerState.isLoading
                         ? null
                         : (value) {
                             ref
                                 .read(settingsControllerProvider.notifier)
                                 .updateSettings(
-                                  settings.copyWith(
-                                    muteVideosByDefault: value,
-                                  ),
+                                  settings.copyWith(muteVideosByDefault: value),
                                 );
                           },
                   ),
@@ -233,7 +248,10 @@ class SettingsPage extends ConsumerWidget {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.delete_forever, color: Colors.red),
+                    leading: const Icon(
+                      Icons.delete_forever,
+                      color: Colors.red,
+                    ),
                     title: const Text(
                       'Delete Account',
                       style: TextStyle(color: Colors.red),
@@ -252,19 +270,15 @@ class SettingsPage extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(
-          child: Text('Unable to load settings.'),
-        ),
+        error: (error, stackTrace) =>
+            const Center(child: Text('Unable to load settings.')),
       ),
     );
   }
 }
 
 class _SettingsSection extends StatelessWidget {
-  const _SettingsSection({
-    required this.title,
-    required this.children,
-  });
+  const _SettingsSection({required this.title, required this.children});
 
   final String title;
   final List<Widget> children;
@@ -280,10 +294,7 @@ class _SettingsSection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Text(
               title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
             ),
           ),
           ...children,

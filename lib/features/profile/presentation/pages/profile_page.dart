@@ -75,10 +75,7 @@ class ProfilePage extends ConsumerWidget {
               _ProfileSection(title: 'Location', value: profile.location),
               _ProfileSection(title: 'Building', value: profile.building),
               _ProfileSection(title: 'Need', value: profile.need),
-              _ProfileSection(
-                title: 'Want to meet',
-                value: profile.wantToMeet,
-              ),
+              _ProfileSection(title: 'Want to meet', value: profile.wantToMeet),
               _ChipsSection(title: 'Skills', values: profile.skills),
               _ChipsSection(title: 'Tools', values: profile.tools),
               const SizedBox(height: 24),
@@ -90,19 +87,15 @@ class ProfilePage extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(
-          child: Text('Unable to load profile.'),
-        ),
+        error: (error, stackTrace) =>
+            const Center(child: Text('Unable to load profile.')),
       ),
     );
   }
 }
 
 class _ProfileSection extends StatelessWidget {
-  const _ProfileSection({
-    required this.title,
-    required this.value,
-  });
+  const _ProfileSection({required this.title, required this.value});
 
   final String title;
   final String value;
@@ -124,10 +117,7 @@ class _ProfileSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 16),
-          ),
+          Text(value, style: const TextStyle(fontSize: 16)),
         ],
       ),
     );
@@ -135,10 +125,7 @@ class _ProfileSection extends StatelessWidget {
 }
 
 class _ChipsSection extends StatelessWidget {
-  const _ChipsSection({
-    required this.title,
-    required this.values,
-  });
+  const _ChipsSection({required this.title, required this.values});
 
   final String title;
   final List<String> values;

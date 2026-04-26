@@ -39,6 +39,10 @@ Run tests:
 flutter test
 ```
 
+## Firebase setup
+
+This repo keeps Firebase project config **out of git**. See `FIREBASE_SETUP.md`.
+
 ## Flutter Resources
 
 - [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)

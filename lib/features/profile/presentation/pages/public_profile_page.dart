@@ -3,16 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/profile_providers.dart';
 
-final publicProfileProvider =
-    FutureProvider.family.autoDispose((ref, String uid) {
+final publicProfileProvider = FutureProvider.family.autoDispose((
+  ref,
+  String uid,
+) {
   return ref.watch(profileRemoteDataSourceProvider).getProfile(uid);
 });
 
 class PublicProfilePage extends ConsumerWidget {
-  const PublicProfilePage({
-    super.key,
-    required this.uid,
-  });
+  const PublicProfilePage({super.key, required this.uid});
 
   final String uid;
 
@@ -21,9 +20,7 @@ class PublicProfilePage extends ConsumerWidget {
     final profileState = ref.watch(publicProfileProvider(uid));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Public Profile'),
-      ),
+      appBar: AppBar(title: const Text('Public Profile')),
       body: profileState.when(
         data: (profile) {
           if (profile == null) {
@@ -79,19 +76,15 @@ class PublicProfilePage extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(
-          child: Text('Unable to load profile.'),
-        ),
+        error: (error, stackTrace) =>
+            const Center(child: Text('Unable to load profile.')),
       ),
     );
   }
 }
 
 class _Section extends StatelessWidget {
-  const _Section({
-    required this.title,
-    required this.value,
-  });
+  const _Section({required this.title, required this.value});
 
   final String title;
   final String value;

@@ -41,12 +41,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       return;
     }
 
-    await ref.read(authControllerProvider.notifier).register(
-          name: name,
-          email: email,
-          password: password,
-        );
+    final authController = ref.read(authControllerProvider.notifier);
+    await authController.register(name: name, email: email, password: password);
 
+    if (!mounted) return;
     final state = ref.read(authControllerProvider);
 
     if (state.hasError) {
@@ -57,9 +55,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   void _showError(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -80,10 +78,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   const Text(
                     'Create LinkAI Account',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
                   const Text(

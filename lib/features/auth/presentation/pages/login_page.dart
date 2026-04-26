@@ -33,11 +33,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       return;
     }
 
-    await ref.read(authControllerProvider.notifier).login(
-          email: email,
-          password: password,
-        );
+    final authController = ref.read(authControllerProvider.notifier);
+    await authController.login(email: email, password: password);
 
+    if (!mounted) return;
     final state = ref.read(authControllerProvider);
 
     if (state.hasError) {
@@ -48,9 +47,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void _showError(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -71,10 +70,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   const Text(
                     'LinkAI',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
                   const Text(

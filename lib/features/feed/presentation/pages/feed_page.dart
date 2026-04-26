@@ -24,15 +24,13 @@ class FeedPage extends ConsumerWidget {
       body: profilesState.when(
         data: (profiles) {
           if (profiles.isEmpty) {
-            return const Center(
-              child: Text('No AI builders yet.'),
-            );
+            return const Center(child: Text('No AI builders yet.'));
           }
 
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: profiles.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final profile = profiles[index];
 
@@ -71,9 +69,8 @@ class FeedPage extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(
-          child: Text('Unable to load profiles.'),
-        ),
+        error: (error, stackTrace) =>
+            const Center(child: Text('Unable to load profiles.')),
       ),
     );
   }

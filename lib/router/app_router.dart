@@ -12,9 +12,12 @@ import '../features/profile/presentation/pages/edit_profile_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/public_profile_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
+import '../features/admin/presentation/pages/admin_settings_page.dart';
+import '../features/admin/presentation/providers/admin_providers.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
+  final adminStatus = ref.watch(adminStatusProvider);
 
   return GoRouter(
     initialLocation: '/feed',
@@ -22,9 +25,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ref.watch(authRemoteDataSourceProvider).authStateChanges(),
     ),
     redirect: (context, state) {
-      final isLoggedIn = authState.asData?.value != null;
+      final user = authState.asData?.value;
+      final isLoggedIn = user != null;
+
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
+
+      final isAdminRoute = state.matchedLocation.startsWith('/admin');
+
+      if (authState.isLoading) {
+        return null;
+      }
 
       if (!isLoggedIn && !isAuthRoute) {
         return '/login';
@@ -32,6 +43,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       if (isLoggedIn && isAuthRoute) {
         return '/feed';
+      }
+
+      if (isAdminRoute) {
+        final isAdmin = adminStatus.asData?.value == true;
+
+        if (adminStatus.isLoading) {
+          return null;
+        }
+
+        if (!isAdmin) {
+          return '/feed';
+        }
       }
 
       return null;
@@ -74,6 +97,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/settings',
         name: 'settings',
         builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: '/admin/settings',
+        name: 'admin-settings',
+        builder: (context, state) => const AdminSettingsPage(),
       ),
     ],
   );

@@ -79,3 +79,19 @@ app.*.map.json
 *.crt
 *.key
 *.mobileprovision
+
+# Firebase project-specific config (keep out of git)
+.firebaserc
+.firebase/
+firebase-debug.log
+
+# FlutterFire generated options (contains project ids + api keys)
+lib/firebase_options.dart
+
+# Firebase native config files
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# (Optional) ignore these files anywhere in the repo
+**/google-services.json
+**/GoogleService-Info.plist

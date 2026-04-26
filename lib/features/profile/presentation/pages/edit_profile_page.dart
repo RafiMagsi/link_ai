@@ -79,16 +79,12 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   }
 
   Future<void> _save(ProfileModel profile) async {
-
     String? avatarUrl = profile.avatarUrl;
 
     if (_selectedAvatarFile != null) {
       avatarUrl = await ref
           .read(profileControllerProvider.notifier)
-          .uploadAvatar(
-            uid: profile.uid,
-            file: _selectedAvatarFile!,
-          );
+          .uploadAvatar(uid: profile.uid, file: _selectedAvatarFile!);
 
       if (avatarUrl == null) {
         if (!mounted) return;
@@ -119,8 +115,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       },
     );
 
-    
-
     await ref
         .read(profileControllerProvider.notifier)
         .updateProfile(updatedProfile);
@@ -140,18 +134,18 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   }
 
   Future<void> _pickAvatar() async {
-  final pickedFile = await _imagePicker.pickImage(
-    source: ImageSource.gallery,
-    imageQuality: 85,
-    maxWidth: 1200,
-  );
+    final pickedFile = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1200,
+    );
 
-  if (pickedFile == null) return;
+    if (pickedFile == null) return;
 
-  setState(() {
-    _selectedAvatarFile = File(pickedFile.path);
-  });
-}
+    setState(() {
+      _selectedAvatarFile = File(pickedFile.path);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,9 +153,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     final controllerState = ref.watch(profileControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Profile'),
-      ),
+      appBar: AppBar(title: const Text('Edit Profile')),
       body: profileState.when(
         data: (profile) {
           if (profile == null) {
@@ -183,9 +175,11 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                         backgroundImage: _selectedAvatarFile != null
                             ? FileImage(_selectedAvatarFile!)
                             : profile.avatarUrl != null
-                                ? NetworkImage(profile.avatarUrl!) as ImageProvider
-                                : null,
-                        child: _selectedAvatarFile == null && profile.avatarUrl == null
+                            ? NetworkImage(profile.avatarUrl!) as ImageProvider
+                            : null,
+                        child:
+                            _selectedAvatarFile == null &&
+                                profile.avatarUrl == null
                             ? const Icon(Icons.camera_alt, size: 30)
                             : null,
                       ),
@@ -201,11 +195,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               const SizedBox(height: 16),
               _Field(controller: _nameController, label: 'Name'),
               _Field(controller: _roleController, label: 'Role'),
-              _Field(
-                controller: _bioController,
-                label: 'Bio',
-                maxLines: 4,
-              ),
+              _Field(controller: _bioController, label: 'Bio', maxLines: 4),
               _Field(controller: _locationController, label: 'Location'),
               _Field(
                 controller: _skillsController,
@@ -244,8 +234,9 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               _Field(controller: _xController, label: 'X / Twitter'),
               const SizedBox(height: 20),
               FilledButton(
-                onPressed:
-                    controllerState.isLoading ? null : () => _save(profile),
+                onPressed: controllerState.isLoading
+                    ? null
+                    : () => _save(profile),
                 child: controllerState.isLoading
                     ? const SizedBox(
                         height: 18,
@@ -258,9 +249,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(
-          child: Text('Unable to load profile.'),
-        ),
+        error: (error, stackTrace) =>
+            const Center(child: Text('Unable to load profile.')),
       ),
     );
   }
