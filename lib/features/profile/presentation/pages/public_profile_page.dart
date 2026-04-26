@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/profile_providers.dart';
+import '../../../connect/presentation/widgets/connect_button.dart';
 
 final publicProfileProvider = FutureProvider.family.autoDispose((
   ref,
@@ -65,12 +66,9 @@ class PublicProfilePage extends ConsumerWidget {
               _Section(title: 'Need', value: profile.need),
               _Section(title: 'Want to meet', value: profile.wantToMeet),
               const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: () {
-                  // Next step: connection request flow.
-                },
-                icon: const Icon(Icons.person_add),
-                label: const Text('Connect'),
+              ConnectButton(
+                targetUid: profile.uid,
+                targetName: profile.name.isEmpty ? 'AI Builder' : profile.name,
               ),
             ],
           );

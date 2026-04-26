@@ -17,12 +17,16 @@ class ProfilePage extends ConsumerWidget {
         title: const Text('My Profile'),
         actions: [
           IconButton(
-            onPressed: () => context.push('/profile/edit'),
-            icon: const Icon(Icons.edit),
+            onPressed: () => context.push('/connect/requests'),
+            icon: const Icon(Icons.group_add_outlined),
           ),
           IconButton(
             onPressed: () => context.push('/settings'),
             icon: const Icon(Icons.settings),
+          ),
+          IconButton(
+            onPressed: () => context.push('/profile/edit'),
+            icon: const Icon(Icons.edit),
           ),
           IconButton(
             onPressed: () {

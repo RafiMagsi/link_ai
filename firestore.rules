@@ -88,5 +88,33 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
       allow update: if false;
     }
+
+    match /connectRequests/{requestId} {
+      allow read: if isSignedIn()
+        && (
+          resource.data.senderUid == request.auth.uid ||
+          resource.data.receiverUid == request.auth.uid
+        );
+
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /connections/{connectionId} {
+      allow read: if isSignedIn()
+        && resource.data.userUid == request.auth.uid;
+
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /userConnectionStats/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
   }
 }
