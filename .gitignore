@@ -1,0 +1,81 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+docs/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default. For most apps it's not needed in git.
+.vscode/
+*.code-workspace
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.fvm/
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Android (Gradle/NDK) related
+.gradle/
+**/local.properties
+**/.cxx/
+**/captures/
+
+# iOS/macOS (Xcode/CocoaPods) related
+**/Pods/
+**/.symlinks/
+**/Flutter/ephemeral/
+**/Flutter/Generated.xcconfig
+**/Flutter/flutter_export_environment.sh
+**/xcuserdata/
+**/*.xcuserstate
+
+# Release artifacts
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Signing keys / certificates (keep out of git)
+*.jks
+*.keystore
+*.p12
+*.pem
+*.cer
+*.crt
+*.key
+*.mobileprovision
