@@ -35,5 +35,58 @@ service cloud.firestore {
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 280
+        && request.resource.data.media is list
+        && request.resource.data.media.size() <= 4;
+
+      allow update: if isSignedIn();
+      allow delete: if isAdmin() ||
+        resource.data.authorUid == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn()
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 500;
+
+        allow update: if false;
+        allow delete: if isAdmin() ||
+          resource.data.authorUid == request.auth.uid;
+      }
+    }
+
+    match /postLikes/{likeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /postReposts/{repostId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /postSaves/{saveId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
   }
 }

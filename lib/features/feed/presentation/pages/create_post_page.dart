@@ -1,19 +1,19 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-class CreatePostPage extends StatefulWidget {
+import '../../../../core/config/app_limits_provider.dart';
+
+class CreatePostPage extends ConsumerStatefulWidget {
   const CreatePostPage({super.key});
 
   @override
-  State<CreatePostPage> createState() => _CreatePostPageState();
+  ConsumerState<CreatePostPage> createState() => _CreatePostPageState();
 }
 
-class _CreatePostPageState extends State<CreatePostPage> {
-  static const int _fallbackMaxLength = 280;
-  static const int _maxMediaCount = 4;
-
+class _CreatePostPageState extends ConsumerState<CreatePostPage> {
   final _textController = TextEditingController();
   final _imagePicker = ImagePicker();
 
@@ -29,12 +29,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
   }
 
   Future<void> _pickImages() async {
-    if (_selectedMedia.length >= _maxMediaCount) {
-      _showMessage('Maximum $_maxMediaCount media items allowed.');
+    final limits = ref.read(appLimitsProvider);
+
+    if (_selectedMedia.length >= limits.postMaxMediaItems) {
+      _showMessage('Maximum ${limits.postMaxMediaItems} media items allowed.');
       return;
     }
 
-    final remaining = _maxMediaCount - _selectedMedia.length;
+    final remaining = limits.postMaxMediaItems - _selectedMedia.length;
 
     final pickedImages = await _imagePicker.pickMultiImage(
       imageQuality: 85,
@@ -43,13 +45,53 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
     if (pickedImages.isEmpty) return;
 
-    final selected = pickedImages
-        .take(remaining)
-        .map((image) => File(image.path))
-        .toList();
+    final selected = <File>[];
+    for (final image in pickedImages.take(remaining)) {
+      final file = File(image.path);
+      final sizeBytes = await file.length();
+
+      if (sizeBytes > limits.imageMaxBytes) {
+        _showMessage(
+          'Image is larger than ${_bytesToMb(limits.imageMaxBytes)} MB.',
+        );
+        continue;
+      }
+
+      selected.add(file);
+    }
 
     setState(() {
       _selectedMedia.addAll(selected);
+    });
+  }
+
+  Future<void> _pickVideo() async {
+    final limits = ref.read(appLimitsProvider);
+
+    if (_selectedMedia.length >= limits.postMaxMediaItems) {
+      _showMessage('Maximum ${limits.postMaxMediaItems} media items allowed.');
+      return;
+    }
+
+    final pickedVideo = await _imagePicker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: Duration(seconds: limits.videoMaxDurationSeconds),
+    );
+
+    if (pickedVideo == null) return;
+
+    final file = File(pickedVideo.path);
+    final sizeBytes = await file.length();
+
+    if (sizeBytes > limits.videoMaxBytes) {
+      _showMessage(
+        'Video is larger than ${_bytesToMb(limits.videoMaxBytes)} MB.',
+      );
+      return;
+    }
+
+    setState(() {
+      _selectedMedia.add(file);
     });
   }
 
@@ -60,6 +102,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
   }
 
   Future<void> _submit() async {
+    final limits = ref.read(appLimitsProvider);
     final text = _textController.text.trim();
 
     if (text.isEmpty && _selectedMedia.isEmpty) {
@@ -67,7 +110,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       return;
     }
 
-    if (text.length > _fallbackMaxLength) {
+    if (text.length > limits.postMaxChars) {
       _showMessage('Post text is too long.');
       return;
     }
@@ -99,15 +142,16 @@ class _CreatePostPageState extends State<CreatePostPage> {
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     final textLength = _textController.text.length;
-    final remaining = _fallbackMaxLength - textLength;
+    final limits = ref.watch(appLimitsProvider);
+    final remaining = limits.postMaxChars - textLength;
     final isOverLimit = remaining < 0;
 
     return Scaffold(
@@ -126,8 +170,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       body: SafeArea(
         child: Column(
           children: [
-            if (_isUploading)
-              LinearProgressIndicator(value: _uploadProgress),
+            if (_isUploading) LinearProgressIndicator(value: _uploadProgress),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(16),
@@ -146,17 +189,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
                           controller: _textController,
                           maxLines: null,
                           minLines: 5,
-                          maxLength: _fallbackMaxLength,
+                          maxLength: limits.postMaxChars,
                           onChanged: (_) => setState(() {}),
                           decoration: const InputDecoration(
                             hintText: 'What are you building in AI?',
                             border: InputBorder.none,
                             counterText: '',
                           ),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            height: 1.35,
-                          ),
+                          style: const TextStyle(fontSize: 18, height: 1.35),
                         ),
                       ),
                     ],
@@ -174,9 +214,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
               decoration: const BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: Color(0xFF1E293B)),
-                ),
+                border: Border(top: BorderSide(color: Color(0xFF1E293B))),
               ),
               child: Row(
                 children: [
@@ -185,11 +223,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                     icon: const Icon(Icons.image_outlined),
                   ),
                   IconButton(
-                    onPressed: _isUploading
-                        ? null
-                        : () {
-                            _showMessage('Video picker comes after image flow.');
-                          },
+                    onPressed: _isUploading ? null : _pickVideo,
                     icon: const Icon(Icons.videocam_outlined),
                   ),
                   const Spacer(),
@@ -212,11 +246,24 @@ class _CreatePostPageState extends State<CreatePostPage> {
   }
 }
 
+String _bytesToMb(int bytes) {
+  final mb = bytes / (1024 * 1024);
+  if (mb == mb.roundToDouble()) return mb.toStringAsFixed(0);
+  return mb.toStringAsFixed(1);
+}
+
+bool _isVideoPath(String path) {
+  final lower = path.toLowerCase();
+  return lower.endsWith('.mp4') ||
+      lower.endsWith('.mov') ||
+      lower.endsWith('.m4v') ||
+      lower.endsWith('.webm') ||
+      lower.endsWith('.mkv') ||
+      lower.endsWith('.avi');
+}
+
 class _SelectedMediaGrid extends StatelessWidget {
-  const _SelectedMediaGrid({
-    required this.files,
-    required this.onRemove,
-  });
+  const _SelectedMediaGrid({required this.files, required this.onRemove});
 
   final List<File> files;
   final void Function(int index) onRemove;
@@ -267,6 +314,8 @@ class _SelectedMediaTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isVideo = _isVideoPath(file.path);
+
     return Container(
       height: height,
       clipBehavior: Clip.antiAlias,
@@ -278,24 +327,29 @@ class _SelectedMediaTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.file(
-            file,
-            fit: BoxFit.cover,
-          ),
+          if (isVideo)
+            Container(
+              color: const Color(0xFF0B1220),
+              child: const Center(
+                child: Icon(
+                  Icons.play_circle_outline,
+                  size: 56,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            )
+          else
+            Image.file(file, fit: BoxFit.cover),
           Positioned(
             top: 8,
             right: 8,
             child: CircleAvatar(
               radius: 16,
-              backgroundColor: Colors.black.withOpacity(0.65),
+              backgroundColor: Colors.black.withValues(alpha: 0.65),
               child: IconButton(
                 padding: EdgeInsets.zero,
                 onPressed: () => onRemove(index),
-                icon: const Icon(
-                  Icons.close,
-                  size: 17,
-                  color: Colors.white,
-                ),
+                icon: const Icon(Icons.close, size: 17, color: Colors.white),
               ),
             ),
           ),

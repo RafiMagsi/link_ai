@@ -31,7 +31,7 @@ class ProductsPage extends StatelessWidget {
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: products.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           final product = products[index];
 
@@ -47,10 +47,7 @@ class ProductsPage extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF2563EB),
-                          Color(0xFF8B5CF6),
-                        ],
+                        colors: [Color(0xFF2563EB), Color(0xFF8B5CF6)],
                       ),
                     ),
                     child: const Icon(Icons.auto_awesome),
@@ -70,9 +67,7 @@ class ProductsPage extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           product.tagline,
-                          style: const TextStyle(
-                            color: Color(0xFF94A3B8),
-                          ),
+                          style: const TextStyle(color: Color(0xFF94A3B8)),
                         ),
                         const SizedBox(height: 10),
                         Wrap(

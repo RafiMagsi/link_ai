@@ -10,6 +10,7 @@ class FeedPostUiModel {
   final int repostsCount;
   final int commentsCount;
   final int savesCount;
+  final bool isFromConnection;
 
   const FeedPostUiModel({
     required this.id,
@@ -23,5 +24,6 @@ class FeedPostUiModel {
     required this.repostsCount,
     required this.commentsCount,
     required this.savesCount,
+    this.isFromConnection = false,
   });
 }

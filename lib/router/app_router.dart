@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/register_page.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
-import '../features/feed/presentation/pages/feed_page.dart';
 import '../features/profile/presentation/pages/edit_profile_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/public_profile_page.dart';
@@ -30,7 +29,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final user = authState.asData?.value;
       final isLoggedIn = user != null;
 
-      final isAuthRoute = state.matchedLocation == '/login' ||
+      final isAuthRoute =
+          state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
 
       final isAdminRoute = state.matchedLocation.startsWith('/admin');
@@ -117,9 +117,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
-    _subscription = stream.asBroadcastStream().listen(
-          (_) => notifyListeners(),
-        );
+    _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
   }
 
   late final StreamSubscription<dynamic> _subscription;

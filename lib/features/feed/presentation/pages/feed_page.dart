@@ -1,108 +1,148 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/models/feed_post_ui_model.dart';
+import '../../data/models/post_model.dart';
+import '../providers/post_providers.dart';
+import 'post_comments_page.dart';
 import '../widgets/feed_post_card.dart';
 
-class FeedPage extends StatelessWidget {
+class FeedPage extends ConsumerWidget {
   const FeedPage({super.key});
 
-  static const _posts = [
-    FeedPostUiModel(
-      id: '1',
-      authorName: 'Rafi Khan',
-      authorRole: 'Flutter / Laravel / AI Builder',
-      authorAvatarUrl: null,
-      timestampText: '12m',
-      text:
-          'Building LinkAI today — a focused networking app for people working in AI. The goal is simple: show what you are building, what you need, and who you want to meet.',
-      mediaUrls: [],
-      likesCount: 18,
-      repostsCount: 4,
-      commentsCount: 7,
-      savesCount: 5,
-    ),
-    FeedPostUiModel(
-      id: '2',
-      authorName: 'Sara Ahmed',
-      authorRole: 'AI Product Designer',
-      authorAvatarUrl: null,
-      timestampText: '36m',
-      text:
-          'Looking for AI founders who need product feedback. I can help with onboarding, app structure, and UX clarity.',
-      mediaUrls: [
-        'https://images.unsplash.com/photo-1551434678-e076c223a692?w=1200',
-      ],
-      likesCount: 41,
-      repostsCount: 8,
-      commentsCount: 11,
-      savesCount: 13,
-    ),
-    FeedPostUiModel(
-      id: '3',
-      authorName: 'Omar Malik',
-      authorRole: 'AI Automation Builder',
-      authorAvatarUrl: null,
-      timestampText: '1h',
-      text:
-          'I am testing an AI workflow that turns customer emails into CRM tasks, follow-ups, and quote drafts. Need beta testers from agencies.',
-      mediaUrls: [
-        'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1200',
-        'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200',
-      ],
-      likesCount: 63,
-      repostsCount: 12,
-      commentsCount: 19,
-      savesCount: 22,
-    ),
-  ];
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final latestPosts = ref.watch(latestPostsProvider);
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0F172A),
+        appBar: AppBar(
+          title: const Text(
+            'Feed',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Latest'),
+              Tab(text: 'Connected'),
+              Tab(text: 'Viral'),
+            ],
+          ),
+          actions: [
+            IconButton(onPressed: () {}, icon: const Icon(Icons.search)),
+            IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.notifications_none),
+            ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => context.push('/posts/create'),
+          icon: const Icon(Icons.add),
+          label: const Text('Post'),
+        ),
+        body: TabBarView(
+          children: [
+            _FeedList(kind: _FeedKind.latest, posts: latestPosts),
+            _FeedList(
+              kind: _FeedKind.connected,
+              posts: latestPosts,
+              emptyStateText:
+                  'Connected feed is coming next.\nFor now it shows the latest posts.',
+            ),
+            _FeedList(kind: _FeedKind.viral, posts: latestPosts),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static int _viralScore(PostModel post) {
+    return (post.likesCount * 2) +
+        (post.repostsCount * 3) +
+        post.commentsCount +
+        post.savesCount;
+  }
+}
+
+enum _FeedKind { latest, connected, viral }
+
+class _FeedList extends ConsumerWidget {
+  const _FeedList({
+    required this.kind,
+    required this.posts,
+    this.emptyStateText = 'No posts yet.',
+  });
+
+  final _FeedKind kind;
+  final AsyncValue<List<PostModel>> posts;
+  final String emptyStateText;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        title: const Text(
-          'Feed',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.search),
-          ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/posts/create'),
-        icon: const Icon(Icons.add),
-        label: const Text('Post'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future<void>.delayed(const Duration(milliseconds: 500));
-        },
-        child: ListView.separated(
-          itemCount: _posts.length + 1,
-          separatorBuilder: (_, __) {
-            return const Divider(
-              height: 1,
-              thickness: 0.7,
-              color: Color(0xFF1E293B),
-            );
-          },
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return const _FeedComposerEntry();
-            }
+  Widget build(BuildContext context, WidgetRef ref) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(latestPostsProvider);
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      },
+      child: posts.when(
+        data: (items) {
+          final visiblePosts = switch (kind) {
+            _FeedKind.latest => items,
+            _FeedKind.connected => items,
+            _FeedKind.viral =>
+              (items.toList()..sort(
+                (a, b) =>
+                    FeedPage._viralScore(b).compareTo(FeedPage._viralScore(a)),
+              )),
+          };
 
-            return FeedPostCard(post: _posts[index - 1]);
-          },
-        ),
+          return ListView.separated(
+            itemCount: visiblePosts.isEmpty ? 2 : visiblePosts.length + 1,
+            separatorBuilder: (context, index) {
+              return const Divider(
+                height: 1,
+                thickness: 0.7,
+                color: Color(0xFF1E293B),
+              );
+            },
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return const _FeedComposerEntry();
+              }
+
+              if (visiblePosts.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
+                    child: Text(
+                      emptyStateText,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFF94A3B8)),
+                    ),
+                  ),
+                );
+              }
+
+              final post = visiblePosts[index - 1];
+
+              return FeedPostCard(
+                post: post,
+                onCommentTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => PostCommentsPage(post: post),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) =>
+            const Center(child: Text('Unable to load feed.')),
       ),
     );
   }
@@ -138,10 +178,7 @@ class _FeedComposerEntry extends StatelessWidget {
                 ),
                 child: const Text(
                   'What are you building in AI?',
-                  style: TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 15,
-                  ),
+                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
                 ),
               ),
             ),
