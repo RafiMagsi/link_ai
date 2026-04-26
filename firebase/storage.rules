@@ -1,0 +1,44 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isVideo() {
+      return request.resource.contentType.matches('video/.*');
+    }
+
+    function under(bytes) {
+      return request.resource.size < bytes;
+    }
+
+    // Avatars: only images, max 5MB.
+    match /profileAvatars/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isImage() && under(5 * 1024 * 1024);
+    }
+
+    // Post media: images <= 5MB, videos <= 200MB. Duration must be enforced in client/Functions.
+    match /postMedia/{userId}/{postId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId)
+        && ((isImage() && under(5 * 1024 * 1024)) || (isVideo() && under(200 * 1024 * 1024)));
+    }
+
+    // Product media: keep it simple for MVP (images only, max 5MB).
+    match /productMedia/{userId}/{productId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isImage() && under(5 * 1024 * 1024);
+    }
+  }
+}
+

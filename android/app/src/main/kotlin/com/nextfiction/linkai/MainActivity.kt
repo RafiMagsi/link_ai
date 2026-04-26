@@ -1,4 +1,4 @@
-package com.example.link_ai
+package com.nextfiction.linkai
 
 import io.flutter.embedding.android.FlutterActivity
 
