@@ -11,6 +11,7 @@ import '../features/feed/presentation/pages/feed_page.dart';
 import '../features/profile/presentation/pages/edit_profile_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/public_profile_page.dart';
+import '../features/settings/presentation/pages/settings_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -68,6 +69,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final uid = state.pathParameters['uid']!;
           return PublicProfilePage(uid: uid);
         },
+      ),
+      GoRoute(
+        path: '/settings',
+        name: 'settings',
+        builder: (context, state) => const SettingsPage(),
       ),
     ],
   );

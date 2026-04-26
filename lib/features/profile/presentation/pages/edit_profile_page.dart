@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/profile_model.dart';
 import '../providers/profile_providers.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key});
@@ -27,6 +29,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final _xController = TextEditingController();
 
   bool _initialized = false;
+  final _imagePicker = ImagePicker();
+  File? _selectedAvatarFile;
 
   @override
   void dispose() {
@@ -75,6 +79,27 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   }
 
   Future<void> _save(ProfileModel profile) async {
+
+    String? avatarUrl = profile.avatarUrl;
+
+    if (_selectedAvatarFile != null) {
+      avatarUrl = await ref
+          .read(profileControllerProvider.notifier)
+          .uploadAvatar(
+            uid: profile.uid,
+            file: _selectedAvatarFile!,
+          );
+
+      if (avatarUrl == null) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to upload avatar.')),
+        );
+        return;
+      }
+    }
+
     final updatedProfile = profile.copyWith(
       name: _nameController.text.trim(),
       role: _roleController.text.trim(),
@@ -85,6 +110,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       building: _buildingController.text.trim(),
       need: _needController.text.trim(),
       wantToMeet: _wantToMeetController.text.trim(),
+      avatarUrl: avatarUrl,
       links: {
         'website': _websiteController.text.trim(),
         'linkedin': _linkedinController.text.trim(),
@@ -92,6 +118,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         'x': _xController.text.trim(),
       },
     );
+
+    
 
     await ref
         .read(profileControllerProvider.notifier)
@@ -110,6 +138,20 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
     Navigator.of(context).pop();
   }
+
+  Future<void> _pickAvatar() async {
+  final pickedFile = await _imagePicker.pickImage(
+    source: ImageSource.gallery,
+    imageQuality: 85,
+    maxWidth: 1200,
+  );
+
+  if (pickedFile == null) return;
+
+  setState(() {
+    _selectedAvatarFile = File(pickedFile.path);
+  });
+}
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +173,32 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              Center(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _pickAvatar,
+                      child: CircleAvatar(
+                        radius: 46,
+                        backgroundImage: _selectedAvatarFile != null
+                            ? FileImage(_selectedAvatarFile!)
+                            : profile.avatarUrl != null
+                                ? NetworkImage(profile.avatarUrl!) as ImageProvider
+                                : null,
+                        child: _selectedAvatarFile == null && profile.avatarUrl == null
+                            ? const Icon(Icons.camera_alt, size: 30)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _pickAvatar,
+                      child: const Text('Change Avatar'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               _Field(controller: _nameController, label: 'Name'),
               _Field(controller: _roleController, label: 'Role'),
               _Field(

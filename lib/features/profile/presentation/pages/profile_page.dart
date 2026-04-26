@@ -21,6 +21,10 @@ class ProfilePage extends ConsumerWidget {
             icon: const Icon(Icons.edit),
           ),
           IconButton(
+            onPressed: () => context.push('/settings'),
+            icon: const Icon(Icons.settings),
+          ),
+          IconButton(
             onPressed: () {
               ref.read(authControllerProvider.notifier).logout();
             },

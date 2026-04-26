@@ -6,6 +6,8 @@ import '../../data/datasources/auth_remote_datasource.dart';
 import '../../../profile/data/datasources/profile_remote_datasource.dart';
 import '../../../profile/data/models/profile_model.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
+import '../../../settings/data/datasources/settings_remote_datasource.dart';
+import '../../../settings/presentation/providers/settings_providers.dart';
 
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
   return FirebaseAuth.instance;
@@ -28,6 +30,7 @@ final authControllerProvider =
   return AuthController(
     ref.watch(authRemoteDataSourceProvider),
     ref.watch(profileRemoteDataSourceProvider),
+    ref.watch(settingsRemoteDataSourceProvider),
   );
 });
 
@@ -35,10 +38,12 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
   AuthController(
     this._authRemoteDataSource,
     this._profileRemoteDataSource,
+    this._settingsRemoteDataSource,
   ) : super(const AsyncData(null));
 
   final AuthRemoteDataSource _authRemoteDataSource;
   final ProfileRemoteDataSource _profileRemoteDataSource;
+  final SettingsRemoteDataSource _settingsRemoteDataSource;
 
   Future<void> register({
     required String name,
@@ -68,8 +73,10 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
           name: name.trim(),
         ),
       );
-
+      
+      await _settingsRemoteDataSource.createSettingsIfNotExists(user.uid);
       state = const AsyncData(null);
+
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
@@ -98,7 +105,8 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
           ),
         );
       }
-
+      
+      await _settingsRemoteDataSource.createSettingsIfNotExists(user?.uid ?? '0');
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);

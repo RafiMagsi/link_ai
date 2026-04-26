@@ -1,11 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../models/profile_model.dart';
 
 class ProfileRemoteDataSource {
-  ProfileRemoteDataSource(this._firestore);
+
+  ProfileRemoteDataSource(
+    this._firestore,
+    this._storage,
+  );
 
   final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
 
   CollectionReference<Map<String, dynamic>> get _profiles {
     return _firestore.collection('profiles');
@@ -48,5 +54,24 @@ class ProfileRemoteDataSource {
         .get();
 
     return snapshot.docs.map(ProfileModel.fromFirestore).toList();
+  }
+
+  Future<String> uploadAvatar({
+    required String uid,
+    required File file,
+  }) async {
+    final ref = _storage.ref().child('avatars/$uid/profile.jpg');
+
+    await ref.putFile(
+      file,
+      SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {
+          'uid': uid,
+        },
+      ),
+    );
+
+    return ref.getDownloadURL();
   }
 }
