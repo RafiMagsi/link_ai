@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
-import '../../../products/presentation/pages/product_detail_page.dart';
 import '../providers/notification_providers.dart';
 
 class NotificationsPage extends ConsumerWidget {
@@ -93,11 +92,7 @@ class NotificationsPage extends ConsumerWidget {
 
                   final productId = notification.productId;
                   if (productId != null && productId.isNotEmpty) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ProductDetailPage(productId: productId),
-                      ),
-                    );
+                    context.push('/products/$productId');
                     return;
                   }
 

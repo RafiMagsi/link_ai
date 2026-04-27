@@ -7,7 +7,6 @@ import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/product_providers.dart';
-import 'edit_product_page.dart';
 
 class ProductDetailPage extends ConsumerWidget {
   const ProductDetailPage({super.key, required this.productId});
@@ -47,13 +46,10 @@ class ProductDetailPage extends ConsumerWidget {
             actions: [
               if (isOwner)
                 IconButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => EditProductPage(product: product),
-                      ),
-                    );
-                  },
+                  onPressed: () => context.push(
+                    '/products/${product.id}/edit',
+                    extra: product,
+                  ),
                   icon: const Icon(Icons.edit),
                 ),
             ],

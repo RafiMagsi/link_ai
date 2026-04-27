@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:link_ai/features/connect/data/datasources/connect_remote_datasource.dart';
+import 'package:go_router/go_router.dart';
 
-import '../pages/send_connect_request_page.dart';
 import '../providers/connect_providers.dart';
 
 class ConnectButton extends ConsumerWidget {
@@ -48,13 +48,9 @@ class ConnectButton extends ConsumerWidget {
           case ConnectRelationshipStatus.none:
             return FilledButton.icon(
               onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => SendConnectRequestPage(
-                      receiverUid: targetUid,
-                      receiverName: targetName,
-                    ),
-                  ),
+                context.push(
+                  '/connect/request/$targetUid',
+                  extra: {'receiverName': targetName},
                 );
               },
               icon: const Icon(Icons.person_add),
@@ -63,10 +59,7 @@ class ConnectButton extends ConsumerWidget {
         }
       },
       loading: () {
-        return const FilledButton(
-          onPressed: null,
-          child: Text('Checking...'),
-        );
+        return const FilledButton(onPressed: null, child: Text('Checking...'));
       },
       error: (error, stackTrace) {
         return FilledButton.icon(

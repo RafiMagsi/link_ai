@@ -17,9 +17,14 @@ import '../features/feed/presentation/pages/create_post_page.dart';
 import '../features/feed/presentation/pages/post_detail_page.dart';
 import '../features/main/presentation/pages/main_shell_page.dart';
 import '../features/connect/presentation/pages/connect_requests_page.dart';
+import '../features/connect/presentation/pages/send_connect_request_page.dart';
 import '../features/notifications/presentation/pages/notifications_page.dart';
 import '../features/feed/data/models/post_model.dart';
 import '../features/explore/presentation/pages/hashtag_page.dart';
+import '../features/products/data/models/product_model.dart';
+import '../features/products/presentation/pages/create_product_page.dart';
+import '../features/products/presentation/pages/edit_product_page.dart';
+import '../features/products/presentation/pages/product_detail_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -135,9 +140,50 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/products/create',
+        name: 'create-product',
+        builder: (context, state) => const CreateProductPage(),
+      ),
+      GoRoute(
+        path: '/products/:productId',
+        name: 'product-detail',
+        builder: (context, state) {
+          final productId = state.pathParameters['productId']!;
+          return ProductDetailPage(productId: productId);
+        },
+      ),
+      GoRoute(
+        path: '/products/:productId/edit',
+        name: 'edit-product',
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! ProductModel) {
+            return const Scaffold(
+              body: Center(child: Text('Missing product data.')),
+            );
+          }
+          return EditProductPage(product: extra);
+        },
+      ),
+      GoRoute(
         path: '/connect/requests',
         name: 'connect-requests',
         builder: (context, state) => const ConnectRequestsPage(),
+      ),
+      GoRoute(
+        path: '/connect/request/:uid',
+        name: 'send-connect-request',
+        builder: (context, state) {
+          final uid = state.pathParameters['uid']!;
+          final extra = state.extra;
+          final receiverName = extra is Map
+              ? (extra['receiverName'] as String?) ?? 'AI Builder'
+              : 'AI Builder';
+          return SendConnectRequestPage(
+            receiverUid: uid,
+            receiverName: receiverName,
+          );
+        },
       ),
       GoRoute(
         path: '/notifications',

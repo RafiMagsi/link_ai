@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../data/models/product_model.dart';
 import '../providers/product_providers.dart';
-import 'create_product_page.dart';
-import 'product_detail_page.dart';
 
 class ProductsPage extends ConsumerWidget {
   const ProductsPage({super.key});
@@ -23,11 +22,7 @@ class ProductsPage extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'products_fab',
-        onPressed: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const CreateProductPage()));
-        },
+        onPressed: () => context.push('/products/create'),
         icon: const Icon(Icons.add),
         label: const Text('Product'),
       ),
@@ -47,13 +42,7 @@ class ProductsPage extends ConsumerWidget {
 
               return ProductCard(
                 product: product,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ProductDetailPage(productId: product.id),
-                    ),
-                  );
-                },
+                onTap: () => context.push('/products/${product.id}'),
               );
             },
           );
@@ -154,11 +143,7 @@ class _EmptyProducts extends StatelessWidget {
       subtitle: 'Be the first to showcase what you are building.',
       icon: Icons.apps_outlined,
       action: FilledButton.icon(
-        onPressed: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const CreateProductPage()));
-        },
+        onPressed: () => context.push('/products/create'),
         icon: const Icon(Icons.add),
         label: const Text('Add Product'),
       ),
