@@ -47,7 +47,6 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     ref.invalidate(profileByUidProvider(widget.uid));
     ref.invalidate(postsByAuthorProvider(widget.uid));
     ref.invalidate(likedPostIdsByUserProvider(widget.uid));
-    ref.invalidate(commentsByAuthorProvider(widget.uid));
     await Future<void>.delayed(const Duration(milliseconds: 500));
   }
 
@@ -57,14 +56,11 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     final profileState = ref.watch(profileByUidProvider(uid));
     final postsState = ref.watch(postsByAuthorProvider(uid));
     final likesState = ref.watch(likedPostIdsByUserProvider(uid));
-    final commentsState = ref.watch(commentsByAuthorProvider(uid));
 
     final latestPostsCount = postsState.asData?.value.length;
     if (latestPostsCount != null) _cachedPostsCount = latestPostsCount;
     final latestLikesCount = likesState.asData?.value.length;
     if (latestLikesCount != null) _cachedLikesCount = latestLikesCount;
-    final latestCommentsCount = commentsState.asData?.value.length;
-    if (latestCommentsCount != null) _cachedCommentsCount = latestCommentsCount;
 
     return profileState.when(
       data: (profile) {
@@ -1322,16 +1318,34 @@ class _CommentsSliver extends ConsumerWidget {
           },
         );
       },
-      loading: () => const SliverFillRemaining(
-        hasScrollBody: false,
-        child: Center(child: AppLoader()),
+      loading: () => SliverList.separated(
+        itemCount: 4,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) => ListTile(
+          title: Container(
+            height: 12,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Container(
+              height: 10,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          trailing: Icon(Icons.chevron_right, color: Colors.grey[300]),
+        ),
       ),
       error: (error, stackTrace) => const SliverFillRemaining(
         hasScrollBody: false,
         child: Center(child: Text('Unable to load comments.')),
       ),
-      skipLoadingOnReload: true,
-      skipLoadingOnRefresh: true,
     );
   }
 }

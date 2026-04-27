@@ -41,6 +41,7 @@ class PostRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
+        .distinct()
         .map((snapshot) {
           try {
             return snapshot.docs.map(PostModel.fromFirestore).toList();
@@ -52,7 +53,7 @@ class PostRemoteDataSource {
   }
 
   Stream<PostModel?> watchPost(String postId) {
-    return _posts.doc(postId).snapshots().map((snapshot) {
+    return _posts.doc(postId).snapshots().distinct().map((snapshot) {
       try {
         if (!snapshot.exists) return null;
         return PostModel.fromFirestore(snapshot);
@@ -64,7 +65,7 @@ class PostRemoteDataSource {
   }
 
   Stream<List<PostCommentModel>> watchComments(String postId) {
-    return _posts.doc(postId).collection('comments').snapshots().map((
+    return _posts.doc(postId).collection('comments').snapshots().distinct().map((
       snapshot,
     ) {
       try {
@@ -200,7 +201,7 @@ class PostRemoteDataSource {
 
   Stream<List<PostModel>> watchPostsByHashtag(String tag, {int limit = 50}) {
     final normalized = tag.toLowerCase();
-    return _posts.where('hashtags', arrayContains: normalized).snapshots().map((
+    return _posts.where('hashtags', arrayContains: normalized).snapshots().distinct().map((
       snapshot,
     ) {
       final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
@@ -220,6 +221,7 @@ class PostRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
+        .distinct()
         .map((snapshot) {
           try {
             return snapshot.docs.map(PostModel.fromFirestore).toList();
@@ -238,6 +240,7 @@ class PostRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
+        .distinct()
         .map((snapshot) {
           try {
             return snapshot.docs
@@ -257,24 +260,43 @@ class PostRemoteDataSource {
     String uid, {
     int limit = 50,
   }) {
+    debugPrint('🔴 [INIT] watchCommentsByAuthor for $uid');
+
     return _firestore
         .collectionGroup('comments')
         .where('authorUid', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
+        .transform(
+          StreamTransformer.fromHandlers(
+            handleData: (QuerySnapshot<Map<String, dynamic>> snapshot, sink) {
+              final docIds =
+                  snapshot.docs.map((d) => d.id).take(2).join(',');
+              debugPrint(
+                '🔴 [SNAPSHOT] ${snapshot.docs.length} docs [$docIds...]',
+              );
+              sink.add(snapshot);
+            },
+            handleError: (error, _, sink) {
+              debugPrint('🔴 [ERROR] $error');
+              // Don't propagate permission errors - let them be handled at UI level
+              if (!error.toString().contains('permission-denied')) {
+                sink.addError(error);
+              } else {
+                debugPrint('🔴 [PERMISSION_DENIED] Suppressed - deploy rules');
+              }
+            },
+          ),
+        )
+        .distinct()
         .map((snapshot) {
           try {
-            final comments = snapshot.docs
+            final snapshotDocs = (snapshot as QuerySnapshot<Map<String, dynamic>>).docs;
+            final comments = snapshotDocs
                 .map(PostCommentModel.fromFirestore)
                 .toList();
-            comments.sort((a, b) {
-              final aTime = a.createdAt ?? a.createdAtClient;
-              final bTime = b.createdAt ?? b.createdAtClient;
-              if (aTime == null && bTime == null) return 0;
-              if (aTime == null) return 1;
-              if (bTime == null) return -1;
-              return bTime.compareTo(aTime);
-            });
+            debugPrint('🟢 [MAPPED] ${comments.length} comments');
             return comments;
           } catch (error, stackTrace) {
             debugPrint(
