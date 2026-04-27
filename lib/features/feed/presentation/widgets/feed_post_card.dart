@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/widgets/hashtag_text.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../data/models/post_model.dart';
+import '../pages/media_gallery_page.dart';
 import 'post/post_action_row.dart';
 import 'post/post_avatar.dart';
 import 'post/post_header.dart';
@@ -53,14 +55,28 @@ class FeedPostCard extends ConsumerWidget {
                     PostHeader(post: post),
                     const SizedBox(height: 6),
                     if (post.text.trim().isNotEmpty)
-                      Text(
-                        post.text,
+                      HashtagText(
+                        text: post.text,
                         style: const TextStyle(fontSize: 15.5, height: 1.35),
                       ),
                     if (post.media.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       PostMediaGrid(
                         mediaUrls: post.media.map((e) => e.url).toList(),
+                        heroTagPrefix: 'post_${post.id}_media_',
+                        onTap: (index) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => MediaGalleryPage(
+                                mediaUrls: post.media
+                                    .map((e) => e.url)
+                                    .toList(),
+                                initialIndex: index,
+                                heroTagPrefix: 'post_${post.id}_media_',
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                     const SizedBox(height: AppSizes.sm),

@@ -31,6 +31,7 @@ class PostModel {
   final String authorRole;
   final String? authorAvatarUrl;
   final String text;
+  final List<String> hashtags;
   final List<PostMediaModel> media;
   final int likesCount;
   final int repostsCount;
@@ -46,6 +47,7 @@ class PostModel {
     required this.authorRole,
     required this.authorAvatarUrl,
     required this.text,
+    required this.hashtags,
     required this.media,
     required this.likesCount,
     required this.repostsCount,
@@ -65,6 +67,7 @@ class PostModel {
       authorRole: data['authorRole'] as String? ?? '',
       authorAvatarUrl: data['authorAvatarUrl'] as String?,
       text: data['text'] as String? ?? '',
+      hashtags: List<String>.from(data['hashtags'] ?? const <String>[]),
       media: ((data['media'] as List?) ?? [])
           .map(
             (item) =>
@@ -88,6 +91,7 @@ class PostModel {
       'authorRole': authorRole,
       'authorAvatarUrl': authorAvatarUrl,
       'text': text,
+      'hashtags': hashtags,
       'media': media.map((item) => item.toMap()).toList(),
       'likesCount': likesCount,
       'repostsCount': repostsCount,

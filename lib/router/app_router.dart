@@ -19,6 +19,7 @@ import '../features/main/presentation/pages/main_shell_page.dart';
 import '../features/connect/presentation/pages/connect_requests_page.dart';
 import '../features/notifications/presentation/pages/notifications_page.dart';
 import '../features/feed/data/models/post_model.dart';
+import '../features/explore/presentation/pages/hashtag_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -123,6 +124,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ? state.extra as PostModel
               : null;
           return PostDetailPage(postId: postId, initialPost: initialPost);
+        },
+      ),
+      GoRoute(
+        path: '/hashtags/:tag',
+        name: 'hashtag',
+        builder: (context, state) {
+          final tag = state.pathParameters['tag']!;
+          return HashtagPage(tag: tag);
         },
       ),
       GoRoute(

@@ -20,6 +20,32 @@ final latestPostsProvider = StreamProvider<List<PostModel>>((ref) {
   return ref.watch(postRemoteDataSourceProvider).watchLatestPosts();
 });
 
+final postsByHashtagProvider = StreamProvider.family<List<PostModel>, String>((
+  ref,
+  tag,
+) {
+  return ref.watch(postRemoteDataSourceProvider).watchPostsByHashtag(tag);
+});
+
+final postsByAuthorProvider = StreamProvider.family<List<PostModel>, String>((
+  ref,
+  uid,
+) {
+  return ref.watch(postRemoteDataSourceProvider).watchPostsByAuthor(uid);
+});
+
+final likedPostIdsByUserProvider = StreamProvider.family<List<String>, String>((
+  ref,
+  uid,
+) {
+  return ref.watch(postRemoteDataSourceProvider).watchLikedPostIdsByUser(uid);
+});
+
+final commentsByAuthorProvider =
+    StreamProvider.family<List<PostCommentModel>, String>((ref, uid) {
+      return ref.watch(postRemoteDataSourceProvider).watchCommentsByAuthor(uid);
+    });
+
 final postByIdProvider = StreamProvider.family<PostModel?, String>((
   ref,
   postId,
@@ -151,6 +177,27 @@ class PostController extends StateNotifier<AsyncValue<void>> {
         text: text,
       );
 
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
+  }
+
+  Future<void> reportPost({
+    required String postId,
+    required String reason,
+  }) async {
+    final user = _ref.read(currentUserProvider);
+    if (user == null) return;
+
+    state = const AsyncLoading();
+
+    try {
+      await _postRemoteDataSource.reportPost(
+        postId: postId,
+        reporterUid: user.uid,
+        reason: reason,
+      );
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);

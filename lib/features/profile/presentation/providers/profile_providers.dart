@@ -31,6 +31,13 @@ final myProfileProvider = StreamProvider<ProfileModel?>((ref) {
   return ref.watch(profileRemoteDataSourceProvider).watchProfile(user.uid);
 });
 
+final profileByUidProvider = StreamProvider.family<ProfileModel?, String>((
+  ref,
+  uid,
+) {
+  return ref.watch(profileRemoteDataSourceProvider).watchProfile(uid);
+});
+
 final publicProfilesProvider = FutureProvider<List<ProfileModel>>((ref) {
   return ref.watch(profileRemoteDataSourceProvider).getPublicProfiles();
 });

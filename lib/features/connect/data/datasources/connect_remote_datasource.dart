@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:async';
 
 import '../models/connect_request_model.dart';
 import '../models/connection_model.dart';
@@ -81,11 +82,17 @@ class ConnectRemoteDataSource {
     final outgoingRequestId = '${currentUid}_$targetUid';
     final incomingRequestId = '${targetUid}_$currentUid';
 
-    final results = await Future.wait([
-      _connections.doc(connectionId).get(),
-      _connectRequests.doc(outgoingRequestId).get(),
-      _connectRequests.doc(incomingRequestId).get(),
-    ]);
+    List<DocumentSnapshot<Map<String, dynamic>>> results;
+    try {
+      results = await Future.wait([
+        _connections.doc(connectionId).get(),
+        _connectRequests.doc(outgoingRequestId).get(),
+        _connectRequests.doc(incomingRequestId).get(),
+      ]).timeout(const Duration(seconds: 4));
+    } on TimeoutException {
+      // Avoid an infinite "Checking..." state on poor networks/offline.
+      return ConnectRelationshipStatus.none;
+    }
 
     final connection = results[0];
     final outgoing = results[1];

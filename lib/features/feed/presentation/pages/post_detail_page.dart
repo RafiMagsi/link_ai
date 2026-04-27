@@ -110,6 +110,30 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                         onCommentTap: _scrollToComposer,
                       ),
                     ),
+                    if (resolvedPost.hashtags.isNotEmpty)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSizes.lg,
+                          0,
+                          AppSizes.lg,
+                          AppSizes.sm,
+                        ),
+                        sliver: SliverToBoxAdapter(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: resolvedPost.hashtags
+                                .map(
+                                  (tag) => ActionChip(
+                                    label: Text('#$tag'),
+                                    onPressed: () =>
+                                        context.push('/hashtags/$tag'),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                      ),
                     const SliverToBoxAdapter(child: Divider(height: 1)),
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(

@@ -42,6 +42,8 @@ service cloud.firestore {
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.text is string
         && request.resource.data.text.size() <= 280
+        && request.resource.data.hashtags is list
+        && request.resource.data.hashtags.size() <= 20
         && request.resource.data.media is list
         && request.resource.data.media.size() <= 4;
 
@@ -87,6 +89,15 @@ service cloud.firestore {
       allow delete: if isSignedIn()
         && resource.data.uid == request.auth.uid;
       allow update: if false;
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn()
+        && request.resource.data.type is string
+        && request.resource.data.reporterUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     match /connectRequests/{requestId} {

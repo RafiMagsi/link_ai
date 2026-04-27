@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/utils/hashtag_utils.dart';
 import '../../../profile/data/models/profile_model.dart';
 import '../models/post_comment_model.dart';
 import '../models/post_model.dart';
@@ -67,6 +68,7 @@ class PostRemoteDataSource {
     final postId = _posts.doc().id;
 
     final uploadedMedia = <PostMediaModel>[];
+    final hashtags = HashtagUtils.extractNormalized(text);
 
     for (var i = 0; i < imageFiles.length; i++) {
       final file = imageFiles[i];
@@ -96,6 +98,7 @@ class PostRemoteDataSource {
       authorRole: profile.role,
       authorAvatarUrl: profile.avatarUrl,
       text: text,
+      hashtags: hashtags,
       media: uploadedMedia,
       likesCount: 0,
       repostsCount: 0,
@@ -106,6 +109,69 @@ class PostRemoteDataSource {
     );
 
     await _posts.doc(postId).set(post.toCreateMap());
+  }
+
+  Stream<List<PostModel>> watchPostsByHashtag(String tag, {int limit = 50}) {
+    final normalized = tag.toLowerCase();
+    return _posts
+        .where('hashtags', arrayContains: normalized)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(PostModel.fromFirestore).toList());
+  }
+
+  Stream<List<PostModel>> watchPostsByAuthor(String uid, {int limit = 50}) {
+    return _posts
+        .where('authorUid', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(PostModel.fromFirestore).toList());
+  }
+
+  Stream<List<String>> watchLikedPostIdsByUser(String uid, {int limit = 50}) {
+    return _postLikes
+        .where('uid', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => (doc.data()['postId'] as String?) ?? '')
+              .where((id) => id.isNotEmpty)
+              .toList(),
+        );
+  }
+
+  Stream<List<PostCommentModel>> watchCommentsByAuthor(
+    String uid, {
+    int limit = 50,
+  }) {
+    return _firestore
+        .collectionGroup('comments')
+        .where('authorUid', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs.map(PostCommentModel.fromFirestore).toList(),
+        );
+  }
+
+  Future<void> reportPost({
+    required String postId,
+    required String reporterUid,
+    required String reason,
+  }) async {
+    await _firestore.collection('reports').add({
+      'type': 'post',
+      'postId': postId,
+      'reason': reason,
+      'reporterUid': reporterUid,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<bool> hasLiked({required String postId, required String uid}) async {

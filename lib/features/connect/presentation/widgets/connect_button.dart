@@ -63,7 +63,10 @@ class ConnectButton extends ConsumerWidget {
         }
       },
       loading: () {
-        return const FilledButton(onPressed: null, child: Text('Checking...'));
+        return const FilledButton(
+          onPressed: null,
+          child: Text('Checking...'),
+        );
       },
       error: (error, stackTrace) {
         return FilledButton.icon(

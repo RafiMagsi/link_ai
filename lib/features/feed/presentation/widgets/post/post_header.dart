@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/post_model.dart';
+import 'post_more_menu_button.dart';
 
 class PostHeader extends StatelessWidget {
   const PostHeader({super.key, required this.post});
@@ -56,6 +57,8 @@ class PostHeader extends StatelessWidget {
           _timeText(),
           style: TextStyle(color: colors.mutedText, fontSize: 13),
         ),
+        const Spacer(),
+        PostMoreMenuButton(post: post),
       ],
     );
   }
