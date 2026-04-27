@@ -13,7 +13,6 @@ import '../../../../core/widgets/skeleton_post_card.dart';
 import '../../../../core/utils/hashtag_utils.dart';
 import '../../../connect/data/datasources/connect_remote_datasource.dart';
 import '../../../connect/presentation/providers/connect_providers.dart';
-import '../../../feed/data/models/post_comment_model.dart';
 import '../../../feed/presentation/providers/post_providers.dart';
 import '../../../feed/presentation/widgets/feed_post_card.dart';
 import '../providers/profile_providers.dart';
@@ -40,6 +39,9 @@ class ProfileView extends ConsumerStatefulWidget {
 
 class _ProfileViewState extends ConsumerState<ProfileView> {
   int _selectedTab = 0;
+  int? _cachedPostsCount;
+  int? _cachedLikesCount;
+  int? _cachedCommentsCount;
 
   Future<void> _refresh() async {
     ref.invalidate(profileByUidProvider(widget.uid));
@@ -56,6 +58,13 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     final postsState = ref.watch(postsByAuthorProvider(uid));
     final likesState = ref.watch(likedPostIdsByUserProvider(uid));
     final commentsState = ref.watch(commentsByAuthorProvider(uid));
+
+    final latestPostsCount = postsState.asData?.value.length;
+    if (latestPostsCount != null) _cachedPostsCount = latestPostsCount;
+    final latestLikesCount = likesState.asData?.value.length;
+    if (latestLikesCount != null) _cachedLikesCount = latestLikesCount;
+    final latestCommentsCount = commentsState.asData?.value.length;
+    if (latestCommentsCount != null) _cachedCommentsCount = latestCommentsCount;
 
     return profileState.when(
       data: (profile) {
@@ -100,9 +109,9 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                       onOpenMenu: widget.onOpenMenu,
                     ),
                     _StatsRow(
-                      postsState: postsState,
-                      likesState: likesState,
-                      commentsState: commentsState,
+                      posts: _cachedPostsCount,
+                      likes: _cachedLikesCount,
+                      comments: _cachedCommentsCount,
                     ),
                     const SizedBox(height: AppSizes.xs),
                   ],
@@ -893,21 +902,18 @@ class _LinksRow extends StatelessWidget {
 
 class _StatsRow extends StatelessWidget {
   const _StatsRow({
-    required this.postsState,
-    required this.likesState,
-    required this.commentsState,
+    required this.posts,
+    required this.likes,
+    required this.comments,
   });
 
-  final AsyncValue<List<dynamic>> postsState;
-  final AsyncValue<List<String>> likesState;
-  final AsyncValue<List<PostCommentModel>> commentsState;
+  final int? posts;
+  final int? likes;
+  final int? comments;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final posts = postsState.asData?.value.length;
-    final likes = likesState.asData?.value.length;
-    final comments = commentsState.asData?.value.length;
 
     Widget metric(String label, int? value) {
       return Column(
@@ -1085,6 +1091,33 @@ class _PostsSliver extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(postsByAuthorProvider(uid));
+    final cached = state.error == null ? state.value : null;
+
+    if (cached != null) {
+      if (cached.isEmpty) {
+        return const SliverFillRemaining(
+          hasScrollBody: false,
+          child: AppEmptyState(
+            title: 'No posts yet',
+            subtitle: 'No posts to show.',
+            icon: Icons.forum_outlined,
+          ),
+        );
+      }
+
+      return SliverList.separated(
+        itemCount: cached.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final post = cached[index];
+          return FeedPostCard(
+            post: post,
+            onTap: () => context.push('/posts/${post.id}', extra: post),
+            onCommentTap: () => context.push('/posts/${post.id}', extra: post),
+          );
+        },
+      );
+    }
 
     return state.when(
       data: (posts) {
@@ -1134,6 +1167,43 @@ class _LikesSliver extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(likedPostIdsByUserProvider(uid));
+    final cached = state.error == null ? state.value : null;
+
+    if (cached != null) {
+      if (cached.isEmpty) {
+        return const SliverFillRemaining(
+          hasScrollBody: false,
+          child: AppEmptyState(
+            title: 'No likes yet',
+            subtitle: 'Liked posts will show up here.',
+            icon: Icons.favorite_border,
+          ),
+        );
+      }
+
+      return SliverList.separated(
+        itemCount: cached.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final postId = cached[index];
+          final postState = ref.watch(postByIdProvider(postId));
+
+          return postState.when(
+            data: (post) {
+              if (post == null) return const SizedBox.shrink();
+              return FeedPostCard(
+                post: post,
+                onTap: () => context.push('/posts/${post.id}', extra: post),
+                onCommentTap: () =>
+                    context.push('/posts/${post.id}', extra: post),
+              );
+            },
+            loading: () => const SkeletonPostCard(),
+            error: (error, stackTrace) => const SizedBox.shrink(),
+          );
+        },
+      );
+    }
 
     return state.when(
       data: (postIds) {
@@ -1192,6 +1262,38 @@ class _CommentsSliver extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(commentsByAuthorProvider(uid));
+    final cached = state.error == null ? state.value : null;
+
+    if (cached != null) {
+      if (cached.isEmpty) {
+        return const SliverFillRemaining(
+          hasScrollBody: false,
+          child: AppEmptyState(
+            title: 'No comments yet',
+            subtitle: 'Comments made by this user will show up here.',
+            icon: Icons.chat_bubble_outline,
+          ),
+        );
+      }
+
+      return SliverList.separated(
+        itemCount: cached.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final comment = cached[index];
+          return ListTile(
+            title: Text(
+              comment.text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: const Text('On a post'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/posts/${comment.postId}'),
+          );
+        },
+      );
+    }
 
     return state.when(
       data: (comments) {
@@ -1228,6 +1330,8 @@ class _CommentsSliver extends ConsumerWidget {
         hasScrollBody: false,
         child: Center(child: Text('Unable to load comments.')),
       ),
+      skipLoadingOnReload: true,
+      skipLoadingOnRefresh: true,
     );
   }
 }

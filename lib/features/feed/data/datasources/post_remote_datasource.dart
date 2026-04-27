@@ -200,20 +200,18 @@ class PostRemoteDataSource {
 
   Stream<List<PostModel>> watchPostsByHashtag(String tag, {int limit = 50}) {
     final normalized = tag.toLowerCase();
-    return _posts
-        .where('hashtags', arrayContains: normalized)
-        .snapshots()
-        .timeout(const Duration(seconds: 10), onTimeout: (sink) => sink.close())
-        .map((snapshot) {
-          final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
-          // Client-side sorting as fallback
-          posts.sort(
-            (a, b) => (b.createdAt ?? DateTime.now()).compareTo(
-              a.createdAt ?? DateTime.now(),
-            ),
-          );
-          return posts.take(limit).toList();
-        });
+    return _posts.where('hashtags', arrayContains: normalized).snapshots().map((
+      snapshot,
+    ) {
+      final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
+      // Client-side sorting as fallback
+      posts.sort(
+        (a, b) => (b.createdAt ?? DateTime.now()).compareTo(
+          a.createdAt ?? DateTime.now(),
+        ),
+      );
+      return posts.take(limit).toList();
+    });
   }
 
   Stream<List<PostModel>> watchPostsByAuthor(String uid, {int limit = 50}) {
@@ -222,7 +220,6 @@ class PostRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .timeout(const Duration(seconds: 10), onTimeout: (sink) => sink.close())
         .map((snapshot) {
           try {
             return snapshot.docs.map(PostModel.fromFirestore).toList();
@@ -241,7 +238,6 @@ class PostRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .timeout(const Duration(seconds: 10), onTimeout: (sink) => sink.close())
         .map((snapshot) {
           try {
             return snapshot.docs
@@ -264,13 +260,22 @@ class PostRemoteDataSource {
     return _firestore
         .collectionGroup('comments')
         .where('authorUid', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .timeout(const Duration(seconds: 10), onTimeout: (sink) => sink.close())
         .map((snapshot) {
           try {
-            return snapshot.docs.map(PostCommentModel.fromFirestore).toList();
+            final comments = snapshot.docs
+                .map(PostCommentModel.fromFirestore)
+                .toList();
+            comments.sort((a, b) {
+              final aTime = a.createdAt ?? a.createdAtClient;
+              final bTime = b.createdAt ?? b.createdAtClient;
+              if (aTime == null && bTime == null) return 0;
+              if (aTime == null) return 1;
+              if (bTime == null) return -1;
+              return bTime.compareTo(aTime);
+            });
+            return comments;
           } catch (error, stackTrace) {
             debugPrint(
               'Error parsing comments by author $uid: $error\n$stackTrace',
