@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
@@ -222,10 +223,19 @@ class _LinksRow extends StatelessWidget {
       runSpacing: 8,
       alignment: WrapAlignment.center,
       children: items.map((e) {
-        return ActionChip(
-          avatar: Icon(iconFor(e.key), size: 18, color: colors.mutedText),
-          label: Text(e.key),
-          onPressed: () => _copy(context, e.value.trim()),
+        return GestureDetector(
+          onTap: () async {
+            final uri = Uri.tryParse(e.value.trim());
+            if (uri != null) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
+          onLongPress: () => _copy(context, e.value.trim()),
+          child: ActionChip(
+            avatar: Icon(iconFor(e.key), size: 18, color: colors.mutedText),
+            label: Text(e.key),
+            onPressed: null,
+          ),
         );
       }).toList(),
     );

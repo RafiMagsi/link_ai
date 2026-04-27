@@ -140,4 +140,15 @@ class ConnectController extends StateNotifier<AsyncValue<void>> {
       state = AsyncError(error, stackTrace);
     }
   }
+
+  Future<void> pingUser(String targetUid) async {
+    state = const AsyncLoading();
+
+    try {
+      await _connectRemoteDataSource.sendPing(targetUid: targetUid);
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
+  }
 }

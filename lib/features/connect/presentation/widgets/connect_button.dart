@@ -23,10 +23,23 @@ class ConnectButton extends ConsumerWidget {
       data: (status) {
         switch (status) {
           case ConnectRelationshipStatus.connected:
-            return FilledButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.check_circle),
-              label: const Text('Connected'),
+            return FilledButton.tonal(
+              onPressed: () async {
+                await ref.read(connectControllerProvider.notifier).pingUser(targetUid);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Ping sent!')),
+                  );
+                }
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.notifications_active_outlined),
+                  SizedBox(width: 8),
+                  Text('Ping'),
+                ],
+              ),
             );
 
           case ConnectRelationshipStatus.outgoingPending:

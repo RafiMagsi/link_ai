@@ -74,6 +74,11 @@ class ConnectRemoteDataSource {
         );
   }
 
+  Future<void> sendPing({required String targetUid}) async {
+    final callable = _functions.httpsCallable('sendPing');
+    await callable.call({'targetUid': targetUid});
+  }
+
   Future<ConnectRelationshipStatus> getRelationshipStatus({
     required String currentUid,
     required String targetUid,
