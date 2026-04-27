@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_sizes.dart';
@@ -60,10 +61,14 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
               child: InteractiveViewer(
                 minScale: 1,
                 maxScale: 4,
-                child: Image.network(
-                  url,
+                child: CachedNetworkImage(
+                  imageUrl: url,
                   fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
+                  filterQuality: FilterQuality.high,
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  errorWidget: (context, url, error) {
                     return Padding(
                       padding: const EdgeInsets.all(AppSizes.xl),
                       child: Column(

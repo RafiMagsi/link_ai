@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_loader.dart';
 import '../../../feed/presentation/providers/post_providers.dart';
 import '../../../feed/presentation/widgets/feed_post_card.dart';
 
@@ -42,7 +43,7 @@ class HashtagPage extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: AppLoader()),
         error: (error, stackTrace) => const Padding(
           padding: EdgeInsets.all(AppSizes.xl),
           child: Center(child: Text('Unable to load hashtag feed.')),

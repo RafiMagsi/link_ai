@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../../core/widgets/app_loader.dart';
 import '../widgets/profile_view.dart';
 
 class ProfilePage extends ConsumerWidget {
@@ -71,7 +72,7 @@ class ProfilePage extends ConsumerWidget {
         ],
       ),
       body: uid == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: AppLoader())
           : ProfileView(
               uid: uid,
               isSelf: true,

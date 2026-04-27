@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme_colors.dart';
@@ -17,19 +18,27 @@ class AppUserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final avatar = CircleAvatar(
-      radius: radius,
-      backgroundColor: colors.border,
-      backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
-          ? NetworkImage(avatarUrl!)
-          : null,
-      child: (avatarUrl == null || avatarUrl!.isEmpty)
-          ? Icon(
-              Icons.person_outline,
-              color: Theme.of(context).colorScheme.onSurface,
-            )
-          : null,
-    );
+
+    Widget buildAvatar() {
+      if (avatarUrl == null || avatarUrl!.isEmpty) {
+        return CircleAvatar(
+          radius: radius,
+          backgroundColor: colors.border,
+          child: Icon(
+            Icons.person_outline,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        );
+      }
+
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: colors.border,
+        backgroundImage: CachedNetworkImageProvider(avatarUrl!),
+      );
+    }
+
+    final avatar = buildAvatar();
 
     if (onTap == null) return avatar;
 

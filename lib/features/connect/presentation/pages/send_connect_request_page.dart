@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/app_loader.dart';
 import '../providers/connect_providers.dart';
 
 class SendConnectRequestPage extends ConsumerStatefulWidget {
@@ -135,7 +136,7 @@ class _SendConnectRequestPageState
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: AppLoader(size: 20, strokeWidth: 2),
                   )
                 : const Icon(Icons.person_add),
             label: const Text('Send Request'),

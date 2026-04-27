@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../core/constants/app_sizes.dart';
@@ -39,8 +40,8 @@ class PostMediaGrid extends StatelessWidget {
       itemCount: count,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: AppSizes.sm,
-        crossAxisSpacing: AppSizes.sm,
+        mainAxisSpacing: AppSizes.md,
+        crossAxisSpacing: AppSizes.md,
       ),
       itemBuilder: (context, index) => _MediaTile(
         url: mediaUrls[index],
@@ -108,17 +109,19 @@ class _MediaTileState extends State<_MediaTile> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(
-                widget.url,
+              CachedNetworkImage(
+                imageUrl: widget.url,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Center(
-                    child: Icon(
-                      Icons.image_not_supported_outlined,
-                      color: colors.mutedText,
-                    ),
-                  );
-                },
+                filterQuality: FilterQuality.high,
+                placeholder: (context, url) => Container(
+                  color: Theme.of(context).colorScheme.surface,
+                ),
+                errorWidget: (context, url, error) => Center(
+                  child: Icon(
+                    Icons.image_not_supported_outlined,
+                    color: colors.mutedText,
+                  ),
+                ),
               ),
               IgnorePointer(
                 child: Center(

@@ -5,6 +5,7 @@ import '../../data/models/profile_model.dart';
 import '../providers/profile_providers.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/widgets/app_loader.dart';
 
 class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key});
@@ -248,7 +249,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: AppLoader()),
         error: (error, stackTrace) =>
             const Center(child: Text('Unable to load profile.')),
       ),

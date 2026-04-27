@@ -205,15 +205,18 @@ class _FeedComposerEntry extends ConsumerWidget {
     return Material(
       color: bg,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(AppSizes.lg, 14, AppSizes.lg, 14),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.lg,
+          vertical: AppSizes.lg,
+        ),
         child: Row(
           children: [
             AppUserAvatar(
               avatarUrl: myProfile?.avatarUrl,
-              radius: 22,
+              radius: 24,
               onTap: () => context.push('/profile'),
             ),
-            const SizedBox(width: AppSizes.md),
+            const SizedBox(width: AppSizes.lg),
             Expanded(
               child: InkWell(
                 borderRadius: BorderRadius.circular(AppSizes.radiusCircle),

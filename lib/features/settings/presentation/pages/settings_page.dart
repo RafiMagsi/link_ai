@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/settings_providers.dart';
 import '../../../admin/presentation/providers/admin_providers.dart';
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/widgets/app_loader.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -69,7 +71,7 @@ class SettingsPage extends ConsumerWidget {
       body: settingsState.when(
         data: (settings) {
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSizes.lg),
             children: [
               if (isAdmin)
                 _SettingsSection(
@@ -284,7 +286,7 @@ class SettingsPage extends ConsumerWidget {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: AppLoader()),
         error: (error, stackTrace) =>
             const Center(child: Text('Unable to load settings.')),
       ),

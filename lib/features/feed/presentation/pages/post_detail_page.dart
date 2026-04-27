@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/post_providers.dart';
@@ -217,7 +218,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                       loading: () => const SliverToBoxAdapter(
                         child: Padding(
                           padding: EdgeInsets.all(AppSizes.xl),
-                          child: Center(child: CircularProgressIndicator()),
+                          child: Center(child: AppLoader()),
                         ),
                       ),
                       error: (error, stackTrace) => const SliverToBoxAdapter(
@@ -233,7 +234,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                   ],
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: AppLoader()),
               error: (error, stackTrace) =>
                   const Center(child: Text('Unable to load post.')),
             ),

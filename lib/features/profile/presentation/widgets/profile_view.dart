@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../../core/widgets/skeleton_post_card.dart';
 import '../../../connect/presentation/widgets/connect_button.dart';
@@ -86,7 +87,7 @@ class ProfileView extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: AppLoader()),
       error: (error, stackTrace) =>
           const Center(child: Text('Unable to load profile.')),
     );
@@ -121,24 +122,25 @@ class _Header extends StatelessWidget {
     final displayRole = role.isEmpty ? 'AI Builder' : role;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSizes.lg,
-        AppSizes.lg,
-        AppSizes.lg,
-        0,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.lg,
+        vertical: AppSizes.xl,
       ),
       child: Column(
         children: [
-          AppUserAvatar(avatarUrl: avatarUrl, radius: 44),
-          const SizedBox(height: AppSizes.md),
+          AppUserAvatar(avatarUrl: avatarUrl, radius: 56),
+          const SizedBox(height: AppSizes.xl),
           Text(
             displayName,
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSizes.sm),
           Text(
             displayRole,
             textAlign: TextAlign.center,
@@ -278,13 +280,13 @@ class _StatsRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSizes.lg,
-        AppSizes.md,
+        AppSizes.xl,
         AppSizes.lg,
         0,
       ),
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -428,7 +430,7 @@ class _CommentsTab extends ConsumerWidget {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: AppLoader()),
       error: (error, stackTrace) =>
           const Center(child: Text('Unable to load comments.')),
     );
@@ -480,7 +482,7 @@ class _HashtagsTab extends ConsumerWidget {
           ],
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: AppLoader()),
       error: (error, stackTrace) =>
           const Center(child: Text('Unable to load hashtags.')),
     );

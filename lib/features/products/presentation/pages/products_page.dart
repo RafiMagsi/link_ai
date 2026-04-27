@@ -1,9 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../data/models/product_model.dart';
 import '../providers/product_providers.dart';
@@ -47,7 +49,7 @@ class ProductsPage extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: AppLoader()),
         error: (error, stackTrace) =>
             const Center(child: Text('Unable to load products.')),
       ),
@@ -88,7 +90,16 @@ class ProductCard extends StatelessWidget {
                 ),
                 child: imageUrl == null
                     ? const Icon(Icons.auto_awesome, size: 32)
-                    : Image.network(imageUrl, fit: BoxFit.cover),
+                    : CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
+                        placeholder: (context, url) => Container(
+                          color: Theme.of(context).colorScheme.surface,
+                        ),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.broken_image, size: 20),
+                      ),
               ),
               const SizedBox(width: 14),
               Expanded(

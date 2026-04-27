@@ -19,7 +19,10 @@ class HashtagText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseStyle = style ?? DefaultTextStyle.of(context).style;
+    final passedStyle = style ?? DefaultTextStyle.of(context).style;
+    final baseStyle = passedStyle.color == null
+        ? passedStyle.copyWith(color: Theme.of(context).colorScheme.onSurface)
+        : passedStyle;
     final tagStyle =
         hashtagStyle ??
         baseStyle.copyWith(

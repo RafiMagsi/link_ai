@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_loader.dart';
+
 class AppPrimaryButton extends StatelessWidget {
   const AppPrimaryButton({
     super.key,
@@ -20,7 +22,7 @@ class AppPrimaryButton extends StatelessWidget {
         ? const SizedBox(
             height: 18,
             width: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: AppLoader(size: 18, strokeWidth: 2),
           )
         : Text(label);
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/constants/app_sizes.dart';
 import '../../../../../core/theme/app_theme_colors.dart';
+import '../../../../../core/widgets/app_loader.dart';
 
 class CommentComposerBar extends StatelessWidget {
   const CommentComposerBar({
@@ -49,7 +50,7 @@ class CommentComposerBar extends StatelessWidget {
                   ? const SizedBox(
                       height: 18,
                       width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: AppLoader(size: 20, strokeWidth: 2),
                     )
                   : const Icon(Icons.send),
             ),

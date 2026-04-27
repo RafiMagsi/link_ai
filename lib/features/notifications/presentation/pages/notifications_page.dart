@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/notification_providers.dart';
@@ -104,7 +105,7 @@ class NotificationsPage extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: AppLoader()),
         error: (error, stackTrace) =>
             const Center(child: Text('Unable to load notifications.')),
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/app_loader.dart';
 import '../../data/models/app_config_model.dart';
 import '../providers/admin_providers.dart';
 
@@ -296,7 +297,7 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: AppLoader()),
         error: (error, stackTrace) {
           return Center(
             child: Padding(

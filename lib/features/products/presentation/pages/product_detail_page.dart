@@ -1,9 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/product_providers.dart';
@@ -70,9 +72,15 @@ class ProductDetailPage extends ConsumerWidget {
                         padding: const EdgeInsets.only(right: 10),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-                          child: Image.network(
-                            screenshot.url,
+                          child: CachedNetworkImage(
+                            imageUrl: screenshot.url,
                             fit: BoxFit.cover,
+                            filterQuality: FilterQuality.high,
+                            placeholder: (context, url) => Container(
+                              color: Theme.of(context).colorScheme.surface,
+                            ),
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.broken_image),
                           ),
                         ),
                       );
@@ -225,7 +233,7 @@ class ProductDetailPage extends ConsumerWidget {
         );
       },
       loading: () {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        return const Scaffold(body: Center(child: AppLoader()));
       },
       error: (error, stackTrace) {
         return const Scaffold(

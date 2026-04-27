@@ -115,10 +115,19 @@ class PostRemoteDataSource {
     final normalized = tag.toLowerCase();
     return _posts
         .where('hashtags', arrayContains: normalized)
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map(PostModel.fromFirestore).toList());
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+          final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
+          // Client-side sorting as fallback
+          posts.sort((a, b) =>
+              (b.createdAt ?? DateTime.now())
+                  .compareTo(a.createdAt ?? DateTime.now()));
+          return posts.take(limit).toList();
+        });
   }
 
   Stream<List<PostModel>> watchPostsByAuthor(String uid, {int limit = 50}) {

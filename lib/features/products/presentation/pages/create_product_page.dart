@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/widgets/app_loader.dart';
 import '../providers/product_providers.dart';
 
 class CreateProductPage extends ConsumerStatefulWidget {
@@ -151,7 +152,7 @@ class _CreateProductPageState extends ConsumerState<CreateProductPage> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: AppLoader(size: 20, strokeWidth: 2),
                     )
                   : const Text('Save'),
             ),

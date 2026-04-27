@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/connect_providers.dart';
@@ -95,7 +96,7 @@ class ConnectRequestsPage extends ConsumerWidget {
                 }).toList(),
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const Center(child: AppLoader()),
             error: (error, stackTrace) =>
                 const Text('Unable to load incoming requests.'),
           ),
@@ -143,7 +144,7 @@ class ConnectRequestsPage extends ConsumerWidget {
                 }).toList(),
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const Center(child: AppLoader()),
             error: (error, stackTrace) =>
                 const Text('Unable to load outgoing requests.'),
           ),

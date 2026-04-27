@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_loader.dart';
 import '../providers/explore_providers.dart';
 
 class ExplorePage extends ConsumerWidget {
@@ -47,21 +48,21 @@ class ExplorePage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Explore')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSizes.lg),
         children: [
-          Text('Topics', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 16),
+          Text('Topics', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppSizes.lg),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: topics.map((topic) {
               return ActionChip(
-                label: Text(topic.label),
+                label: Text('#${topic.tag}'),
                 onPressed: () => context.push('/hashtags/${topic.tag}'),
               );
             }).toList(),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: AppSizes.xxxl),
           Text(
             'Trending hashtags',
             style: Theme.of(context).textTheme.titleMedium,
@@ -90,14 +91,14 @@ class ExplorePage extends ConsumerWidget {
             },
             loading: () => const Padding(
               padding: EdgeInsets.all(AppSizes.lg),
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: AppLoader()),
             ),
             error: (error, stackTrace) => const Padding(
               padding: EdgeInsets.all(AppSizes.lg),
               child: Center(child: Text('Unable to load trending hashtags.')),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: AppSizes.xxxl),
           Text(
             'Media discovery',
             style: Theme.of(context).textTheme.titleMedium,
@@ -112,7 +113,7 @@ class ExplorePage extends ConsumerWidget {
               ),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: AppSizes.xxxl),
           Text('AI news links', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           ...links.map(
