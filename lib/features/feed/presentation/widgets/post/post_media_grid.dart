@@ -9,11 +9,13 @@ class PostMediaGrid extends StatelessWidget {
     required this.mediaUrls,
     required this.heroTagPrefix,
     required this.onTap,
+    this.onDoubleTap,
   });
 
   final List<String> mediaUrls;
   final String heroTagPrefix;
   final void Function(int index) onTap;
+  final VoidCallback? onDoubleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +29,7 @@ class PostMediaGrid extends StatelessWidget {
         height: 220,
         heroTag: '${heroTagPrefix}0',
         onTap: () => onTap(0),
+        onDoubleTap: onDoubleTap,
       );
     }
 
@@ -43,51 +46,101 @@ class PostMediaGrid extends StatelessWidget {
         url: mediaUrls[index],
         heroTag: '$heroTagPrefix$index',
         onTap: () => onTap(index),
+        onDoubleTap: onDoubleTap,
       ),
     );
   }
 }
 
-class _MediaTile extends StatelessWidget {
+class _MediaTile extends StatefulWidget {
   const _MediaTile({
     required this.url,
     required this.heroTag,
     required this.onTap,
+    required this.onDoubleTap,
     this.height,
   });
 
   final String url;
   final String heroTag;
   final VoidCallback onTap;
+  final VoidCallback? onDoubleTap;
   final double? height;
+
+  @override
+  State<_MediaTile> createState() => _MediaTileState();
+}
+
+class _MediaTileState extends State<_MediaTile> {
+  bool _showLikePulse = false;
+
+  void _pulse() {
+    if (!mounted) return;
+    setState(() => _showLikePulse = true);
+    Future<void>.delayed(const Duration(milliseconds: 240), () {
+      if (!mounted) return;
+      setState(() => _showLikePulse = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      onDoubleTap: widget.onDoubleTap == null
+          ? null
+          : () {
+              widget.onDoubleTap!.call();
+              _pulse();
+            },
       child: Hero(
-        tag: heroTag,
+        tag: widget.heroTag,
         child: Container(
-          height: height,
+          height: widget.height,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSizes.radiusLg),
             border: Border.all(color: colors.border),
           ),
-          child: Image.network(
-            url,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Center(
-                child: Icon(
-                  Icons.image_not_supported_outlined,
-                  color: colors.mutedText,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.network(
+                widget.url,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Center(
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: colors.mutedText,
+                    ),
+                  );
+                },
+              ),
+              IgnorePointer(
+                child: Center(
+                  child: AnimatedOpacity(
+                    opacity: _showLikePulse ? 1 : 0,
+                    duration: const Duration(milliseconds: 160),
+                    child: AnimatedScale(
+                      scale: _showLikePulse ? 1 : 0.7,
+                      duration: const Duration(milliseconds: 160),
+                      curve: Curves.easeOutBack,
+                      child: Icon(
+                        Icons.favorite,
+                        size: 72,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ),
                 ),
-              );
-            },
+              ),
+            ],
           ),
         ),
       ),

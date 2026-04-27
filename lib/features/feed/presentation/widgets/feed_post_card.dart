@@ -6,6 +6,7 @@ import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/hashtag_text.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../data/models/post_model.dart';
+import '../providers/post_providers.dart';
 import '../pages/media_gallery_page.dart';
 import 'post/post_action_row.dart';
 import 'post/post_avatar.dart';
@@ -64,6 +65,9 @@ class FeedPostCard extends ConsumerWidget {
                       PostMediaGrid(
                         mediaUrls: post.media.map((e) => e.url).toList(),
                         heroTagPrefix: 'post_${post.id}_media_',
+                        onDoubleTap: () => ref
+                            .read(postControllerProvider.notifier)
+                            .toggleLike(post.id),
                         onTap: (index) {
                           Navigator.of(context).push(
                             MaterialPageRoute(
