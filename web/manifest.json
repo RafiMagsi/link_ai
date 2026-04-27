@@ -1,6 +1,6 @@
 {
-    "name": "link_ai",
-    "short_name": "link_ai",
+    "name": "AI Links",
+    "short_name": "AI Links",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

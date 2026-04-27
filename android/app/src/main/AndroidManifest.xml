@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
-        android:label="link_ai"
+        android:label="AI Links"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
