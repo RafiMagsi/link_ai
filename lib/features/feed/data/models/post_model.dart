@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class PostMediaModel {
   final String url;
@@ -20,7 +21,7 @@ class PostMediaModel {
 
       // Validate URL format
       if (url.isNotEmpty && !_isValidUrl(url)) {
-        print('Invalid URL in PostMediaModel: $url');
+        debugPrint('Invalid URL in PostMediaModel: $url');
       }
 
       return PostMediaModel(
@@ -29,7 +30,7 @@ class PostMediaModel {
         order: order,
       );
     } catch (e) {
-      print('Error parsing PostMediaModel from map: $e');
+      debugPrint('Error parsing PostMediaModel from map: $e');
       return PostMediaModel(
         url: (map['url'] as String?) ?? '',
         type: (map['type'] as String?) ?? 'image',
@@ -45,7 +46,7 @@ class PostMediaModel {
       if (value is String) return int.tryParse(value) ?? 0;
       return 0;
     } catch (e) {
-      print('Error parsing int value: $e');
+      debugPrint('Error parsing int value: $e');
       return 0;
     }
   }
@@ -63,7 +64,7 @@ class PostMediaModel {
     try {
       return {'url': url, 'type': type, 'order': order};
     } catch (e) {
-      print('Error converting PostMediaModel to map: $e');
+      debugPrint('Error converting PostMediaModel to map: $e');
       return {'url': '', 'type': 'image', 'order': 0};
     }
   }
@@ -123,7 +124,7 @@ class PostModel {
         updatedAt: _safeTimestamp(data['updatedAt']),
       );
     } catch (e) {
-      print('Error parsing PostModel from Firestore: $e');
+      debugPrint('Error parsing PostModel from Firestore: $e');
       // Return a minimal valid post on error
       return PostModel(
         id: doc.id,
@@ -177,7 +178,7 @@ class PostModel {
       }
       return [];
     } catch (e) {
-      print('Error parsing string list: $e');
+      debugPrint('Error parsing string list: $e');
       return [];
     }
   }
@@ -193,7 +194,7 @@ class PostModel {
                   Map<String, dynamic>.from(item as Map),
                 );
               } catch (e) {
-                print('Error parsing media item: $e');
+                debugPrint('Error parsing media item: $e');
                 return null;
               }
             })
@@ -202,7 +203,7 @@ class PostModel {
       }
       return [];
     } catch (e) {
-      print('Error parsing media list: $e');
+      debugPrint('Error parsing media list: $e');
       return [];
     }
   }
@@ -214,7 +215,7 @@ class PostModel {
       if (value is DateTime) return value;
       return null;
     } catch (e) {
-      print('Error parsing timestamp: $e');
+      debugPrint('Error parsing timestamp: $e');
       return null;
     }
   }

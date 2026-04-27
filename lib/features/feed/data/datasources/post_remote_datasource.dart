@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/errors/error_handler.dart';
@@ -48,7 +49,7 @@ class PostRemoteDataSource {
       try {
         return snapshot.docs.map(PostModel.fromFirestore).toList();
       } catch (error, stackTrace) {
-        print('Error parsing posts: $error\n$stackTrace');
+       debugPrint('Error parsing posts: $error\n$stackTrace');
         return [];
       }
     });
@@ -65,7 +66,7 @@ class PostRemoteDataSource {
         if (!snapshot.exists) return null;
         return PostModel.fromFirestore(snapshot);
       } catch (error, stackTrace) {
-        print('Error parsing post $postId: $error\n$stackTrace');
+       debugPrint('Error parsing post $postId: $error\n$stackTrace');
         return null;
       }
     });
@@ -85,7 +86,7 @@ class PostRemoteDataSource {
           try {
             return snapshot.docs.map(PostCommentModel.fromFirestore).toList();
           } catch (error, stackTrace) {
-            print('Error parsing comments for post $postId: $error\n$stackTrace');
+           debugPrint('Error parsing comments for post $postId: $error\n$stackTrace');
             return [];
           }
         });
@@ -129,7 +130,7 @@ class PostRemoteDataSource {
 
           uploadedMedia.add(PostMediaModel(url: url, type: 'image', order: i));
         } on FirebaseException catch (e) {
-          print('Firebase error uploading image $i: ${e.code} - ${e.message}');
+         debugPrint('Firebase error uploading image $i: ${e.code} - ${e.message}');
           if (e.code == 'storage/quota-exceeded') {
             throw StorageQuotaError('Storage quota exceeded. Please delete some posts and try again.');
           } else if (e.code == 'storage/unauthorized') {
@@ -137,10 +138,10 @@ class PostRemoteDataSource {
           }
           rethrow;
         } on TimeoutException catch (e) {
-          print('Timeout uploading image $i: $e');
+         debugPrint('Timeout uploading image $i: $e');
           throw Exception('Image upload took too long. Please check your connection and try again.');
         } catch (error, stackTrace) {
-          print('Error uploading image $i: $error\n$stackTrace');
+         debugPrint('Error uploading image $i: $error\n$stackTrace');
           rethrow;
         }
       }
@@ -167,7 +168,7 @@ class PostRemoteDataSource {
         onTimeout: () => throw TimeoutException('Post creation timed out'),
       );
     } on FirebaseException catch (e) {
-      print('Firebase error creating post: ${e.code} - ${e.message}');
+     debugPrint('Firebase error creating post: ${e.code} - ${e.message}');
       if (e.code == 'permission-denied') {
         throw Exception('You do not have permission to create posts.');
       } else if (e.code == 'resource-exhausted') {
@@ -175,10 +176,10 @@ class PostRemoteDataSource {
       }
       rethrow;
     } on TimeoutException catch (e) {
-      print('Timeout creating post: $e');
+     debugPrint('Timeout creating post: $e');
       throw Exception('Post creation took too long. Please check your connection and try again.');
     } catch (error, stackTrace) {
-      print('Error creating post: $error\n$stackTrace');
+     debugPrint('Error creating post: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -216,7 +217,7 @@ class PostRemoteDataSource {
           try {
             return snapshot.docs.map(PostModel.fromFirestore).toList();
           } catch (error, stackTrace) {
-            print('Error parsing posts by author $uid: $error\n$stackTrace');
+           debugPrint('Error parsing posts by author $uid: $error\n$stackTrace');
             return [];
           }
         });
@@ -239,7 +240,7 @@ class PostRemoteDataSource {
                 .where((id) => id.isNotEmpty)
                 .toList();
           } catch (error, stackTrace) {
-            print('Error parsing liked post IDs for user $uid: $error\n$stackTrace');
+           debugPrint('Error parsing liked post IDs for user $uid: $error\n$stackTrace');
             return [];
           }
         });
@@ -263,7 +264,7 @@ class PostRemoteDataSource {
           try {
             return snapshot.docs.map(PostCommentModel.fromFirestore).toList();
           } catch (error, stackTrace) {
-            print('Error parsing comments by author $uid: $error\n$stackTrace');
+           debugPrint('Error parsing comments by author $uid: $error\n$stackTrace');
             return [];
           }
         });
@@ -286,7 +287,7 @@ class PostRemoteDataSource {
         onTimeout: () => throw TimeoutException('Report submission timed out'),
       );
     } on FirebaseException catch (e) {
-      print('Firebase error reporting post $postId: ${e.code} - ${e.message}');
+     debugPrint('Firebase error reporting post $postId: ${e.code} - ${e.message}');
       if (e.code == 'permission-denied') {
         throw Exception('You do not have permission to report posts.');
       } else if (e.code == 'resource-exhausted') {
@@ -294,10 +295,10 @@ class PostRemoteDataSource {
       }
       rethrow;
     } on TimeoutException catch (e) {
-      print('Timeout reporting post $postId: $e');
+     debugPrint('Timeout reporting post $postId: $e');
       throw Exception('Report submission took too long. Please try again.');
     } catch (error, stackTrace) {
-      print('Error reporting post $postId: $error\n$stackTrace');
+     debugPrint('Error reporting post $postId: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -307,7 +308,7 @@ class PostRemoteDataSource {
       final doc = await _postLikes.doc('${postId}_$uid').get().timeout(const Duration(seconds: 10));
       return doc.exists;
     } catch (error, stackTrace) {
-      print('Error checking if post $postId liked by $uid: $error\n$stackTrace');
+     debugPrint('Error checking if post $postId liked by $uid: $error\n$stackTrace');
       return false;
     }
   }
@@ -320,7 +321,7 @@ class PostRemoteDataSource {
       final doc = await _postReposts.doc('${postId}_$uid').get().timeout(const Duration(seconds: 10));
       return doc.exists;
     } catch (error, stackTrace) {
-      print('Error checking if post $postId reposted by $uid: $error\n$stackTrace');
+     debugPrint('Error checking if post $postId reposted by $uid: $error\n$stackTrace');
       return false;
     }
   }
@@ -330,7 +331,7 @@ class PostRemoteDataSource {
       final doc = await _postSaves.doc('${postId}_$uid').get().timeout(const Duration(seconds: 10));
       return doc.exists;
     } catch (error, stackTrace) {
-      print('Error checking if post $postId saved by $uid: $error\n$stackTrace');
+     debugPrint('Error checking if post $postId saved by $uid: $error\n$stackTrace');
       return false;
     }
   }
@@ -364,7 +365,7 @@ class PostRemoteDataSource {
         }
       }).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error toggling like on post $postId by user $uid: $error\n$stackTrace');
+     debugPrint('Error toggling like on post $postId by user $uid: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -401,7 +402,7 @@ class PostRemoteDataSource {
         }
       }).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error toggling repost on post $postId by user $uid: $error\n$stackTrace');
+     debugPrint('Error toggling repost on post $postId by user $uid: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -435,7 +436,7 @@ class PostRemoteDataSource {
         }
       }).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error toggling save on post $postId by user $uid: $error\n$stackTrace');
+     debugPrint('Error toggling save on post $postId by user $uid: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -468,7 +469,7 @@ class PostRemoteDataSource {
         });
       }).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error adding comment to post $postId: $error\n$stackTrace');
+     debugPrint('Error adding comment to post $postId: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -487,7 +488,7 @@ class PostRemoteDataSource {
             try {
               return PostModel.fromFirestore(doc);
             } catch (error, stackTrace) {
-              print('Error parsing post in search: $error\n$stackTrace');
+             debugPrint('Error parsing post in search: $error\n$stackTrace');
               return null;
             }
           })
@@ -509,7 +510,7 @@ class PostRemoteDataSource {
 
       return results;
     } catch (error, stackTrace) {
-      print('Error searching posts: $error\n$stackTrace');
+     debugPrint('Error searching posts: $error\n$stackTrace');
       return [];
     }
   }

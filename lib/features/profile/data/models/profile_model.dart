@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class ProfileModel {
   final String uid;
@@ -83,7 +84,7 @@ class ProfileModel {
         updatedAt: _safeTimestamp(data['updatedAt']),
       );
     } catch (e) {
-      print('Error parsing ProfileModel from Firestore: $e');
+     debugPrint('Error parsing ProfileModel from Firestore: $e');
       // Return empty profile with valid uid
       return ProfileModel.empty(
         uid: doc.id,
@@ -150,7 +151,7 @@ class ProfileModel {
       }
       return [];
     } catch (e) {
-      print('Error parsing string list: $e');
+     debugPrint('Error parsing string list: $e');
       return [];
     }
   }
@@ -168,14 +169,14 @@ class ProfileModel {
               result[k] = v;
             }
           } catch (e) {
-            print('Error processing map entry: $e');
+           debugPrint('Error processing map entry: $e');
           }
         });
         return result;
       }
       return {};
     } catch (e) {
-      print('Error parsing string map: $e');
+     debugPrint('Error parsing string map: $e');
       return {};
     }
   }
@@ -187,7 +188,7 @@ class ProfileModel {
       if (value is DateTime) return value;
       return null;
     } catch (e) {
-      print('Error parsing timestamp: $e');
+     debugPrint('Error parsing timestamp: $e');
       return null;
     }
   }

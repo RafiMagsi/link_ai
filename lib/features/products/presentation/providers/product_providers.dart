@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -161,19 +162,19 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
 
       state = const AsyncData(null);
     } on ValidationError catch (error, stackTrace) {
-      print('Validation error creating product: $error');
+      debugPrint('Validation error creating product: $error');
       state = AsyncError(error, stackTrace);
     } on FileSizeError catch (error, stackTrace) {
-      print('File size error creating product: $error');
+      debugPrint('File size error creating product: $error');
       state = AsyncError(error, stackTrace);
     } on TimeoutException catch (error, stackTrace) {
-      print('Timeout creating product: $error');
+      debugPrint('Timeout creating product: $error');
       state = AsyncError(
         Exception('Product creation took too long. Please check your connection and try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-      print('Error creating product: $error\n$stackTrace');
+      debugPrint('Error creating product: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -197,16 +198,16 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
       );
       state = const AsyncData(null);
     } on ValidationError catch (error, stackTrace) {
-      print('Validation error updating product: $error');
+      debugPrint('Validation error updating product: $error');
       state = AsyncError(error, stackTrace);
     } on TimeoutException catch (error, stackTrace) {
-      print('Timeout updating product: $error');
+      debugPrint('Timeout updating product: $error');
       state = AsyncError(
         Exception('Product update took too long. Please try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-      print('Error updating product: $error\n$stackTrace');
+      debugPrint('Error updating product: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -221,13 +222,13 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
       );
       state = const AsyncData(null);
     } on TimeoutException catch (error, stackTrace) {
-      print('Timeout archiving product: $error');
+      debugPrint('Timeout archiving product: $error');
       state = AsyncError(
         Exception('Archive operation took too long. Please try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-      print('Error archiving product: $error\n$stackTrace');
+      debugPrint('Error archiving product: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -242,13 +243,13 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
       );
       state = const AsyncData(null);
     } on TimeoutException catch (error, stackTrace) {
-      print('Timeout unlisting product: $error');
+      debugPrint('Timeout unlisting product: $error');
       state = AsyncError(
         Exception('Unlist operation took too long. Please try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-      print('Error unlisting product: $error\n$stackTrace');
+      debugPrint('Error unlisting product: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -263,13 +264,13 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
       );
       state = const AsyncData(null);
     } on TimeoutException catch (error, stackTrace) {
-      print('Timeout publishing product: $error');
+      debugPrint('Timeout publishing product: $error');
       state = AsyncError(
         Exception('Publish operation took too long. Please try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-      print('Error publishing product: $error\n$stackTrace');
+      debugPrint('Error publishing product: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -300,13 +301,13 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
 
       state = const AsyncData(null);
     } on TimeoutException catch (error, stackTrace) {
-      print('Timeout toggling save: $error');
+      debugPrint('Timeout toggling save: $error');
       state = AsyncError(
         Exception('Operation took too long. Please try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-      print('Error toggling save: $error\n$stackTrace');
+      debugPrint('Error toggling save: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }

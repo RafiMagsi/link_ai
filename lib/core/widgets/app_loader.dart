@@ -38,7 +38,7 @@ class _AppLoaderState extends State<AppLoader>
         TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.4), weight: 50),
       ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     } catch (e) {
-      print('Error initializing AppLoader animations: $e');
+     debugPrint('Error initializing AppLoader animations: $e');
       rethrow;
     }
   }
@@ -48,7 +48,7 @@ class _AppLoaderState extends State<AppLoader>
     try {
       _controller.dispose();
     } catch (e) {
-      print('Error disposing AppLoader animation controller: $e');
+     debugPrint('Error disposing AppLoader animation controller: $e');
     } finally {
       super.dispose();
     }
@@ -155,7 +155,7 @@ class _GradientCirclePainter extends CustomPainter {
         secondaryPaint,
       );
     } catch (e) {
-      print('Error painting AppLoader: $e');
+     debugPrint('Error painting AppLoader: $e');
     }
   }
 

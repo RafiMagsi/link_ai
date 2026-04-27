@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Comprehensive validation utilities for user input and data.
 ///
 /// All validation functions return error messages (or null if valid).
@@ -31,7 +33,7 @@ abstract class ValidationUtils {
 
       return null;
     } catch (e) {
-      print('Error validating email: $e');
+     debugPrint('Error validating email: $e');
       return 'Error validating email';
     }
   }
@@ -66,7 +68,7 @@ abstract class ValidationUtils {
 
       return null;
     } catch (e) {
-      print('Error validating URL: $e');
+     debugPrint('Error validating URL: $e');
       return 'Error validating URL';
     }
   }
@@ -102,7 +104,7 @@ abstract class ValidationUtils {
 
       return null;
     } catch (e) {
-      print('Error validating length for $fieldName: $e');
+     debugPrint('Error validating length for $fieldName: $e');
       return 'Error validating $fieldName';
     }
   }
@@ -140,7 +142,7 @@ abstract class ValidationUtils {
 
       return null;
     } catch (e) {
-      print('Error validating password: $e');
+     debugPrint('Error validating password: $e');
       return 'Error validating password';
     }
   }
@@ -181,7 +183,7 @@ abstract class ValidationUtils {
 
       return null;
     } catch (e) {
-      print('Error validating username: $e');
+     debugPrint('Error validating username: $e');
       return 'Error validating username';
     }
   }
@@ -214,7 +216,7 @@ abstract class ValidationUtils {
 
       return null;
     } catch (e) {
-      print('Error validating $fieldName: $e');
+     debugPrint('Error validating $fieldName: $e');
       return 'Error validating $fieldName';
     }
   }
@@ -237,7 +239,7 @@ abstract class ValidationUtils {
 
       return null;
     } catch (e) {
-      print('Error validating match for $fieldName: $e');
+     debugPrint('Error validating match for $fieldName: $e');
       return 'Error validating $fieldName';
     }
   }
@@ -265,7 +267,7 @@ abstract class ValidationUtils {
 
       return null;
     } catch (e) {
-      print('Error validating phone number: $e');
+     debugPrint('Error validating phone number: $e');
       return 'Error validating phone number';
     }
   }
@@ -278,7 +280,7 @@ abstract class ValidationUtils {
       final trimmed = value.trim();
       return trimmed.isEmpty ? null : trimmed;
     } catch (e) {
-      print('Error parsing string value: $e');
+     debugPrint('Error parsing string value: $e');
       return null;
     }
   }
@@ -292,7 +294,7 @@ abstract class ValidationUtils {
       if (value is String) return int.tryParse(value.trim());
       return null;
     } catch (e) {
-      print('Error parsing int value: $e');
+     debugPrint('Error parsing int value: $e');
       return null;
     }
   }
@@ -307,7 +309,7 @@ abstract class ValidationUtils {
       if (value is String) return double.tryParse(value.trim());
       return null;
     } catch (e) {
-      print('Error parsing double value: $e');
+     debugPrint('Error parsing double value: $e');
       return null;
     }
   }
@@ -325,7 +327,7 @@ abstract class ValidationUtils {
       }
       return null;
     } catch (e) {
-      print('Error parsing bool value: $e');
+     debugPrint('Error parsing bool value: $e');
       return null;
     }
   }
@@ -355,7 +357,7 @@ abstract class ValidationUtils {
 
       return null;
     } catch (e) {
-      print('Error validating required field $fieldName: $e');
+     debugPrint('Error validating required field $fieldName: $e');
       return '$fieldName is required';
     }
   }

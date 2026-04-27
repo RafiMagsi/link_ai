@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 import '../errors/error_handler.dart';
 
@@ -56,7 +56,7 @@ abstract class ImageUtils {
 
       return null;
     } catch (e) {
-      print('Error validating image: $e');
+     debugPrint('Error validating image: $e');
       return 'Error validating image';
     }
   }
@@ -83,7 +83,7 @@ abstract class ImageUtils {
 
       return null;
     } catch (e) {
-      print('Error validating image bytes: $e');
+     debugPrint('Error validating image bytes: $e');
       return 'Error validating image';
     }
   }
@@ -130,7 +130,7 @@ abstract class ImageUtils {
 
       return false;
     } catch (e) {
-      print('Error checking magic bytes: $e');
+     debugPrint('Error checking magic bytes: $e');
       return false;
     }
   }
@@ -158,7 +158,7 @@ abstract class ImageUtils {
         _ => null,
       };
     } catch (e) {
-      print('Error determining MIME type: $e');
+     debugPrint('Error determining MIME type: $e');
       return null;
     }
   }
@@ -199,7 +199,7 @@ abstract class ImageUtils {
 
       return null;
     } catch (e) {
-      print('Error validating image URL: $e');
+     debugPrint('Error validating image URL: $e');
       return 'Error validating image URL';
     }
   }
@@ -229,7 +229,7 @@ abstract class ImageUtils {
 
       return errors;
     } catch (e) {
-      print('Error validating multiple images: $e');
+     debugPrint('Error validating multiple images: $e');
       return ['Error validating images'];
     }
   }
@@ -256,7 +256,7 @@ abstract class ImageUtils {
 
       return errors;
     } catch (e) {
-      print('Error validating multiple image URLs: $e');
+     debugPrint('Error validating multiple image URLs: $e');
       return ['Error validating image URLs'];
     }
   }
@@ -271,7 +271,7 @@ abstract class ImageUtils {
       // Additional checks for avatars can be added here
       return null;
     } catch (e) {
-      print('Error validating avatar image: $e');
+     debugPrint('Error validating avatar image: $e');
       return 'Error validating avatar';
     }
   }
@@ -287,7 +287,7 @@ abstract class ImageUtils {
       }
       return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
     } catch (e) {
-      print('Error formatting file size: $e');
+     debugPrint('Error formatting file size: $e');
       return 'Unknown size';
     }
   }
@@ -298,7 +298,7 @@ abstract class ImageUtils {
       if (filePath.isEmpty) return false;
       return File(filePath).existsSync();
     } catch (e) {
-      print('Error checking file existence: $e');
+     debugPrint('Error checking file existence: $e');
       return false;
     }
   }
@@ -312,7 +312,7 @@ abstract class ImageUtils {
       if (!file.existsSync()) return 0;
       return file.lengthSync();
     } catch (e) {
-      print('Error getting file size: $e');
+     debugPrint('Error getting file size: $e');
       return 0;
     }
   }
@@ -327,7 +327,7 @@ abstract class ImageUtils {
       }
       return true;
     } catch (e) {
-      print('Error validating file path: $e');
+     debugPrint('Error validating file path: $e');
       return false;
     }
   }

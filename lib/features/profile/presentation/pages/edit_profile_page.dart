@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:io';
 
 import 'package:image_picker/image_picker.dart';
@@ -34,6 +35,21 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   bool _initialized = false;
   final _imagePicker = ImagePicker();
   File? _selectedAvatarFile;
+  bool _isSaving = false;
+
+  void _leaveProfilePage() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop();
+        return;
+      }
+
+      context.go('/feed');
+    });
+  }
 
   @override
   void dispose() {
@@ -82,6 +98,12 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   }
 
   Future<void> _save(ProfileModel profile) async {
+    if (_isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
     try {
       String? avatarUrl = profile.avatarUrl;
 
@@ -97,7 +119,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: const Text('Unable to upload avatar.'),
-                action: SnackBarAction(label: 'Retry', onPressed: () => _save(profile)),
+                action: SnackBarAction(
+                  label: 'Retry',
+                  onPressed: () => _save(profile),
+                ),
               ),
             );
             return;
@@ -110,7 +135,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               content: Text(
                 'Avatar upload failed: ${ErrorHandler.getUserFriendlyMessage(e)}',
               ),
-              action: SnackBarAction(label: 'Retry', onPressed: () => _save(profile)),
+              action: SnackBarAction(
+                label: 'Retry',
+                onPressed: () => _save(profile),
+              ),
             ),
           );
           return;
@@ -150,7 +178,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             content: Text(
               'Unable to update profile: ${ErrorHandler.getUserFriendlyMessage(state.error)}',
             ),
-            action: SnackBarAction(label: 'Retry', onPressed: () => _save(profile)),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => _save(profile),
+            ),
           ),
         );
         return;
@@ -160,9 +191,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         const SnackBar(content: Text('Profile updated successfully!')),
       );
 
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
+      _leaveProfilePage();
     } catch (e) {
       if (!mounted) return;
 
@@ -171,9 +200,18 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           content: Text(
             'Failed to update profile: ${ErrorHandler.getUserFriendlyMessage(e)}',
           ),
-          action: SnackBarAction(label: 'Retry', onPressed: () => _save(profile)),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () => _save(profile),
+          ),
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
@@ -211,7 +249,13 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     final controllerState = ref.watch(profileControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile')),
+      appBar: AppBar(
+        title: const Text('Edit Profile'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: _isSaving ? null : _leaveProfilePage,
+        ),
+      ),
       body: profileState.when(
         data: (profile) {
           if (profile == null) {
@@ -292,16 +336,21 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               _Field(controller: _xController, label: 'X / Twitter'),
               const SizedBox(height: 20),
               FilledButton(
-                onPressed: controllerState.isLoading
+                onPressed: controllerState.isLoading || _isSaving
                     ? null
                     : () => _save(profile),
-                child: controllerState.isLoading
+                child: controllerState.isLoading || _isSaving
                     ? const SizedBox(
                         height: 18,
                         width: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Text('Save Profile'),
+              ),
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: _isSaving ? null : _leaveProfilePage,
+                child: const Text('Cancel'),
               ),
             ],
           );

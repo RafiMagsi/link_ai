@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/app_notification_model.dart';
 
@@ -25,18 +26,56 @@ class NotificationRemoteDataSource {
         provisional: false,
       ).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error requesting notification permission: $error\n$stackTrace');
+      debugPrint('Error requesting notification permission: $error\n$stackTrace');
       rethrow;
     }
   }
 
   Future<String?> getToken() async {
     try {
-      return await _messaging.getToken().timeout(const Duration(seconds: 10));
+      if (Platform.isIOS || Platform.isMacOS) {
+        final apnsToken = await _waitForApnsToken();
+
+        if (apnsToken == null) {
+          debugPrint('APNS token is not ready yet. FCM token will be retried later.');
+          return null;
+        }
+      }
+
+      return await _messaging.getToken().timeout(
+            const Duration(seconds: 10),
+          );
+    } on FirebaseException catch (error, stackTrace) {
+      debugPrint('Error getting FCM token: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return null;
+    } on TimeoutException catch (error, stackTrace) {
+      debugPrint('Timeout getting FCM token: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return null;
     } catch (error, stackTrace) {
-      print('Error getting FCM token: $error\n$stackTrace');
+      debugPrint('Unexpected error getting FCM token: $error');
+      debugPrintStack(stackTrace: stackTrace);
       return null;
     }
+  }
+
+  Future<String?> _waitForApnsToken() async {
+    for (var attempt = 0; attempt < 10; attempt++) {
+      try {
+        final apnsToken = await _messaging.getAPNSToken();
+
+        if (apnsToken != null) {
+          return apnsToken;
+        }
+      } on FirebaseException catch (error) {
+        debugPrint('APNS token attempt ${attempt + 1} failed: $error');
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+    }
+
+    return null;
   }
 
   Future<void> saveToken({required String uid, required String token}) async {
@@ -60,7 +99,7 @@ class NotificationRemoteDataSource {
           }, SetOptions(merge: true))
           .timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error saving FCM token for user $uid: $error\n$stackTrace');
+      debugPrint('Error saving FCM token for user $uid: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -79,7 +118,7 @@ class NotificationRemoteDataSource {
           try {
             return snapshot.docs.map(AppNotificationModel.fromFirestore).toList();
           } catch (error, stackTrace) {
-            print('Error parsing notifications for user $uid: $error\n$stackTrace');
+            debugPrint('Error parsing notifications for user $uid: $error\n$stackTrace');
             return [];
           }
         });
@@ -98,7 +137,7 @@ class NotificationRemoteDataSource {
           try {
             return snapshot.docs.length;
           } catch (error, stackTrace) {
-            print('Error counting unread notifications for user $uid: $error\n$stackTrace');
+            debugPrint('Error counting unread notifications for user $uid: $error\n$stackTrace');
             return 0;
           }
         });
@@ -108,7 +147,7 @@ class NotificationRemoteDataSource {
     try {
       await _notifications.doc(notificationId).update({'isRead': true}).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error marking notification $notificationId as read: $error\n$stackTrace');
+      debugPrint('Error marking notification $notificationId as read: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -130,7 +169,7 @@ class NotificationRemoteDataSource {
 
       await batch.commit().timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error marking all notifications as read for user $uid: $error\n$stackTrace');
+      debugPrint('Error marking all notifications as read for user $uid: $error\n$stackTrace');
       rethrow;
     }
   }

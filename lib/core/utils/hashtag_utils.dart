@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 abstract class HashtagUtils {
   static late final RegExp _regex;
   static bool _regexInitialized = false;
@@ -10,7 +12,7 @@ abstract class HashtagUtils {
         );
         _regexInitialized = true;
       } catch (e) {
-        print('Error initializing regex: $e');
+       debugPrint('Error initializing regex: $e');
         // Return a more lenient regex as fallback
         _regex = RegExp(r'#(\w+)');
         _regexInitialized = true;
@@ -44,14 +46,14 @@ abstract class HashtagUtils {
             if (out.length >= max) break;
           }
         } catch (e) {
-          print('Error processing hashtag match: $e');
+         debugPrint('Error processing hashtag match: $e');
           continue;
         }
       }
 
       return out;
     } catch (e) {
-      print('Error extracting hashtags: $e');
+     debugPrint('Error extracting hashtags: $e');
       return [];
     }
   }
@@ -71,7 +73,7 @@ abstract class HashtagUtils {
           (c >= 97 && c <= 122) || // a-z
           c == 95; // _
     } catch (e) {
-      print('Error checking hashtag char: $e');
+     debugPrint('Error checking hashtag char: $e');
       return false;
     }
   }
@@ -85,7 +87,7 @@ abstract class HashtagUtils {
       return content.isNotEmpty &&
           content.runes.every((rune) => isHashtagChar(rune));
     } catch (e) {
-      print('Error validating hashtag: $e');
+     debugPrint('Error validating hashtag: $e');
       return false;
     }
   }

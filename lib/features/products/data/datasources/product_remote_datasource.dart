@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../profile/data/models/profile_model.dart';
@@ -39,7 +40,7 @@ class ProductRemoteDataSource {
           try {
             return snapshot.docs.map(ProductModel.fromFirestore).toList();
           } catch (error, stackTrace) {
-            print('Error parsing public products: $error\n$stackTrace');
+           debugPrint('Error parsing public products: $error\n$stackTrace');
             return [];
           }
         });
@@ -59,7 +60,7 @@ class ProductRemoteDataSource {
           try {
             return snapshot.docs.map(ProductModel.fromFirestore).toList();
           } catch (error, stackTrace) {
-            print('Error parsing user products for $uid: $error\n$stackTrace');
+           debugPrint('Error parsing user products for $uid: $error\n$stackTrace');
             return [];
           }
         });
@@ -76,7 +77,7 @@ class ProductRemoteDataSource {
             if (!doc.exists) return null;
             return ProductModel.fromFirestore(doc);
           } catch (error, stackTrace) {
-            print('Error parsing product $productId: $error\n$stackTrace');
+           debugPrint('Error parsing product $productId: $error\n$stackTrace');
             return null;
           }
         });
@@ -123,7 +124,7 @@ class ProductRemoteDataSource {
 
           uploadedScreenshots.add(ProductScreenshotModel(url: url, order: i));
         } catch (error, stackTrace) {
-          print('Error uploading screenshot $i: $error\n$stackTrace');
+         debugPrint('Error uploading screenshot $i: $error\n$stackTrace');
           rethrow;
         }
       }
@@ -157,7 +158,7 @@ class ProductRemoteDataSource {
 
       await _products.doc(productId).set(product.toCreateMap()).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error creating product: $error\n$stackTrace');
+     debugPrint('Error creating product: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -166,7 +167,7 @@ class ProductRemoteDataSource {
     try {
       await _products.doc(product.id).update(product.toUpdateMap()).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error updating product ${product.id}: $error\n$stackTrace');
+     debugPrint('Error updating product ${product.id}: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -178,7 +179,7 @@ class ProductRemoteDataSource {
         'updatedAt': FieldValue.serverTimestamp(),
       }).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error archiving product $productId: $error\n$stackTrace');
+     debugPrint('Error archiving product $productId: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -190,7 +191,7 @@ class ProductRemoteDataSource {
         'updatedAt': FieldValue.serverTimestamp(),
       }).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error unlisting product $productId: $error\n$stackTrace');
+     debugPrint('Error unlisting product $productId: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -202,7 +203,7 @@ class ProductRemoteDataSource {
         'updatedAt': FieldValue.serverTimestamp(),
       }).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error making product $productId public: $error\n$stackTrace');
+     debugPrint('Error making product $productId public: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -215,7 +216,7 @@ class ProductRemoteDataSource {
       final doc = await _productSaves.doc('${productId}_$uid').get().timeout(const Duration(seconds: 10));
       return doc.exists;
     } catch (error, stackTrace) {
-      print('Error checking if product $productId saved by $uid: $error\n$stackTrace');
+     debugPrint('Error checking if product $productId saved by $uid: $error\n$stackTrace');
       return false;
     }
   }
@@ -252,7 +253,7 @@ class ProductRemoteDataSource {
         }
       }).timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-      print('Error toggling save on product $productId by user $uid: $error\n$stackTrace');
+     debugPrint('Error toggling save on product $productId by user $uid: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -276,7 +277,7 @@ class ProductRemoteDataSource {
             try {
               return ProductModel.fromFirestore(doc);
             } catch (error, stackTrace) {
-              print('Error parsing product in search: $error\n$stackTrace');
+             debugPrint('Error parsing product in search: $error\n$stackTrace');
               return null;
             }
           })
@@ -296,7 +297,7 @@ class ProductRemoteDataSource {
 
       return results;
     } catch (error, stackTrace) {
-      print('Error searching products: $error\n$stackTrace');
+     debugPrint('Error searching products: $error\n$stackTrace');
       return [];
     }
   }

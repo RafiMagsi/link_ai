@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -157,19 +158,19 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
       state = const AsyncData(null);
     } on ValidationError catch (error, stackTrace) {
-      print('Validation error creating post: $error');
+     debugPrint('Validation error creating post: $error');
       state = AsyncError(error, stackTrace);
     } on FileSizeError catch (error, stackTrace) {
-      print('File size error creating post: $error');
+     debugPrint('File size error creating post: $error');
       state = AsyncError(error, stackTrace);
     } on TimeoutException catch (error, stackTrace) {
-      print('Timeout creating post: $error');
+     debugPrint('Timeout creating post: $error');
       state = AsyncError(
         Exception('Post creation took too long. Please check your connection and try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-      print('Error creating post: $error\n$stackTrace');
+     debugPrint('Error creating post: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -231,16 +232,16 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
       state = const AsyncData(null);
     } on ValidationError catch (error, stackTrace) {
-      print('Validation error adding comment: $error');
+     debugPrint('Validation error adding comment: $error');
       state = AsyncError(error, stackTrace);
     } on TimeoutException catch (error, stackTrace) {
-      print('Timeout adding comment: $error');
+     debugPrint('Timeout adding comment: $error');
       state = AsyncError(
         Exception('Comment submission took too long. Please try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-      print('Error adding comment: $error\n$stackTrace');
+     debugPrint('Error adding comment: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -280,16 +281,16 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       );
       state = const AsyncData(null);
     } on ValidationError catch (error, stackTrace) {
-      print('Validation error reporting post: $error');
+     debugPrint('Validation error reporting post: $error');
       state = AsyncError(error, stackTrace);
     } on TimeoutException catch (error, stackTrace) {
-      print('Timeout reporting post: $error');
+     debugPrint('Timeout reporting post: $error');
       state = AsyncError(
         Exception('Report submission took too long. Please try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-      print('Error reporting post: $error\n$stackTrace');
+     debugPrint('Error reporting post: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -320,13 +321,13 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
       state = const AsyncData(null);
     } on TimeoutException catch (error, stackTrace) {
-      print('Timeout toggling interaction: $error');
+     debugPrint('Timeout toggling interaction: $error');
       state = AsyncError(
         Exception('Operation took too long. Please try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-      print('Error toggling interaction: $error\n$stackTrace');
+     debugPrint('Error toggling interaction: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }

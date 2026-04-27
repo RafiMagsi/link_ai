@@ -16,14 +16,14 @@ final appThemeModeProvider = Provider<ThemeMode>((ref) {
         try {
           return value.themeModeValue;
         } catch (e) {
-          print('Error reading theme mode: $e');
+         debugPrint('Error reading theme mode: $e');
           return ThemeMode.system;
         }
       },
       orElse: () => ThemeMode.system,
     );
   } catch (e) {
-    print('Error in appThemeModeProvider: $e');
+   debugPrint('Error in appThemeModeProvider: $e');
     return ThemeMode.system;
   }
 });
@@ -37,7 +37,7 @@ extension _UserSettingsThemeMode on UserSettingsModel {
         _ => ThemeMode.system,
       };
     } catch (e) {
-      print('Error converting theme mode: $e');
+     debugPrint('Error converting theme mode: $e');
       return ThemeMode.system;
     }
   }

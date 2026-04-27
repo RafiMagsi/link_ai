@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Custom exception for validation errors.
@@ -89,7 +90,7 @@ class ErrorHandler {
       return 'An unexpected error occurred. Please try again.';
     } catch (e) {
       // Fallback if error handling itself fails
-      print('Error in getUserFriendlyMessage: $e');
+      debugPrint('Error in getUserFriendlyMessage: $e');
       return 'An unexpected error occurred. Please try again.';
     }
   }

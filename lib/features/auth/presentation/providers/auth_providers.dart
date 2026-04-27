@@ -9,7 +9,6 @@ import '../../../profile/data/models/profile_model.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../../settings/data/datasources/settings_remote_datasource.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
-import '../../../../core/errors/error_handler.dart';
 
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
   return FirebaseAuth.instance;

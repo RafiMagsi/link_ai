@@ -98,7 +98,7 @@ class _MediaTileState extends State<_MediaTile> {
                   widget.onDoubleTap!.call();
                   _pulse();
                 } catch (e) {
-                  print('Error handling double tap: $e');
+                 debugPrint('Error handling double tap: $e');
                 }
               },
         child: Hero(
@@ -141,7 +141,7 @@ class _MediaTileState extends State<_MediaTile> {
         ),
       );
     } catch (e) {
-      print('Error building media tile: $e');
+     debugPrint('Error building media tile: $e');
       return _buildErrorPlaceholder(context);
     }
   }
@@ -166,7 +166,7 @@ class _MediaTileState extends State<_MediaTile> {
           color: Theme.of(context).colorScheme.surface,
         ),
         errorWidget: (context, url, error) {
-          print('Error loading image from $url: $error');
+         debugPrint('Error loading image from $url: $error');
           return Center(
             child: Icon(
               Icons.image_not_supported_outlined,
@@ -176,7 +176,7 @@ class _MediaTileState extends State<_MediaTile> {
         },
       );
     } catch (e) {
-      print('Error building cached image widget: $e');
+     debugPrint('Error building cached image widget: $e');
       return Center(
         child: Icon(
           Icons.image_not_supported_outlined,

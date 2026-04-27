@@ -13,8 +13,8 @@ Ignored by `.gitignore`:
 
 - Use Firebase Console to create/select a project (example: `link-ai-0749`).
 - Register apps:
-  - Android package: `com.nextfiction.linkai`
-  - iOS bundle id: `com.nextfiction.linkai`
+  - Android package: `com.nextfiction.linkaiapp`
+  - iOS bundle id: `com.nextfiction.linkaiapp`
 
 ## 2) Add native config files
 

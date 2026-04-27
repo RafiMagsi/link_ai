@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -62,12 +63,12 @@ final userSearchResultsProvider =
     return await dataSource.searchProfiles(query, limit: 20).timeout(
       const Duration(seconds: 10),
       onTimeout: () {
-        print('Timeout searching profiles for query: $query');
+       debugPrint('Timeout searching profiles for query: $query');
         return [];
       },
     );
   } catch (error, stackTrace) {
-    print('Error searching profiles for query: $query\n$error\n$stackTrace');
+   debugPrint('Error searching profiles for query: $query\n$error\n$stackTrace');
     return [];
   }
 });
@@ -84,12 +85,12 @@ final postSearchResultsProvider = FutureProvider<List<PostModel>>((ref) async {
     return await dataSource.searchPosts(query, limit: 20).timeout(
       const Duration(seconds: 10),
       onTimeout: () {
-        print('Timeout searching posts for query: $query');
+       debugPrint('Timeout searching posts for query: $query');
         return [];
       },
     );
   } catch (error, stackTrace) {
-    print('Error searching posts for query: $query\n$error\n$stackTrace');
+   debugPrint('Error searching posts for query: $query\n$error\n$stackTrace');
     return [];
   }
 });
@@ -133,12 +134,12 @@ final productSearchResultsProvider =
     return await dataSource.searchProducts(query, limit: 20).timeout(
       const Duration(seconds: 10),
       onTimeout: () {
-        print('Timeout searching products for query: $query');
+       debugPrint('Timeout searching products for query: $query');
         return [];
       },
     );
   } catch (error, stackTrace) {
-    print('Error searching products for query: $query\n$error\n$stackTrace');
+   debugPrint('Error searching products for query: $query\n$error\n$stackTrace');
     return [];
   }
 });
@@ -150,7 +151,7 @@ final recentSearchesProvider = FutureProvider<List<String>>((ref) async {
     final searches = prefs.getStringList('recent_searches') ?? [];
     return searches.take(10).toList();
   } catch (error, stackTrace) {
-    print('Error fetching recent searches: $error\n$stackTrace');
+   debugPrint('Error fetching recent searches: $error\n$stackTrace');
     return [];
   }
 });
@@ -167,7 +168,7 @@ Future<void> addRecentSearch(String query) async {
 
     await prefs.setStringList('recent_searches', searches.take(20).toList());
   } catch (error, stackTrace) {
-    print('Error adding recent search: $error\n$stackTrace');
+   debugPrint('Error adding recent search: $error\n$stackTrace');
   }
 }
 
@@ -176,6 +177,6 @@ Future<void> clearRecentSearches() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('recent_searches');
   } catch (error, stackTrace) {
-    print('Error clearing recent searches: $error\n$stackTrace');
+   debugPrint('Error clearing recent searches: $error\n$stackTrace');
   }
 }

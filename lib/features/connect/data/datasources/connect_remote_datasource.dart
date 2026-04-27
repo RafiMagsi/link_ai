@@ -1,8 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
-
-import '../../../../core/errors/error_handler.dart';
 import '../models/connect_request_model.dart';
 import '../models/connection_model.dart';
 
@@ -36,10 +35,10 @@ class ConnectRemoteDataSource {
     } on FirebaseFunctionsException catch (e) {
       _handleCloudFunctionError(e, 'sendConnectRequest');
     } on TimeoutException catch (e) {
-      print('Timeout in sendConnectRequest: $e');
+      debugPrint('Timeout in sendConnectRequest: $e');
       throw Exception('Request timed out. Please check your connection and try again.');
     } catch (e) {
-      print('Error sending connect request: $e');
+      debugPrint('Error sending connect request: $e');
       rethrow;
     }
   }
@@ -57,10 +56,10 @@ class ConnectRemoteDataSource {
     } on FirebaseFunctionsException catch (e) {
       _handleCloudFunctionError(e, 'acceptConnectRequest');
     } on TimeoutException catch (e) {
-      print('Timeout in acceptConnectRequest: $e');
+      debugPrint('Timeout in acceptConnectRequest: $e');
       throw Exception('Request timed out. Please check your connection and try again.');
     } catch (e) {
-      print('Error accepting connect request: $e');
+      debugPrint('Error accepting connect request: $e');
       rethrow;
     }
   }
@@ -78,10 +77,10 @@ class ConnectRemoteDataSource {
     } on FirebaseFunctionsException catch (e) {
       _handleCloudFunctionError(e, 'declineConnectRequest');
     } on TimeoutException catch (e) {
-      print('Timeout in declineConnectRequest: $e');
+      debugPrint('Timeout in declineConnectRequest: $e');
       throw Exception('Request timed out. Please check your connection and try again.');
     } catch (e) {
-      print('Error declining connect request: $e');
+      debugPrint('Error declining connect request: $e');
       rethrow;
     }
   }
@@ -100,7 +99,7 @@ class ConnectRemoteDataSource {
           try {
             return snapshot.docs.map(ConnectRequestModel.fromFirestore).toList();
           } catch (error, stackTrace) {
-            print('Error parsing incoming requests for $uid: $error\n$stackTrace');
+            debugPrint('Error parsing incoming requests for $uid: $error\n$stackTrace');
             return [];
           }
         });
@@ -119,7 +118,7 @@ class ConnectRemoteDataSource {
           try {
             return snapshot.docs.map(ConnectRequestModel.fromFirestore).toList();
           } catch (error, stackTrace) {
-            print('Error parsing outgoing requests for $uid: $error\n$stackTrace');
+            debugPrint('Error parsing outgoing requests for $uid: $error\n$stackTrace');
             return [];
           }
         });
@@ -138,7 +137,7 @@ class ConnectRemoteDataSource {
           try {
             return snapshot.docs.map(ConnectionModel.fromFirestore).toList();
           } catch (error, stackTrace) {
-            print('Error parsing connections for $uid: $error\n$stackTrace');
+            debugPrint('Error parsing connections for $uid: $error\n$stackTrace');
             return [];
           }
         });
@@ -156,10 +155,10 @@ class ConnectRemoteDataSource {
     } on FirebaseFunctionsException catch (e) {
       _handleCloudFunctionError(e, 'sendPing');
     } on TimeoutException catch (e) {
-      print('Timeout in sendPing: $e');
+      debugPrint('Timeout in sendPing: $e');
       throw Exception('Request timed out. Please check your connection and try again.');
     } catch (e) {
-      print('Error sending ping: $e');
+      debugPrint('Error sending ping: $e');
       rethrow;
     }
   }
@@ -224,7 +223,7 @@ class ConnectRemoteDataSource {
     FirebaseFunctionsException error,
     String functionName,
   ) {
-    print('Cloud Function error in $functionName: ${error.code} - ${error.message}');
+    debugPrint('Cloud Function error in $functionName: ${error.code} - ${error.message}');
 
     switch (error.code) {
       case 'unauthenticated':
