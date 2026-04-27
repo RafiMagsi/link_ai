@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/product_providers.dart';
 import 'edit_product_page.dart';
@@ -28,6 +30,16 @@ class ProductDetailPage extends ConsumerWidget {
 
         final isOwner = currentUser?.uid == product.ownerUid;
         final isSaved = saveState.asData?.value == true;
+        final onOwnerTap = product.ownerUid.isEmpty
+            ? null
+            : () {
+                if (currentUser != null &&
+                    product.ownerUid == currentUser.uid) {
+                  context.push('/profile');
+                  return;
+                }
+                context.push('/profiles/${product.ownerUid}');
+              };
 
         return Scaffold(
           appBar: AppBar(
@@ -183,17 +195,9 @@ class ProductDetailPage extends ConsumerWidget {
               const SizedBox(height: 24),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  backgroundImage: product.ownerAvatarUrl != null
-                      ? NetworkImage(product.ownerAvatarUrl!)
-                      : null,
-                  child: product.ownerAvatarUrl == null
-                      ? Text(
-                          product.ownerName.isNotEmpty
-                              ? product.ownerName[0].toUpperCase()
-                              : '?',
-                        )
-                      : null,
+                leading: AppUserAvatar(
+                  avatarUrl: product.ownerAvatarUrl,
+                  onTap: onOwnerTap,
                 ),
                 title: Text(product.ownerName),
                 subtitle: Text(product.ownerRole),

@@ -40,6 +40,13 @@ class PostRemoteDataSource {
         .map((snapshot) => snapshot.docs.map(PostModel.fromFirestore).toList());
   }
 
+  Stream<PostModel?> watchPost(String postId) {
+    return _posts.doc(postId).snapshots().map((snapshot) {
+      if (!snapshot.exists) return null;
+      return PostModel.fromFirestore(snapshot);
+    });
+  }
+
   Stream<List<PostCommentModel>> watchComments(String postId) {
     return _posts
         .doc(postId)

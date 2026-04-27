@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/app_user_avatar.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/connect_providers.dart';
 
 class ConnectRequestsPage extends ConsumerWidget {
@@ -12,6 +15,7 @@ class ConnectRequestsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final incomingState = ref.watch(incomingConnectRequestsProvider);
     final outgoingState = ref.watch(outgoingConnectRequestsProvider);
+    final currentUid = ref.watch(currentUserProvider)?.uid;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Connect Requests')),
@@ -31,19 +35,21 @@ class ConnectRequestsPage extends ConsumerWidget {
 
               return Column(
                 children: requests.map((request) {
+                  final onAvatarTap = request.senderUid.isEmpty
+                      ? null
+                      : () {
+                          if (currentUid != null &&
+                              request.senderUid == currentUid) {
+                            context.push('/profile');
+                            return;
+                          }
+                          context.push('/profiles/${request.senderUid}');
+                        };
                   return Card(
                     child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: request.senderAvatarUrl != null
-                            ? NetworkImage(request.senderAvatarUrl!)
-                            : null,
-                        child: request.senderAvatarUrl == null
-                            ? Text(
-                                request.senderName.isNotEmpty
-                                    ? request.senderName[0].toUpperCase()
-                                    : '?',
-                              )
-                            : null,
+                      leading: AppUserAvatar(
+                        avatarUrl: request.senderAvatarUrl,
+                        onTap: onAvatarTap,
                       ),
                       title: Text(
                         request.senderName.isEmpty
@@ -107,19 +113,21 @@ class ConnectRequestsPage extends ConsumerWidget {
 
               return Column(
                 children: requests.map((request) {
+                  final onAvatarTap = request.receiverUid.isEmpty
+                      ? null
+                      : () {
+                          if (currentUid != null &&
+                              request.receiverUid == currentUid) {
+                            context.push('/profile');
+                            return;
+                          }
+                          context.push('/profiles/${request.receiverUid}');
+                        };
                   return Card(
                     child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: request.receiverAvatarUrl != null
-                            ? NetworkImage(request.receiverAvatarUrl!)
-                            : null,
-                        child: request.receiverAvatarUrl == null
-                            ? Text(
-                                request.receiverName.isNotEmpty
-                                    ? request.receiverName[0].toUpperCase()
-                                    : '?',
-                              )
-                            : null,
+                      leading: AppUserAvatar(
+                        avatarUrl: request.receiverAvatarUrl,
+                        onTap: onAvatarTap,
                       ),
                       title: Text(
                         request.receiverName.isEmpty

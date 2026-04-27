@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/app_user_avatar.dart';
 import '../providers/profile_providers.dart';
 import '../../../connect/presentation/widgets/connect_button.dart';
 
@@ -31,19 +33,8 @@ class PublicProfilePage extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              CircleAvatar(
-                radius: 42,
-                backgroundImage: profile.avatarUrl != null
-                    ? NetworkImage(profile.avatarUrl!)
-                    : null,
-                child: profile.avatarUrl == null
-                    ? Text(
-                        profile.name.isNotEmpty
-                            ? profile.name[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(fontSize: 28),
-                      )
-                    : null,
+              Center(
+                child: AppUserAvatar(avatarUrl: profile.avatarUrl, radius: 42),
               ),
               const SizedBox(height: 16),
               Text(
@@ -58,7 +49,7 @@ class PublicProfilePage extends ConsumerWidget {
               Text(
                 profile.role.isEmpty ? 'AI Builder' : profile.role,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70),
+                style: TextStyle(color: context.appColors.mutedText),
               ),
               const SizedBox(height: 24),
               _Section(title: 'Bio', value: profile.bio),
@@ -90,6 +81,7 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (value.trim().isEmpty) return const SizedBox.shrink();
+    final colors = context.appColors;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
@@ -98,9 +90,9 @@ class _Section extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white54,
-              fontWeight: FontWeight.w600,
+            style: TextStyle(
+              color: colors.mutedText,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 6),

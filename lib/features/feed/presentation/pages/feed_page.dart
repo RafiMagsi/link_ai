@@ -4,9 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/app_user_avatar.dart';
 import '../../data/models/post_model.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/post_providers.dart';
-import 'post_comments_page.dart';
 import '../widgets/feed_post_card.dart';
 import '../../../notifications/presentation/providers/notification_providers.dart';
 
@@ -166,11 +167,10 @@ class _FeedList extends ConsumerWidget {
               return FeedPostCard(
                 post: post,
                 onCommentTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => PostCommentsPage(post: post),
-                    ),
-                  );
+                  context.push('/posts/${post.id}', extra: post);
+                },
+                onTap: () {
+                  context.push('/posts/${post.id}', extra: post);
                 },
               );
             },
@@ -184,38 +184,43 @@ class _FeedList extends ConsumerWidget {
   }
 }
 
-class _FeedComposerEntry extends StatelessWidget {
+class _FeedComposerEntry extends ConsumerWidget {
   const _FeedComposerEntry();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.appColors;
-    return InkWell(
-      onTap: () => context.push('/posts/create'),
-      child: Container(
-        color: Theme.of(context).scaffoldBackgroundColor,
+    final myProfile = ref.watch(myProfileProvider).asData?.value;
+    final bg = Theme.of(context).scaffoldBackgroundColor;
+    return Material(
+      color: bg,
+      child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSizes.lg, 14, AppSizes.lg, 14),
         child: Row(
           children: [
-            CircleAvatar(
+            AppUserAvatar(
+              avatarUrl: myProfile?.avatarUrl,
               radius: 22,
-              backgroundColor: colors.border,
-              child: const Icon(Icons.person),
+              onTap: () => context.push('/profile'),
             ),
             const SizedBox(width: AppSizes.md),
             Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.lg,
-                  vertical: AppSizes.md,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: colors.border),
-                ),
-                child: Text(
-                  'What are you building in AI?',
-                  style: TextStyle(color: colors.mutedText, fontSize: 15),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: () => context.push('/posts/create'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.lg,
+                    vertical: AppSizes.md,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Text(
+                    'What are you building in AI?',
+                    style: TextStyle(color: colors.mutedText, fontSize: 15),
+                  ),
                 ),
               ),
             ),

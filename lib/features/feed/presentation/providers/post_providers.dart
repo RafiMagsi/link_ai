@@ -20,6 +20,13 @@ final latestPostsProvider = StreamProvider<List<PostModel>>((ref) {
   return ref.watch(postRemoteDataSourceProvider).watchLatestPosts();
 });
 
+final postByIdProvider = StreamProvider.family<PostModel?, String>((
+  ref,
+  postId,
+) {
+  return ref.watch(postRemoteDataSourceProvider).watchPost(postId);
+});
+
 final postCommentsProvider =
     StreamProvider.family<List<PostCommentModel>, String>((ref, postId) {
       return ref.watch(postRemoteDataSourceProvider).watchComments(postId);

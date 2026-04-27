@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/config/app_limits_provider.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/app_user_avatar.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/post_providers.dart';
 
 class CreatePostPage extends ConsumerStatefulWidget {
@@ -169,6 +171,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     final remaining = limits.postMaxChars - textLength;
     final isOverLimit = remaining < 0;
     final colors = context.appColors;
+    final myProfile = ref.watch(myProfileProvider).asData?.value;
 
     return Scaffold(
       appBar: AppBar(
@@ -194,10 +197,9 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CircleAvatar(
+                      AppUserAvatar(
+                        avatarUrl: myProfile?.avatarUrl,
                         radius: 22,
-                        backgroundColor: colors.border,
-                        child: const Icon(Icons.person),
                       ),
                       const SizedBox(width: AppSizes.md),
                       Expanded(

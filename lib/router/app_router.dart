@@ -14,9 +14,11 @@ import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/admin/presentation/pages/admin_settings_page.dart';
 import '../features/admin/presentation/providers/admin_providers.dart';
 import '../features/feed/presentation/pages/create_post_page.dart';
+import '../features/feed/presentation/pages/post_detail_page.dart';
 import '../features/main/presentation/pages/main_shell_page.dart';
 import '../features/connect/presentation/pages/connect_requests_page.dart';
 import '../features/notifications/presentation/pages/notifications_page.dart';
+import '../features/feed/data/models/post_model.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -111,6 +113,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/posts/create',
         name: 'create-post',
         builder: (context, state) => const CreatePostPage(),
+      ),
+      GoRoute(
+        path: '/posts/:postId',
+        name: 'post-detail',
+        builder: (context, state) {
+          final postId = state.pathParameters['postId']!;
+          final initialPost = state.extra is PostModel
+              ? state.extra as PostModel
+              : null;
+          return PostDetailPage(postId: postId, initialPost: initialPost);
+        },
       ),
       GoRoute(
         path: '/connect/requests',

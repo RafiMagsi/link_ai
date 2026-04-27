@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../data/models/post_model.dart';
 import 'post/post_action_row.dart';
 import 'post/post_avatar.dart';
@@ -13,44 +15,62 @@ class FeedPostCard extends ConsumerWidget {
     super.key,
     required this.post,
     required this.onCommentTap,
+    this.onTap,
   });
 
   final PostModel post;
   final VoidCallback onCommentTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
+    final currentUid = ref.watch(currentUserProvider)?.uid;
+    final onAvatarTap = post.authorUid.isEmpty
+        ? null
+        : () {
+            if (currentUid != null && post.authorUid == currentUid) {
+              context.push('/profile');
+              return;
+            }
+            context.push('/profiles/${post.authorUid}');
+          };
+
+    return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.fromLTRB(AppSizes.lg, 14, AppSizes.lg, 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PostAvatar(name: post.authorName, avatarUrl: post.authorAvatarUrl),
-          const SizedBox(width: AppSizes.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                PostHeader(post: post),
-                const SizedBox(height: 6),
-                if (post.text.trim().isNotEmpty)
-                  Text(
-                    post.text,
-                    style: const TextStyle(fontSize: 15.5, height: 1.35),
-                  ),
-                if (post.media.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  PostMediaGrid(
-                    mediaUrls: post.media.map((e) => e.url).toList(),
-                  ),
-                ],
-                const SizedBox(height: AppSizes.sm),
-                PostActionRow(post: post, onCommentTap: onCommentTap),
-              ],
-            ),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(AppSizes.lg, 14, AppSizes.lg, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PostAvatar(avatarUrl: post.authorAvatarUrl, onTap: onAvatarTap),
+              const SizedBox(width: AppSizes.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PostHeader(post: post),
+                    const SizedBox(height: 6),
+                    if (post.text.trim().isNotEmpty)
+                      Text(
+                        post.text,
+                        style: const TextStyle(fontSize: 15.5, height: 1.35),
+                      ),
+                    if (post.media.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      PostMediaGrid(
+                        mediaUrls: post.media.map((e) => e.url).toList(),
+                      ),
+                    ],
+                    const SizedBox(height: AppSizes.sm),
+                    PostActionRow(post: post, onCommentTap: onCommentTap),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

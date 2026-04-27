@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_user_avatar.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../products/presentation/pages/product_detail_page.dart';
 import '../providers/notification_providers.dart';
 
 class NotificationsPage extends ConsumerWidget {
@@ -38,6 +42,17 @@ class NotificationsPage extends ConsumerWidget {
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final notification = notifications[index];
+              final currentUid = ref.watch(currentUserProvider)?.uid;
+              final onAvatarTap = notification.senderUid.isEmpty
+                  ? null
+                  : () {
+                      if (currentUid != null &&
+                          notification.senderUid == currentUid) {
+                        context.push('/profile');
+                        return;
+                      }
+                      context.push('/profiles/${notification.senderUid}');
+                    };
 
               return ListTile(
                 tileColor: notification.isRead
@@ -45,17 +60,9 @@ class NotificationsPage extends ConsumerWidget {
                     : Theme.of(
                         context,
                       ).colorScheme.primary.withValues(alpha: 0.08),
-                leading: CircleAvatar(
-                  backgroundImage: notification.senderAvatarUrl != null
-                      ? NetworkImage(notification.senderAvatarUrl!)
-                      : null,
-                  child: notification.senderAvatarUrl == null
-                      ? Text(
-                          notification.senderName.isNotEmpty
-                              ? notification.senderName[0].toUpperCase()
-                              : '?',
-                        )
-                      : null,
+                leading: AppUserAvatar(
+                  avatarUrl: notification.senderAvatarUrl,
+                  onTap: onAvatarTap,
                 ),
                 title: Text(
                   notification.title,
@@ -78,7 +85,25 @@ class NotificationsPage extends ConsumerWidget {
                       .read(notificationControllerProvider.notifier)
                       .markAsRead(notification.id);
 
-                  // Later: navigate based on type/postId/productId.
+                  final postId = notification.postId;
+                  if (postId != null && postId.isNotEmpty) {
+                    context.push('/posts/$postId');
+                    return;
+                  }
+
+                  final productId = notification.productId;
+                  if (productId != null && productId.isNotEmpty) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailPage(productId: productId),
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (notification.connectRequestId != null) {
+                    context.push('/connect/requests');
+                  }
                 },
               );
             },

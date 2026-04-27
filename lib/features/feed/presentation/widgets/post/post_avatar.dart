@@ -1,29 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../../../../core/theme/app_theme_colors.dart';
+import '../../../../../core/widgets/app_user_avatar.dart';
 
 class PostAvatar extends StatelessWidget {
-  const PostAvatar({super.key, required this.name, required this.avatarUrl});
+  const PostAvatar({super.key, required this.avatarUrl, this.onTap});
 
-  final String name;
   final String? avatarUrl;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return CircleAvatar(
-      radius: 23,
-      backgroundColor: colors.border,
-      backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
-      child: avatarUrl == null
-          ? Text(
-              name.isNotEmpty ? name[0].toUpperCase() : '?',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-              ),
-            )
-          : null,
-    );
+    return AppUserAvatar(avatarUrl: avatarUrl, radius: 23, onTap: onTap);
   }
 }
