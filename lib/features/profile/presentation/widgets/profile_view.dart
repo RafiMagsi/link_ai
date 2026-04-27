@@ -132,13 +132,20 @@ class _Header extends StatelessWidget {
           Text(
             displayName,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 4),
           Text(
             displayRole,
             textAlign: TextAlign.center,
-            style: TextStyle(color: colors.mutedText),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: 13,
+              color: colors.mutedText,
+            ),
           ),
           if (location.trim().isNotEmpty) ...[
             const SizedBox(height: 8),

@@ -125,7 +125,7 @@ class _FeedList extends ConsumerWidget {
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(latestPostsProvider);
-        await Future<void>.delayed(const Duration(milliseconds: 250));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
       },
       child: posts.when(
         data: (items) {

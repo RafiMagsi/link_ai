@@ -32,9 +32,9 @@ class ExplorePage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
+          Text(
             'Discover AI builders by category',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+            style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -45,9 +45,9 @@ class ExplorePage extends ConsumerWidget {
             }).toList(),
           ),
           const SizedBox(height: 28),
-          const Text(
+          Text(
             'Trending hashtags',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
           latestState.when(
@@ -94,9 +94,9 @@ class ExplorePage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 28),
-          const Text(
+          Text(
             'AI news (links)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
           _LinkCard(
@@ -115,9 +115,9 @@ class ExplorePage extends ConsumerWidget {
             url: 'https://www.anthropic.com/news',
           ),
           const SizedBox(height: 28),
-          const Text(
+          Text(
             'People looking for help',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
           _ExploreCard(
