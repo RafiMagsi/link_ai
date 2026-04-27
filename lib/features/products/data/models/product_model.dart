@@ -4,10 +4,7 @@ class ProductScreenshotModel {
   final String url;
   final int order;
 
-  const ProductScreenshotModel({
-    required this.url,
-    required this.order,
-  });
+  const ProductScreenshotModel({required this.url, required this.order});
 
   factory ProductScreenshotModel.fromMap(Map<String, dynamic> map) {
     return ProductScreenshotModel(
@@ -17,10 +14,7 @@ class ProductScreenshotModel {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'url': url,
-      'order': order,
-    };
+    return {'url': url, 'order': order};
   }
 }
 

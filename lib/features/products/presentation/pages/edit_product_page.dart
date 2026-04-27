@@ -5,10 +5,7 @@ import '../../data/models/product_model.dart';
 import '../providers/product_providers.dart';
 
 class EditProductPage extends ConsumerStatefulWidget {
-  const EditProductPage({
-    super.key,
-    required this.product,
-  });
+  const EditProductPage({super.key, required this.product});
 
   final ProductModel product;
 
@@ -44,8 +41,9 @@ class _EditProductPageState extends ConsumerState<EditProductPage> {
     _websiteUrlController = TextEditingController(text: product.websiteUrl);
     _demoUrlController = TextEditingController(text: product.demoUrl);
     _githubUrlController = TextEditingController(text: product.githubUrl);
-    _platformsController =
-        TextEditingController(text: product.platforms.join(', '));
+    _platformsController = TextEditingController(
+      text: product.platforms.join(', '),
+    );
     _versionController = TextEditingController(text: product.version);
   }
 

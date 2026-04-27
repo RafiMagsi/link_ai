@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/config/app_limits_provider.dart';
+import '../../../../core/theme/app_theme_colors.dart';
 import '../providers/post_providers.dart';
 
 class CreatePostPage extends ConsumerStatefulWidget {
@@ -166,6 +168,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     final limits = ref.watch(appLimitsProvider);
     final remaining = limits.postMaxChars - textLength;
     final isOverLimit = remaining < 0;
+    final colors = context.appColors;
 
     return Scaffold(
       appBar: AppBar(
@@ -186,17 +189,17 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
             if (_isUploading) LinearProgressIndicator(value: _uploadProgress),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSizes.lg),
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 22,
-                        backgroundColor: Color(0xFF1E293B),
-                        child: Icon(Icons.person),
+                        backgroundColor: colors.border,
+                        child: const Icon(Icons.person),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSizes.md),
                       Expanded(
                         child: TextField(
                           controller: _textController,
@@ -215,7 +218,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
                     ],
                   ),
                   if (_selectedMedia.isNotEmpty) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSizes.lg),
                     _SelectedMediaGrid(
                       files: _selectedMedia,
                       onRemove: _removeMedia,
@@ -225,9 +228,14 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
               ),
             ),
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: Color(0xFF1E293B))),
+              padding: const EdgeInsets.fromLTRB(
+                AppSizes.lg,
+                10,
+                AppSizes.lg,
+                14,
+              ),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: colors.border)),
               ),
               child: Row(
                 children: [
@@ -244,8 +252,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
                     '$remaining',
                     style: TextStyle(
                       color: isOverLimit
-                          ? Colors.redAccent
-                          : const Color(0xFF94A3B8),
+                          ? Theme.of(context).colorScheme.error
+                          : colors.mutedText,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -328,26 +336,27 @@ class _SelectedMediaTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isVideo = _isVideoPath(file.path);
+    final colors = context.appColors;
 
     return Container(
       height: height,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF1E293B)),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+        border: Border.all(color: colors.border),
       ),
       child: Stack(
         fit: StackFit.expand,
         children: [
           if (isVideo)
             Container(
-              color: const Color(0xFF0B1220),
-              child: const Center(
+              color: colors.surfaceMuted,
+              child: Center(
                 child: Icon(
                   Icons.play_circle_outline,
                   size: 56,
-                  color: Color(0xFF94A3B8),
+                  color: colors.mutedText,
                 ),
               ),
             )

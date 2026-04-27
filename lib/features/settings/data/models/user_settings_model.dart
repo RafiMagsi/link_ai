@@ -3,6 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class UserSettingsModel {
   final String uid;
 
+  /// One of: system | light | dark
+  final String themeMode;
+
   final bool notifyLikes;
   final bool notifyReposts;
   final bool notifyComments;
@@ -18,6 +21,7 @@ class UserSettingsModel {
 
   const UserSettingsModel({
     required this.uid,
+    required this.themeMode,
     required this.notifyLikes,
     required this.notifyReposts,
     required this.notifyComments,
@@ -33,6 +37,7 @@ class UserSettingsModel {
   factory UserSettingsModel.defaults(String uid) {
     return UserSettingsModel(
       uid: uid,
+      themeMode: 'system',
       notifyLikes: true,
       notifyReposts: true,
       notifyComments: true,
@@ -53,17 +58,15 @@ class UserSettingsModel {
 
     return UserSettingsModel(
       uid: data['uid'] as String? ?? doc.id,
+      themeMode: data['themeMode'] as String? ?? 'system',
       notifyLikes: data['notifyLikes'] as bool? ?? true,
       notifyReposts: data['notifyReposts'] as bool? ?? true,
       notifyComments: data['notifyComments'] as bool? ?? true,
       notifySaves: data['notifySaves'] as bool? ?? true,
-      notifyConnectRequests:
-          data['notifyConnectRequests'] as bool? ?? true,
-      notifyProductActivity:
-          data['notifyProductActivity'] as bool? ?? true,
+      notifyConnectRequests: data['notifyConnectRequests'] as bool? ?? true,
+      notifyProductActivity: data['notifyProductActivity'] as bool? ?? true,
       videoAutoplay: data['videoAutoplay'] as bool? ?? true,
-      muteVideosByDefault:
-          data['muteVideosByDefault'] as bool? ?? true,
+      muteVideosByDefault: data['muteVideosByDefault'] as bool? ?? true,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
     );
@@ -72,6 +75,7 @@ class UserSettingsModel {
   Map<String, dynamic> toCreateMap() {
     return {
       'uid': uid,
+      'themeMode': themeMode,
       'notifyLikes': notifyLikes,
       'notifyReposts': notifyReposts,
       'notifyComments': notifyComments,
@@ -87,6 +91,7 @@ class UserSettingsModel {
 
   Map<String, dynamic> toUpdateMap() {
     return {
+      'themeMode': themeMode,
       'notifyLikes': notifyLikes,
       'notifyReposts': notifyReposts,
       'notifyComments': notifyComments,
@@ -100,6 +105,7 @@ class UserSettingsModel {
   }
 
   UserSettingsModel copyWith({
+    String? themeMode,
     bool? notifyLikes,
     bool? notifyReposts,
     bool? notifyComments,
@@ -111,6 +117,7 @@ class UserSettingsModel {
   }) {
     return UserSettingsModel(
       uid: uid,
+      themeMode: themeMode ?? this.themeMode,
       notifyLikes: notifyLikes ?? this.notifyLikes,
       notifyReposts: notifyReposts ?? this.notifyReposts,
       notifyComments: notifyComments ?? this.notifyComments,
@@ -120,8 +127,7 @@ class UserSettingsModel {
       notifyProductActivity:
           notifyProductActivity ?? this.notifyProductActivity,
       videoAutoplay: videoAutoplay ?? this.videoAutoplay,
-      muteVideosByDefault:
-          muteVideosByDefault ?? this.muteVideosByDefault,
+      muteVideosByDefault: muteVideosByDefault ?? this.muteVideosByDefault,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

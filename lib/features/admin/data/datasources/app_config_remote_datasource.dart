@@ -30,9 +30,7 @@ class AppConfigRemoteDataSource {
     );
   }
 
-  Future<void> createDefaultIfMissing({
-    required String updatedBy,
-  }) async {
+  Future<void> createDefaultIfMissing({required String updatedBy}) async {
     final snapshot = await _globalConfig.get();
 
     if (snapshot.exists) return;

@@ -19,37 +19,26 @@ class ExplorePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Explore'),
-      ),
+      appBar: AppBar(title: const Text('Explore')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
             'Discover AI builders by category',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: categories.map((category) {
-              return ActionChip(
-                label: Text(category),
-                onPressed: () {},
-              );
+              return ActionChip(label: Text(category), onPressed: () {});
             }).toList(),
           ),
           const SizedBox(height: 28),
           const Text(
             'People looking for help',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           _ExploreCard(

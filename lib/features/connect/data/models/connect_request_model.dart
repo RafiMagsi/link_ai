@@ -1,10 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum ConnectRequestStatus {
-  pending,
-  accepted,
-  declined,
-}
+enum ConnectRequestStatus { pending, accepted, declined }
 
 class ConnectRequestModel {
   final String id;

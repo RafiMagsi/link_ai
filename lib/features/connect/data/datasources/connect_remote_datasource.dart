@@ -5,10 +5,7 @@ import '../models/connect_request_model.dart';
 import '../models/connection_model.dart';
 
 class ConnectRemoteDataSource {
-  ConnectRemoteDataSource(
-    this._firestore,
-    this._functions,
-  );
+  ConnectRemoteDataSource(this._firestore, this._functions);
 
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
@@ -27,28 +24,19 @@ class ConnectRemoteDataSource {
   }) async {
     final callable = _functions.httpsCallable('sendConnectRequest');
 
-    await callable.call({
-      'receiverUid': receiverUid,
-      'message': message,
-    });
+    await callable.call({'receiverUid': receiverUid, 'message': message});
   }
 
   Future<void> acceptConnectRequest(String requestId) async {
     final callable = _functions.httpsCallable('respondConnectRequest');
 
-    await callable.call({
-      'requestId': requestId,
-      'action': 'accept',
-    });
+    await callable.call({'requestId': requestId, 'action': 'accept'});
   }
 
   Future<void> declineConnectRequest(String requestId) async {
     final callable = _functions.httpsCallable('respondConnectRequest');
 
-    await callable.call({
-      'requestId': requestId,
-      'action': 'decline',
-    });
+    await callable.call({'requestId': requestId, 'action': 'decline'});
   }
 
   Stream<List<ConnectRequestModel>> watchIncomingRequests(String uid) {

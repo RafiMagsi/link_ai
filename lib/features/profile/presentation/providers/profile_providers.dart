@@ -12,7 +12,9 @@ final firebaseFirestoreProvider = Provider<FirebaseFirestore>((ref) {
   return FirebaseFirestore.instance;
 });
 
-final profileRemoteDataSourceProvider = Provider<ProfileRemoteDataSource>((ref) {
+final profileRemoteDataSourceProvider = Provider<ProfileRemoteDataSource>((
+  ref,
+) {
   return ProfileRemoteDataSource(
     ref.watch(firebaseFirestoreProvider),
     ref.watch(firebaseStorageProvider),
@@ -35,8 +37,8 @@ final publicProfilesProvider = FutureProvider<List<ProfileModel>>((ref) {
 
 final profileControllerProvider =
     StateNotifierProvider<ProfileController, AsyncValue<void>>((ref) {
-  return ProfileController(ref.watch(profileRemoteDataSourceProvider));
-});
+      return ProfileController(ref.watch(profileRemoteDataSourceProvider));
+    });
 
 final firebaseStorageProvider = Provider<FirebaseStorage>((ref) {
   return FirebaseStorage.instance;
@@ -44,7 +46,7 @@ final firebaseStorageProvider = Provider<FirebaseStorage>((ref) {
 
 class ProfileController extends StateNotifier<AsyncValue<void>> {
   ProfileController(this._profileRemoteDataSource)
-      : super(const AsyncData(null));
+    : super(const AsyncData(null));
 
   final ProfileRemoteDataSource _profileRemoteDataSource;
 

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/theme/app_theme_colors.dart';
 import '../../data/models/product_model.dart';
 import '../providers/product_providers.dart';
 import 'create_product_page.dart';
@@ -35,9 +38,10 @@ class ProductsPage extends ConsumerWidget {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSizes.lg),
             itemCount: products.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) =>
+                const SizedBox(height: AppSizes.md),
             itemBuilder: (context, index) {
               final product = products[index];
 
@@ -70,6 +74,7 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final imageUrl = product.screenshots.isNotEmpty
         ? product.screenshots.first.url
         : null;
@@ -88,9 +93,9 @@ class ProductCard extends StatelessWidget {
                 height: 74,
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+                  border: Border.all(color: colors.border),
                 ),
                 child: imageUrl == null
                     ? const Icon(Icons.auto_awesome, size: 32)
@@ -115,7 +120,7 @@ class ProductCard extends StatelessWidget {
                       product.tagline,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Color(0xFF94A3B8)),
+                      style: TextStyle(color: colors.mutedText),
                     ),
                     const SizedBox(height: 10),
                     Wrap(
@@ -144,36 +149,18 @@ class _EmptyProducts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.apps_outlined, size: 64, color: Color(0xFF94A3B8)),
-            const SizedBox(height: 16),
-            const Text(
-              'No AI products yet',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Be the first to showcase what you are building.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF94A3B8)),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CreateProductPage()),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Product'),
-            ),
-          ],
-        ),
+    return AppEmptyState(
+      title: 'No AI products yet',
+      subtitle: 'Be the first to showcase what you are building.',
+      icon: Icons.apps_outlined,
+      action: FilledButton.icon(
+        onPressed: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const CreateProductPage()));
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Add Product'),
       ),
     );
   }

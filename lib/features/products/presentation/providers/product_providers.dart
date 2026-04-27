@@ -8,7 +8,9 @@ import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/product_remote_datasource.dart';
 import '../../data/models/product_model.dart';
 
-final productRemoteDataSourceProvider = Provider<ProductRemoteDataSource>((ref) {
+final productRemoteDataSourceProvider = Provider<ProductRemoteDataSource>((
+  ref,
+) {
   return ProductRemoteDataSource(
     ref.watch(firebaseFirestoreProvider),
     ref.watch(firebaseStorageProvider),
@@ -29,36 +31,34 @@ final myProductsProvider = StreamProvider<List<ProductModel>>((ref) {
   return ref.watch(productRemoteDataSourceProvider).watchMyProducts(user.uid);
 });
 
-final productDetailProvider =
-    StreamProvider.family<ProductModel?, String>((ref, productId) {
+final productDetailProvider = StreamProvider.family<ProductModel?, String>((
+  ref,
+  productId,
+) {
   return ref.watch(productRemoteDataSourceProvider).watchProduct(productId);
 });
 
-final productSaveStateProvider =
-    FutureProvider.family<bool, String>((ref, productId) async {
+final productSaveStateProvider = FutureProvider.family<bool, String>((
+  ref,
+  productId,
+) async {
   final user = ref.watch(currentUserProvider);
 
   if (user == null) return false;
 
-  return ref.watch(productRemoteDataSourceProvider).hasSavedProduct(
-        productId: productId,
-        uid: user.uid,
-      );
+  return ref
+      .watch(productRemoteDataSourceProvider)
+      .hasSavedProduct(productId: productId, uid: user.uid);
 });
 
 final productControllerProvider =
     StateNotifierProvider<ProductController, AsyncValue<void>>((ref) {
-  return ProductController(
-    ref,
-    ref.watch(productRemoteDataSourceProvider),
-  );
-});
+      return ProductController(ref, ref.watch(productRemoteDataSourceProvider));
+    });
 
 class ProductController extends StateNotifier<AsyncValue<void>> {
-  ProductController(
-    this._ref,
-    this._productRemoteDataSource,
-  ) : super(const AsyncData(null));
+  ProductController(this._ref, this._productRemoteDataSource)
+    : super(const AsyncData(null));
 
   final Ref _ref;
   final ProductRemoteDataSource _productRemoteDataSource;

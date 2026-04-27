@@ -10,12 +10,12 @@ import '../../data/models/connect_request_model.dart';
 import '../../data/models/connection_model.dart';
 
 final firebaseFunctionsProvider = Provider<FirebaseFunctions>((ref) {
-  return FirebaseFunctions.instanceFor(
-    app: Firebase.app(),
-  );
+  return FirebaseFunctions.instanceFor(app: Firebase.app());
 });
 
-final connectRemoteDataSourceProvider = Provider<ConnectRemoteDataSource>((ref) {
+final connectRemoteDataSourceProvider = Provider<ConnectRemoteDataSource>((
+  ref,
+) {
   return ConnectRemoteDataSource(
     ref.watch(firebaseFirestoreProvider),
     ref.watch(firebaseFunctionsProvider),
@@ -24,29 +24,29 @@ final connectRemoteDataSourceProvider = Provider<ConnectRemoteDataSource>((ref) 
 
 final incomingConnectRequestsProvider =
     StreamProvider<List<ConnectRequestModel>>((ref) {
-  final user = ref.watch(currentUserProvider);
+      final user = ref.watch(currentUserProvider);
 
-  if (user == null) {
-    return const Stream.empty();
-  }
+      if (user == null) {
+        return const Stream.empty();
+      }
 
-  return ref
-      .watch(connectRemoteDataSourceProvider)
-      .watchIncomingRequests(user.uid);
-});
+      return ref
+          .watch(connectRemoteDataSourceProvider)
+          .watchIncomingRequests(user.uid);
+    });
 
 final outgoingConnectRequestsProvider =
     StreamProvider<List<ConnectRequestModel>>((ref) {
-  final user = ref.watch(currentUserProvider);
+      final user = ref.watch(currentUserProvider);
 
-  if (user == null) {
-    return const Stream.empty();
-  }
+      if (user == null) {
+        return const Stream.empty();
+      }
 
-  return ref
-      .watch(connectRemoteDataSourceProvider)
-      .watchOutgoingRequests(user.uid);
-});
+      return ref
+          .watch(connectRemoteDataSourceProvider)
+          .watchOutgoingRequests(user.uid);
+    });
 
 final myConnectionsProvider = StreamProvider<List<ConnectionModel>>((ref) {
   final user = ref.watch(currentUserProvider);
@@ -60,31 +60,25 @@ final myConnectionsProvider = StreamProvider<List<ConnectionModel>>((ref) {
 
 final relationshipStatusProvider =
     FutureProvider.family<ConnectRelationshipStatus, String>((ref, targetUid) {
-  final user = ref.watch(currentUserProvider);
+      final user = ref.watch(currentUserProvider);
 
-  if (user == null) {
-    return Future.value(ConnectRelationshipStatus.none);
-  }
+      if (user == null) {
+        return Future.value(ConnectRelationshipStatus.none);
+      }
 
-  return ref.watch(connectRemoteDataSourceProvider).getRelationshipStatus(
-        currentUid: user.uid,
-        targetUid: targetUid,
-      );
-});
+      return ref
+          .watch(connectRemoteDataSourceProvider)
+          .getRelationshipStatus(currentUid: user.uid, targetUid: targetUid);
+    });
 
 final connectControllerProvider =
     StateNotifierProvider<ConnectController, AsyncValue<void>>((ref) {
-  return ConnectController(
-    ref,
-    ref.watch(connectRemoteDataSourceProvider),
-  );
-});
+      return ConnectController(ref, ref.watch(connectRemoteDataSourceProvider));
+    });
 
 class ConnectController extends StateNotifier<AsyncValue<void>> {
-  ConnectController(
-    this._ref,
-    this._connectRemoteDataSource,
-  ) : super(const AsyncData(null));
+  ConnectController(this._ref, this._connectRemoteDataSource)
+    : super(const AsyncData(null));
 
   final Ref _ref;
   final ConnectRemoteDataSource _connectRemoteDataSource;

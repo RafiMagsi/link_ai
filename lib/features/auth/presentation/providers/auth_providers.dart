@@ -27,12 +27,12 @@ final currentUserProvider = Provider<User?>((ref) {
 
 final authControllerProvider =
     StateNotifierProvider<AuthController, AsyncValue<void>>((ref) {
-  return AuthController(
-    ref.watch(authRemoteDataSourceProvider),
-    ref.watch(profileRemoteDataSourceProvider),
-    ref.watch(settingsRemoteDataSourceProvider),
-  );
-});
+      return AuthController(
+        ref.watch(authRemoteDataSourceProvider),
+        ref.watch(profileRemoteDataSourceProvider),
+        ref.watch(settingsRemoteDataSourceProvider),
+      );
+    });
 
 class AuthController extends StateNotifier<AsyncValue<void>> {
   AuthController(
@@ -73,19 +73,15 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
           name: name.trim(),
         ),
       );
-      
+
       await _settingsRemoteDataSource.createSettingsIfNotExists(user.uid);
       state = const AsyncData(null);
-
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
     }
   }
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> login({required String email, required String password}) async {
     state = const AsyncLoading();
 
     try {
@@ -105,8 +101,10 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
           ),
         );
       }
-      
-      await _settingsRemoteDataSource.createSettingsIfNotExists(user?.uid ?? '0');
+
+      await _settingsRemoteDataSource.createSettingsIfNotExists(
+        user?.uid ?? '0',
+      );
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);

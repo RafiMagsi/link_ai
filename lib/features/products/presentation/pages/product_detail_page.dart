@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/theme/app_theme_colors.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/product_providers.dart';
 import 'edit_product_page.dart';
@@ -45,8 +47,9 @@ class ProductDetailPage extends ConsumerWidget {
             ],
           ),
           body: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSizes.lg),
             children: [
+              // Keep a consistent, soothing "app store" look in both themes.
               if (product.screenshots.isNotEmpty)
                 SizedBox(
                   height: 230,
@@ -72,9 +75,9 @@ class ProductDetailPage extends ConsumerWidget {
                 Container(
                   height: 180,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF111827),
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: const Color(0xFF334155)),
+                    border: Border.all(color: context.appColors.border),
                   ),
                   child: const Center(
                     child: Icon(Icons.auto_awesome, size: 56),
@@ -91,7 +94,10 @@ class ProductDetailPage extends ConsumerWidget {
               const SizedBox(height: 6),
               Text(
                 product.tagline,
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 16),
+                style: TextStyle(
+                  color: context.appColors.mutedText,
+                  fontSize: 16,
+                ),
               ),
               const SizedBox(height: 14),
               Wrap(

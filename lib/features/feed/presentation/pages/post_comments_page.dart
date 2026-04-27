@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/models/post_model.dart';
 import '../providers/post_providers.dart';
 import '../widgets/feed_post_card.dart';
+import '../widgets/comments/comment_composer_bar.dart';
 
 class PostCommentsPage extends ConsumerStatefulWidget {
   const PostCommentsPage({super.key, required this.post});
@@ -18,6 +20,7 @@ class _PostCommentsPageState extends ConsumerState<PostCommentsPage> {
   static const int _maxCommentChars = 500;
 
   final _commentController = TextEditingController();
+  bool _isSending = false;
 
   @override
   void dispose() {
@@ -39,10 +42,12 @@ class _PostCommentsPageState extends ConsumerState<PostCommentsPage> {
       return;
     }
 
+    setState(() => _isSending = true);
     final controller = ref.read(postControllerProvider.notifier);
     await controller.addComment(postId: widget.post.id, text: text);
 
     if (!mounted) return;
+    setState(() => _isSending = false);
     final state = ref.read(postControllerProvider);
 
     if (state.hasError) {
@@ -63,7 +68,8 @@ class _PostCommentsPageState extends ConsumerState<PostCommentsPage> {
   Widget build(BuildContext context) {
     final commentsState = ref.watch(postCommentsProvider(widget.post.id));
 
-    return Scaffold(
+    return AppScaffold(
+      safeArea: false,
       appBar: AppBar(title: const Text('Comments')),
       body: Column(
         children: [
@@ -74,7 +80,7 @@ class _PostCommentsPageState extends ConsumerState<PostCommentsPage> {
                   padding: const EdgeInsets.only(bottom: 12),
                   itemCount: comments.length + 1,
                   separatorBuilder: (context, index) =>
-                      const Divider(height: 1, color: Color(0xFF1E293B)),
+                      const Divider(height: 1),
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       return FeedPostCard(
@@ -114,35 +120,11 @@ class _PostCommentsPageState extends ConsumerState<PostCommentsPage> {
                   const Center(child: Text('Unable to load comments.')),
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: Color(0xFF1E293B))),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _commentController,
-                      minLines: 1,
-                      maxLines: 4,
-                      maxLength: _maxCommentChars,
-                      decoration: const InputDecoration(
-                        hintText: 'Write a comment...',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    onPressed: _addComment,
-                    icon: const Icon(Icons.send),
-                  ),
-                ],
-              ),
-            ),
+          CommentComposerBar(
+            controller: _commentController,
+            maxChars: _maxCommentChars,
+            onSend: _addComment,
+            isSending: _isSending,
           ),
         ],
       ),

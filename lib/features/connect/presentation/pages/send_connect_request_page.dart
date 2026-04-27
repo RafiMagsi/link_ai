@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/theme/app_theme_colors.dart';
 import '../providers/connect_providers.dart';
 
 class SendConnectRequestPage extends ConsumerStatefulWidget {
@@ -38,10 +40,9 @@ class _SendConnectRequestPageState
       return;
     }
 
-    await ref.read(connectControllerProvider.notifier).sendRequest(
-          receiverUid: widget.receiverUid,
-          message: message,
-        );
+    await ref
+        .read(connectControllerProvider.notifier)
+        .sendRequest(receiverUid: widget.receiverUid, message: message);
 
     final state = ref.read(connectControllerProvider);
 
@@ -76,9 +77,9 @@ class _SendConnectRequestPageState
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -86,25 +87,21 @@ class _SendConnectRequestPageState
     final controllerState = ref.watch(connectControllerProvider);
     final remaining = _maxLength - _messageController.text.length;
     final isOverLimit = remaining < 0;
+    final colors = context.appColors;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Send Connect Request'),
-      ),
+      appBar: AppBar(title: const Text('Send Connect Request')),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSizes.xl),
         children: [
           Text(
             'Connect with ${widget.receiverName}',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Write a short reason. Keep it useful, not spammy.',
-            style: TextStyle(color: Color(0xFF94A3B8)),
+            style: TextStyle(color: colors.mutedText),
           ),
           const SizedBox(height: 20),
           TextField(
@@ -124,7 +121,9 @@ class _SendConnectRequestPageState
             child: Text(
               '$remaining',
               style: TextStyle(
-                color: isOverLimit ? Colors.redAccent : const Color(0xFF94A3B8),
+                color: isOverLimit
+                    ? Theme.of(context).colorScheme.error
+                    : colors.mutedText,
                 fontWeight: FontWeight.w700,
               ),
             ),

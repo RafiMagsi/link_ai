@@ -69,26 +69,20 @@ class AppConfigModel {
       maxMediaPerPost: data['maxMediaPerPost'] as int? ?? 4,
       maxImageSizeMb: data['maxImageSizeMb'] as int? ?? 5,
       maxVideoSizeMb: data['maxVideoSizeMb'] as int? ?? 200,
-      maxVideoDurationSeconds:
-          data['maxVideoDurationSeconds'] as int? ?? 30,
-      connectRequestsPerWeek:
-          data['connectRequestsPerWeek'] as int? ?? 50,
+      maxVideoDurationSeconds: data['maxVideoDurationSeconds'] as int? ?? 30,
+      connectRequestsPerWeek: data['connectRequestsPerWeek'] as int? ?? 50,
       enableReposts: data['enableReposts'] as bool? ?? true,
       enableComments: data['enableComments'] as bool? ?? true,
       enableProducts: data['enableProducts'] as bool? ?? true,
       enableViralFeed: data['enableViralFeed'] as bool? ?? true,
-      postRateLimitPerHour:
-          data['postRateLimitPerHour'] as int? ?? 10,
-      connectCooldownMinutes:
-          data['connectCooldownMinutes'] as int? ?? 5,
+      postRateLimitPerHour: data['postRateLimitPerHour'] as int? ?? 10,
+      connectCooldownMinutes: data['connectCooldownMinutes'] as int? ?? 5,
       updatedBy: data['updatedBy'] as String?,
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
     );
   }
 
-  Map<String, dynamic> toUpdateMap({
-    required String updatedBy,
-  }) {
+  Map<String, dynamic> toUpdateMap({required String updatedBy}) {
     return {
       'postTextMaxLength': postTextMaxLength,
       'maxMediaPerPost': maxMediaPerPost,
@@ -124,8 +118,7 @@ class AppConfigModel {
     DateTime? updatedAt,
   }) {
     return AppConfigModel(
-      postTextMaxLength:
-          postTextMaxLength ?? this.postTextMaxLength,
+      postTextMaxLength: postTextMaxLength ?? this.postTextMaxLength,
       maxMediaPerPost: maxMediaPerPost ?? this.maxMediaPerPost,
       maxImageSizeMb: maxImageSizeMb ?? this.maxImageSizeMb,
       maxVideoSizeMb: maxVideoSizeMb ?? this.maxVideoSizeMb,
@@ -137,8 +130,7 @@ class AppConfigModel {
       enableComments: enableComments ?? this.enableComments,
       enableProducts: enableProducts ?? this.enableProducts,
       enableViralFeed: enableViralFeed ?? this.enableViralFeed,
-      postRateLimitPerHour:
-          postRateLimitPerHour ?? this.postRateLimitPerHour,
+      postRateLimitPerHour: postRateLimitPerHour ?? this.postRateLimitPerHour,
       connectCooldownMinutes:
           connectCooldownMinutes ?? this.connectCooldownMinutes,
       updatedBy: updatedBy ?? this.updatedBy,

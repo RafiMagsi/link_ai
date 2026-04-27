@@ -201,6 +201,17 @@ class SettingsPage extends ConsumerWidget {
               _SettingsSection(
                 title: 'App Preferences',
                 children: [
+                  _ThemeModeTile(
+                    themeMode: settings.themeMode,
+                    isLoading: controllerState.isLoading,
+                    onChanged: (themeMode) {
+                      ref
+                          .read(settingsControllerProvider.notifier)
+                          .updateSettings(
+                            settings.copyWith(themeMode: themeMode),
+                          );
+                    },
+                  ),
                   SwitchListTile(
                     value: settings.videoAutoplay,
                     title: const Text('Video Autoplay'),
@@ -298,6 +309,98 @@ class _SettingsSection extends StatelessWidget {
             ),
           ),
           ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemeModeTile extends StatelessWidget {
+  const _ThemeModeTile({
+    required this.themeMode,
+    required this.isLoading,
+    required this.onChanged,
+  });
+
+  final String themeMode;
+  final bool isLoading;
+  final ValueChanged<String> onChanged;
+
+  IconData _iconFor(String value) {
+    return switch (value) {
+      'dark' => Icons.dark_mode,
+      'light' => Icons.light_mode,
+      _ => Icons.brightness_auto,
+    };
+  }
+
+  String _labelFor(String value) {
+    return switch (value) {
+      'dark' => 'Dark',
+      'light' => 'Light',
+      _ => 'Auto',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = switch (themeMode) {
+      'light' || 'dark' => themeMode,
+      _ => 'system',
+    };
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(_iconFor(selected)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Theme',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      'Current: ${_labelFor(selected)}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment<String>(
+                value: 'system',
+                icon: Icon(Icons.brightness_auto),
+                label: Text('Auto'),
+              ),
+              ButtonSegment<String>(
+                value: 'light',
+                icon: Icon(Icons.light_mode),
+                label: Text('Light'),
+              ),
+              ButtonSegment<String>(
+                value: 'dark',
+                icon: Icon(Icons.dark_mode),
+                label: Text('Dark'),
+              ),
+            ],
+            selected: {selected},
+            onSelectionChanged: isLoading
+                ? null
+                : (value) {
+                    onChanged(value.first);
+                  },
+          ),
         ],
       ),
     );

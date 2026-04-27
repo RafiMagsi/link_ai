@@ -7,8 +7,9 @@ import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/app_config_remote_datasource.dart';
 import '../../data/models/app_config_model.dart';
 
-final appConfigRemoteDataSourceProvider =
-    Provider<AppConfigRemoteDataSource>((ref) {
+final appConfigRemoteDataSourceProvider = Provider<AppConfigRemoteDataSource>((
+  ref,
+) {
   return AppConfigRemoteDataSource(ref.watch(firebaseFirestoreProvider));
 });
 
@@ -28,17 +29,15 @@ final adminStatusProvider = FutureProvider<bool>((ref) async {
 
 final adminControllerProvider =
     StateNotifierProvider<AdminController, AsyncValue<void>>((ref) {
-  return AdminController(
-    ref.watch(appConfigRemoteDataSourceProvider),
-    ref.watch(firebaseAuthProvider),
-  );
-});
+      return AdminController(
+        ref.watch(appConfigRemoteDataSourceProvider),
+        ref.watch(firebaseAuthProvider),
+      );
+    });
 
 class AdminController extends StateNotifier<AsyncValue<void>> {
-  AdminController(
-    this._appConfigRemoteDataSource,
-    this._firebaseAuth,
-  ) : super(const AsyncData(null));
+  AdminController(this._appConfigRemoteDataSource, this._firebaseAuth)
+    : super(const AsyncData(null));
 
   final AppConfigRemoteDataSource _appConfigRemoteDataSource;
   final FirebaseAuth _firebaseAuth;

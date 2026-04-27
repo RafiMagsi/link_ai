@@ -4,11 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../models/profile_model.dart';
 
 class ProfileRemoteDataSource {
-
-  ProfileRemoteDataSource(
-    this._firestore,
-    this._storage,
-  );
+  ProfileRemoteDataSource(this._firestore, this._storage);
 
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
@@ -45,9 +41,7 @@ class ProfileRemoteDataSource {
     await _profiles.doc(profile.uid).update(profile.toUpdateMap());
   }
 
-  Future<List<ProfileModel>> getPublicProfiles({
-    int limit = 20,
-  }) async {
+  Future<List<ProfileModel>> getPublicProfiles({int limit = 20}) async {
     final snapshot = await _profiles
         .orderBy('updatedAt', descending: true)
         .limit(limit)
@@ -56,20 +50,12 @@ class ProfileRemoteDataSource {
     return snapshot.docs.map(ProfileModel.fromFirestore).toList();
   }
 
-  Future<String> uploadAvatar({
-    required String uid,
-    required File file,
-  }) async {
+  Future<String> uploadAvatar({required String uid, required File file}) async {
     final ref = _storage.ref().child('avatars/$uid/profile.jpg');
 
     await ref.putFile(
       file,
-      SettableMetadata(
-        contentType: 'image/jpeg',
-        customMetadata: {
-          'uid': uid,
-        },
-      ),
+      SettableMetadata(contentType: 'image/jpeg', customMetadata: {'uid': uid}),
     );
 
     return ref.getDownloadURL();

@@ -13,14 +13,15 @@ final firebaseMessagingProvider = Provider<FirebaseMessaging>((ref) {
 
 final notificationRemoteDataSourceProvider =
     Provider<NotificationRemoteDataSource>((ref) {
-  return NotificationRemoteDataSource(
-    ref.watch(firebaseFirestoreProvider),
-    ref.watch(firebaseMessagingProvider),
-  );
-});
+      return NotificationRemoteDataSource(
+        ref.watch(firebaseFirestoreProvider),
+        ref.watch(firebaseMessagingProvider),
+      );
+    });
 
-final myNotificationsProvider =
-    StreamProvider<List<AppNotificationModel>>((ref) {
+final myNotificationsProvider = StreamProvider<List<AppNotificationModel>>((
+  ref,
+) {
   final user = ref.watch(currentUserProvider);
 
   if (user == null) {
@@ -46,17 +47,15 @@ final unreadNotificationsCountProvider = StreamProvider<int>((ref) {
 
 final notificationControllerProvider =
     StateNotifierProvider<NotificationController, AsyncValue<void>>((ref) {
-  return NotificationController(
-    ref,
-    ref.watch(notificationRemoteDataSourceProvider),
-  );
-});
+      return NotificationController(
+        ref,
+        ref.watch(notificationRemoteDataSourceProvider),
+      );
+    });
 
 class NotificationController extends StateNotifier<AsyncValue<void>> {
-  NotificationController(
-    this._ref,
-    this._notificationRemoteDataSource,
-  ) : super(const AsyncData(null));
+  NotificationController(this._ref, this._notificationRemoteDataSource)
+    : super(const AsyncData(null));
 
   final Ref _ref;
   final NotificationRemoteDataSource _notificationRemoteDataSource;
@@ -81,10 +80,7 @@ class NotificationController extends StateNotifier<AsyncValue<void>> {
       }
 
       FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
-        _notificationRemoteDataSource.saveToken(
-          uid: user.uid,
-          token: newToken,
-        );
+        _notificationRemoteDataSource.saveToken(uid: user.uid, token: newToken);
       });
 
       state = const AsyncData(null);

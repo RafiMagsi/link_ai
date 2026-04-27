@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/theme/app_theme_colors.dart';
 import '../../data/models/post_model.dart';
 import '../providers/post_providers.dart';
 import 'post_comments_page.dart';
@@ -17,7 +19,6 @@ class FeedPage extends ConsumerWidget {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        backgroundColor: const Color(0xFF0F172A),
         appBar: AppBar(
           title: const Text(
             'Feed',
@@ -50,8 +51,8 @@ class FeedPage extends ConsumerWidget {
                         top: 8,
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.redAccent,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.error,
                             shape: BoxShape.circle,
                           ),
                           constraints: const BoxConstraints(
@@ -140,11 +141,7 @@ class _FeedList extends ConsumerWidget {
           return ListView.separated(
             itemCount: visiblePosts.isEmpty ? 2 : visiblePosts.length + 1,
             separatorBuilder: (context, index) {
-              return const Divider(
-                height: 1,
-                thickness: 0.7,
-                color: Color(0xFF1E293B),
-              );
+              return const Divider(height: 1);
             },
             itemBuilder: (context, index) {
               if (index == 0) {
@@ -153,12 +150,12 @@ class _FeedList extends ConsumerWidget {
 
               if (visiblePosts.isEmpty) {
                 return Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(AppSizes.xl),
                   child: Center(
                     child: Text(
                       emptyStateText,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFF94A3B8)),
+                      style: TextStyle(color: context.appColors.mutedText),
                     ),
                   ),
                 );
@@ -192,32 +189,33 @@ class _FeedComposerEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return InkWell(
       onTap: () => context.push('/posts/create'),
       child: Container(
-        color: const Color(0xFF0F172A),
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        color: Theme.of(context).scaffoldBackgroundColor,
+        padding: const EdgeInsets.fromLTRB(AppSizes.lg, 14, AppSizes.lg, 14),
         child: Row(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 22,
-              backgroundColor: Color(0xFF1E293B),
-              child: Icon(Icons.person),
+              backgroundColor: colors.border,
+              child: const Icon(Icons.person),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSizes.md),
             Expanded(
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                  horizontal: AppSizes.lg,
+                  vertical: AppSizes.md,
                 ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  border: Border.all(color: colors.border),
                 ),
-                child: const Text(
+                child: Text(
                   'What are you building in AI?',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
+                  style: TextStyle(color: colors.mutedText, fontSize: 15),
                 ),
               ),
             ),

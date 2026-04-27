@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/app_empty_state.dart';
 import '../providers/notification_providers.dart';
 
 class NotificationsPage extends ConsumerWidget {
@@ -25,20 +26,25 @@ class NotificationsPage extends ConsumerWidget {
       body: notificationsState.when(
         data: (notifications) {
           if (notifications.isEmpty) {
-            return const Center(child: Text('No notifications yet.'));
+            return const AppEmptyState(
+              title: 'No notifications yet',
+              subtitle: 'Likes, comments, reposts, and connects show up here.',
+              icon: Icons.notifications_none,
+            );
           }
 
           return ListView.separated(
             itemCount: notifications.length,
-            separatorBuilder: (context, index) =>
-                const Divider(height: 1, color: Color(0xFF1E293B)),
+            separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final notification = notifications[index];
 
               return ListTile(
                 tileColor: notification.isRead
                     ? null
-                    : const Color(0xFF1D4ED8).withValues(alpha: 0.10),
+                    : Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.08),
                 leading: CircleAvatar(
                   backgroundImage: notification.senderAvatarUrl != null
                       ? NetworkImage(notification.senderAvatarUrl!)
@@ -62,10 +68,10 @@ class NotificationsPage extends ConsumerWidget {
                 subtitle: Text(notification.body),
                 trailing: notification.isRead
                     ? null
-                    : const Icon(
+                    : Icon(
                         Icons.circle,
                         size: 10,
-                        color: Color(0xFF2563EB),
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                 onTap: () {
                   ref

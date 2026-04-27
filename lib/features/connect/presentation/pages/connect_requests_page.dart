@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/theme/app_theme_colors.dart';
 import '../providers/connect_providers.dart';
 
 class ConnectRequestsPage extends ConsumerWidget {
@@ -14,7 +16,7 @@ class ConnectRequestsPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Connect Requests')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSizes.lg),
         children: [
           const Text(
             'Incoming',
@@ -150,9 +152,10 @@ class _EmptyText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Text(text, style: const TextStyle(color: Color(0xFF94A3B8))),
+      child: Text(text, style: TextStyle(color: colors.mutedText)),
     );
   }
 }

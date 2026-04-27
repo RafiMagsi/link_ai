@@ -6,8 +6,9 @@ import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/settings_remote_datasource.dart';
 import '../../data/models/user_settings_model.dart';
 
-final settingsRemoteDataSourceProvider =
-    Provider<SettingsRemoteDataSource>((ref) {
+final settingsRemoteDataSourceProvider = Provider<SettingsRemoteDataSource>((
+  ref,
+) {
   return SettingsRemoteDataSource(ref.watch(firebaseFirestoreProvider));
 });
 
@@ -23,12 +24,12 @@ final userSettingsProvider = StreamProvider<UserSettingsModel>((ref) {
 
 final settingsControllerProvider =
     StateNotifierProvider<SettingsController, AsyncValue<void>>((ref) {
-  return SettingsController(ref.watch(settingsRemoteDataSourceProvider));
-});
+      return SettingsController(ref.watch(settingsRemoteDataSourceProvider));
+    });
 
 class SettingsController extends StateNotifier<AsyncValue<void>> {
   SettingsController(this._settingsRemoteDataSource)
-      : super(const AsyncData(null));
+    : super(const AsyncData(null));
 
   final SettingsRemoteDataSource _settingsRemoteDataSource;
 

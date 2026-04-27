@@ -32,10 +32,9 @@ class SettingsRemoteDataSource {
   }
 
   Future<void> updateSettings(UserSettingsModel settings) async {
-    await _settings.doc(settings.uid).set(
-          settings.toUpdateMap(),
-          SetOptions(merge: true),
-        );
+    await _settings
+        .doc(settings.uid)
+        .set(settings.toUpdateMap(), SetOptions(merge: true));
   }
 
   Future<void> deleteSettings(String uid) async {

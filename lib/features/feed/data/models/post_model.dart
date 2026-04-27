@@ -20,11 +20,7 @@ class PostMediaModel {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'url': url,
-      'type': type,
-      'order': order,
-    };
+    return {'url': url, 'type': type, 'order': order};
   }
 }
 
@@ -59,9 +55,7 @@ class PostModel {
     required this.updatedAt,
   });
 
-  factory PostModel.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
+  factory PostModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
 
     return PostModel(
@@ -72,9 +66,10 @@ class PostModel {
       authorAvatarUrl: data['authorAvatarUrl'] as String?,
       text: data['text'] as String? ?? '',
       media: ((data['media'] as List?) ?? [])
-          .map((item) => PostMediaModel.fromMap(
-                Map<String, dynamic>.from(item as Map),
-              ))
+          .map(
+            (item) =>
+                PostMediaModel.fromMap(Map<String, dynamic>.from(item as Map)),
+          )
           .toList(),
       likesCount: data['likesCount'] as int? ?? 0,
       repostsCount: data['repostsCount'] as int? ?? 0,

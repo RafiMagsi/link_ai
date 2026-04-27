@@ -4,6 +4,7 @@ import '../../../explore/presentation/pages/explore_page.dart';
 import '../../../feed/presentation/pages/feed_page.dart';
 import '../../../products/presentation/pages/products_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
+import '../widgets/main_bottom_nav_bar.dart';
 
 class MainShellPage extends StatefulWidget {
   const MainShellPage({super.key});
@@ -46,8 +47,8 @@ class _MainShellPageState extends State<MainShellPage> {
         },
         children: _pages,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
+      bottomNavigationBar: MainBottomNavBar(
+        currentIndex: _currentIndex,
         onDestinationSelected: (index) {
           setState(() => _currentIndex = index);
           _pageController.animateToPage(
@@ -56,28 +57,6 @@ class _MainShellPageState extends State<MainShellPage> {
             curve: Curves.easeOutCubic,
           );
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dynamic_feed_outlined),
-            selectedIcon: Icon(Icons.dynamic_feed),
-            label: 'Feed',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.travel_explore_outlined),
-            selectedIcon: Icon(Icons.travel_explore),
-            label: 'Explore',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.apps_outlined),
-            selectedIcon: Icon(Icons.apps),
-            label: 'Products',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
       ),
     );
   }

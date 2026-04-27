@@ -53,18 +53,15 @@ class ProfileModel {
       building: '',
       need: '',
       wantToMeet: '',
-      links: const {
-        'website': '',
-        'linkedin': '',
-        'github': '',
-        'x': '',
-      },
+      links: const {'website': '', 'linkedin': '', 'github': '', 'x': ''},
       createdAt: null,
       updatedAt: null,
     );
   }
 
-  factory ProfileModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory ProfileModel.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data() ?? {};
 
     return ProfileModel(

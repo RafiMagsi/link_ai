@@ -22,43 +22,40 @@ final latestPostsProvider = StreamProvider<List<PostModel>>((ref) {
 
 final postCommentsProvider =
     StreamProvider.family<List<PostCommentModel>, String>((ref, postId) {
-  return ref.watch(postRemoteDataSourceProvider).watchComments(postId);
-});
+      return ref.watch(postRemoteDataSourceProvider).watchComments(postId);
+    });
 
 final postInteractionStateProvider =
     FutureProvider.family<PostInteractionState, String>((ref, postId) async {
-  final user = ref.watch(currentUserProvider);
+      final user = ref.watch(currentUserProvider);
 
-  if (user == null) {
-    return const PostInteractionState(
-      liked: false,
-      reposted: false,
-      saved: false,
-    );
-  }
+      if (user == null) {
+        return const PostInteractionState(
+          liked: false,
+          reposted: false,
+          saved: false,
+        );
+      }
 
-  final dataSource = ref.watch(postRemoteDataSourceProvider);
+      final dataSource = ref.watch(postRemoteDataSourceProvider);
 
-  final results = await Future.wait([
-    dataSource.hasLiked(postId: postId, uid: user.uid),
-    dataSource.hasReposted(postId: postId, uid: user.uid),
-    dataSource.hasSaved(postId: postId, uid: user.uid),
-  ]);
+      final results = await Future.wait([
+        dataSource.hasLiked(postId: postId, uid: user.uid),
+        dataSource.hasReposted(postId: postId, uid: user.uid),
+        dataSource.hasSaved(postId: postId, uid: user.uid),
+      ]);
 
-  return PostInteractionState(
-    liked: results[0],
-    reposted: results[1],
-    saved: results[2],
-  );
-});
+      return PostInteractionState(
+        liked: results[0],
+        reposted: results[1],
+        saved: results[2],
+      );
+    });
 
 final postControllerProvider =
     StateNotifierProvider<PostController, AsyncValue<void>>((ref) {
-  return PostController(
-    ref,
-    ref.watch(postRemoteDataSourceProvider),
-  );
-});
+      return PostController(ref, ref.watch(postRemoteDataSourceProvider));
+    });
 
 class PostInteractionState {
   final bool liked;
@@ -73,10 +70,8 @@ class PostInteractionState {
 }
 
 class PostController extends StateNotifier<AsyncValue<void>> {
-  PostController(
-    this._ref,
-    this._postRemoteDataSource,
-  ) : super(const AsyncData(null));
+  PostController(this._ref, this._postRemoteDataSource)
+    : super(const AsyncData(null));
 
   final Ref _ref;
   final PostRemoteDataSource _postRemoteDataSource;
@@ -109,30 +104,24 @@ class PostController extends StateNotifier<AsyncValue<void>> {
   Future<void> toggleLike(String postId) async {
     await _toggleInteraction(
       postId: postId,
-      action: (uid) => _postRemoteDataSource.toggleLike(
-        postId: postId,
-        uid: uid,
-      ),
+      action: (uid) =>
+          _postRemoteDataSource.toggleLike(postId: postId, uid: uid),
     );
   }
 
   Future<void> toggleRepost(String postId) async {
     await _toggleInteraction(
       postId: postId,
-      action: (uid) => _postRemoteDataSource.toggleRepost(
-        postId: postId,
-        uid: uid,
-      ),
+      action: (uid) =>
+          _postRemoteDataSource.toggleRepost(postId: postId, uid: uid),
     );
   }
 
   Future<void> toggleSave(String postId) async {
     await _toggleInteraction(
       postId: postId,
-      action: (uid) => _postRemoteDataSource.toggleSave(
-        postId: postId,
-        uid: uid,
-      ),
+      action: (uid) =>
+          _postRemoteDataSource.toggleSave(postId: postId, uid: uid),
     );
   }
 

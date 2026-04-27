@@ -6,10 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/app_notification_model.dart';
 
 class NotificationRemoteDataSource {
-  NotificationRemoteDataSource(
-    this._firestore,
-    this._messaging,
-  );
+  NotificationRemoteDataSource(this._firestore, this._messaging);
 
   final FirebaseFirestore _firestore;
   final FirebaseMessaging _messaging;
@@ -31,30 +28,24 @@ class NotificationRemoteDataSource {
     return _messaging.getToken();
   }
 
-  Future<void> saveToken({
-    required String uid,
-    required String token,
-  }) async {
+  Future<void> saveToken({required String uid, required String token}) async {
     final platform = Platform.isIOS
         ? 'ios'
         : Platform.isAndroid
-            ? 'android'
-            : 'unknown';
+        ? 'android'
+        : 'unknown';
 
     await _firestore
         .collection('users')
         .doc(uid)
         .collection('fcmTokens')
         .doc(token)
-        .set(
-      {
-        'token': token,
-        'platform': platform,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+        .set({
+          'token': token,
+          'platform': platform,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
   }
 
   Stream<List<AppNotificationModel>> watchMyNotifications(String uid) {
@@ -78,9 +69,7 @@ class NotificationRemoteDataSource {
   }
 
   Future<void> markAsRead(String notificationId) async {
-    await _notifications.doc(notificationId).update({
-      'isRead': true,
-    });
+    await _notifications.doc(notificationId).update({'isRead': true});
   }
 
   Future<void> markAllAsRead(String uid) async {
@@ -93,9 +82,7 @@ class NotificationRemoteDataSource {
     final batch = _firestore.batch();
 
     for (final doc in snapshot.docs) {
-      batch.update(doc.reference, {
-        'isRead': true,
-      });
+      batch.update(doc.reference, {'isRead': true});
     }
 
     await batch.commit();
