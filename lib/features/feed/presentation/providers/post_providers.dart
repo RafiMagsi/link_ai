@@ -44,6 +44,13 @@ final likedPostIdsByUserProvider = StreamProvider.family<List<String>, String>((
   return ref.watch(postRemoteDataSourceProvider).watchLikedPostIdsByUser(uid);
 });
 
+final savedPostIdsByUserProvider = StreamProvider.family<List<String>, String>((
+  ref,
+  uid,
+) {
+  return ref.watch(postRemoteDataSourceProvider).watchSavedPostIdsByUser(uid);
+});
+
 final commentsByAuthorProvider =
     StreamProvider.family<List<PostCommentModel>, String>((ref, uid) {
       return ref.watch(postRemoteDataSourceProvider).watchCommentsByAuthor(uid);
@@ -147,30 +154,30 @@ class PostController extends StateNotifier<AsyncValue<void>> {
         throw Exception('Profile not found. Please log in again.');
       }
 
-      await _postRemoteDataSource.createPost(
-        profile: profile,
-        text: text,
-        imageFiles: imageFiles,
-      ).timeout(
-        const Duration(seconds: 60),
-        onTimeout: () => throw TimeoutException('Post creation timed out'),
-      );
+      await _postRemoteDataSource
+          .createPost(profile: profile, text: text, imageFiles: imageFiles)
+          .timeout(
+            const Duration(seconds: 60),
+            onTimeout: () => throw TimeoutException('Post creation timed out'),
+          );
 
       state = const AsyncData(null);
     } on ValidationError catch (error, stackTrace) {
-     debugPrint('Validation error creating post: $error');
+      debugPrint('Validation error creating post: $error');
       state = AsyncError(error, stackTrace);
     } on FileSizeError catch (error, stackTrace) {
-     debugPrint('File size error creating post: $error');
+      debugPrint('File size error creating post: $error');
       state = AsyncError(error, stackTrace);
     } on TimeoutException catch (error, stackTrace) {
-     debugPrint('Timeout creating post: $error');
+      debugPrint('Timeout creating post: $error');
       state = AsyncError(
-        Exception('Post creation took too long. Please check your connection and try again.'),
+        Exception(
+          'Post creation took too long. Please check your connection and try again.',
+        ),
         stackTrace,
       );
     } catch (error, stackTrace) {
-     debugPrint('Error creating post: $error\n$stackTrace');
+      debugPrint('Error creating post: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -221,27 +228,25 @@ class PostController extends StateNotifier<AsyncValue<void>> {
         throw Exception('Profile not found. Please log in again.');
       }
 
-      await _postRemoteDataSource.addComment(
-        profile: profile,
-        postId: postId,
-        text: text,
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () => throw TimeoutException('Adding comment timed out'),
-      );
+      await _postRemoteDataSource
+          .addComment(profile: profile, postId: postId, text: text)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () => throw TimeoutException('Adding comment timed out'),
+          );
 
       state = const AsyncData(null);
     } on ValidationError catch (error, stackTrace) {
-     debugPrint('Validation error adding comment: $error');
+      debugPrint('Validation error adding comment: $error');
       state = AsyncError(error, stackTrace);
     } on TimeoutException catch (error, stackTrace) {
-     debugPrint('Timeout adding comment: $error');
+      debugPrint('Timeout adding comment: $error');
       state = AsyncError(
         Exception('Comment submission took too long. Please try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-     debugPrint('Error adding comment: $error\n$stackTrace');
+      debugPrint('Error adding comment: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -271,26 +276,25 @@ class PostController extends StateNotifier<AsyncValue<void>> {
         throw ValidationError('Reason cannot exceed 1000 characters');
       }
 
-      await _postRemoteDataSource.reportPost(
-        postId: postId,
-        reporterUid: user.uid,
-        reason: reason,
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Report submission timed out'),
-      );
+      await _postRemoteDataSource
+          .reportPost(postId: postId, reporterUid: user.uid, reason: reason)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () =>
+                throw TimeoutException('Report submission timed out'),
+          );
       state = const AsyncData(null);
     } on ValidationError catch (error, stackTrace) {
-     debugPrint('Validation error reporting post: $error');
+      debugPrint('Validation error reporting post: $error');
       state = AsyncError(error, stackTrace);
     } on TimeoutException catch (error, stackTrace) {
-     debugPrint('Timeout reporting post: $error');
+      debugPrint('Timeout reporting post: $error');
       state = AsyncError(
         Exception('Report submission took too long. Please try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-     debugPrint('Error reporting post: $error\n$stackTrace');
+      debugPrint('Error reporting post: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -314,20 +318,21 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     try {
       await action(user.uid).timeout(
         const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('Interaction request timed out'),
+        onTimeout: () =>
+            throw TimeoutException('Interaction request timed out'),
       );
 
       _ref.invalidate(postInteractionStateProvider(postId));
 
       state = const AsyncData(null);
     } on TimeoutException catch (error, stackTrace) {
-     debugPrint('Timeout toggling interaction: $error');
+      debugPrint('Timeout toggling interaction: $error');
       state = AsyncError(
         Exception('Operation took too long. Please try again.'),
         stackTrace,
       );
     } catch (error, stackTrace) {
-     debugPrint('Error toggling interaction: $error\n$stackTrace');
+      debugPrint('Error toggling interaction: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }

@@ -32,15 +32,12 @@ class ProductRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .timeout(
-          const Duration(seconds: 10),
-          onTimeout: (sink) => sink.close(),
-        )
+        .timeout(const Duration(seconds: 10), onTimeout: (sink) => sink.close())
         .map((snapshot) {
           try {
             return snapshot.docs.map(ProductModel.fromFirestore).toList();
           } catch (error, stackTrace) {
-           debugPrint('Error parsing public products: $error\n$stackTrace');
+            debugPrint('Error parsing public products: $error\n$stackTrace');
             return [];
           }
         });
@@ -52,32 +49,30 @@ class ProductRemoteDataSource {
         .orderBy('updatedAt', descending: true)
         .limit(limit)
         .snapshots()
-        .timeout(
-          const Duration(seconds: 10),
-          onTimeout: (sink) => sink.close(),
-        )
+        .timeout(const Duration(seconds: 10), onTimeout: (sink) => sink.close())
         .map((snapshot) {
           try {
             return snapshot.docs.map(ProductModel.fromFirestore).toList();
           } catch (error, stackTrace) {
-           debugPrint('Error parsing user products for $uid: $error\n$stackTrace');
+            debugPrint(
+              'Error parsing user products for $uid: $error\n$stackTrace',
+            );
             return [];
           }
         });
   }
 
   Stream<ProductModel?> watchProduct(String productId) {
-    return _products.doc(productId).snapshots()
-        .timeout(
-          const Duration(seconds: 10),
-          onTimeout: (sink) => sink.close(),
-        )
+    return _products
+        .doc(productId)
+        .snapshots()
+        .timeout(const Duration(seconds: 10), onTimeout: (sink) => sink.close())
         .map((doc) {
           try {
             if (!doc.exists) return null;
             return ProductModel.fromFirestore(doc);
           } catch (error, stackTrace) {
-           debugPrint('Error parsing product $productId: $error\n$stackTrace');
+            debugPrint('Error parsing product $productId: $error\n$stackTrace');
             return null;
           }
         });
@@ -112,19 +107,23 @@ class ProductRemoteDataSource {
             'productMedia/${profile.uid}/$productId/$fileName',
           );
 
-          await ref.putFile(
-            file,
-            SettableMetadata(
-              contentType: 'image/jpeg',
-              customMetadata: {'uid': profile.uid, 'productId': productId},
-            ),
-          ).timeout(const Duration(seconds: 30));
+          await ref
+              .putFile(
+                file,
+                SettableMetadata(
+                  contentType: 'image/jpeg',
+                  customMetadata: {'uid': profile.uid, 'productId': productId},
+                ),
+              )
+              .timeout(const Duration(seconds: 30));
 
-          final url = await ref.getDownloadURL().timeout(const Duration(seconds: 10));
+          final url = await ref.getDownloadURL().timeout(
+            const Duration(seconds: 10),
+          );
 
           uploadedScreenshots.add(ProductScreenshotModel(url: url, order: i));
         } catch (error, stackTrace) {
-         debugPrint('Error uploading screenshot $i: $error\n$stackTrace');
+          debugPrint('Error uploading screenshot $i: $error\n$stackTrace');
           rethrow;
         }
       }
@@ -156,54 +155,69 @@ class ProductRemoteDataSource {
         updatedAt: null,
       );
 
-      await _products.doc(productId).set(product.toCreateMap()).timeout(const Duration(seconds: 10));
+      await _products
+          .doc(productId)
+          .set(product.toCreateMap())
+          .timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-     debugPrint('Error creating product: $error\n$stackTrace');
+      debugPrint('Error creating product: $error\n$stackTrace');
       rethrow;
     }
   }
 
   Future<void> updateProduct(ProductModel product) async {
     try {
-      await _products.doc(product.id).update(product.toUpdateMap()).timeout(const Duration(seconds: 10));
+      await _products
+          .doc(product.id)
+          .update(product.toUpdateMap())
+          .timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-     debugPrint('Error updating product ${product.id}: $error\n$stackTrace');
+      debugPrint('Error updating product ${product.id}: $error\n$stackTrace');
       rethrow;
     }
   }
 
   Future<void> archiveProduct(String productId) async {
     try {
-      await _products.doc(productId).update({
-        'status': 'archived',
-        'updatedAt': FieldValue.serverTimestamp(),
-      }).timeout(const Duration(seconds: 10));
+      await _products
+          .doc(productId)
+          .update({
+            'status': 'archived',
+            'updatedAt': FieldValue.serverTimestamp(),
+          })
+          .timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-     debugPrint('Error archiving product $productId: $error\n$stackTrace');
+      debugPrint('Error archiving product $productId: $error\n$stackTrace');
       rethrow;
     }
   }
 
   Future<void> unlistProduct(String productId) async {
     try {
-      await _products.doc(productId).update({
-        'visibility': 'unlisted',
-        'updatedAt': FieldValue.serverTimestamp(),
-      }).timeout(const Duration(seconds: 10));
+      await _products
+          .doc(productId)
+          .update({
+            'visibility': 'unlisted',
+            'updatedAt': FieldValue.serverTimestamp(),
+          })
+          .timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-     debugPrint('Error unlisting product $productId: $error\n$stackTrace');
+      debugPrint('Error unlisting product $productId: $error\n$stackTrace');
       rethrow;
     }
   }
 
   Future<void> makeProductPublic(String productId) async {
     try {
-      await _products.doc(productId).update({
-        'visibility': 'public',
-        'updatedAt': FieldValue.serverTimestamp(),
-      }).timeout(const Duration(seconds: 10));
+      await _products
+          .doc(productId)
+          .update({
+            'visibility': 'public',
+            'updatedAt': FieldValue.serverTimestamp(),
+          })
+          .timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-     debugPrint('Error making product $productId public: $error\n$stackTrace');
+      debugPrint('Error making product $productId public: $error\n$stackTrace');
       rethrow;
     }
   }
@@ -213,12 +227,41 @@ class ProductRemoteDataSource {
     required String uid,
   }) async {
     try {
-      final doc = await _productSaves.doc('${productId}_$uid').get().timeout(const Duration(seconds: 10));
+      final doc = await _productSaves
+          .doc('${productId}_$uid')
+          .get()
+          .timeout(const Duration(seconds: 10));
       return doc.exists;
     } catch (error, stackTrace) {
-     debugPrint('Error checking if product $productId saved by $uid: $error\n$stackTrace');
+      debugPrint(
+        'Error checking if product $productId saved by $uid: $error\n$stackTrace',
+      );
       return false;
     }
+  }
+
+  Stream<List<String>> watchSavedProductIdsByUser(
+    String uid, {
+    int limit = 50,
+  }) {
+    return _productSaves
+        .where('uid', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) {
+          try {
+            return snapshot.docs
+                .map((doc) => (doc.data()['productId'] as String?) ?? '')
+                .where((id) => id.isNotEmpty)
+                .toList();
+          } catch (error, stackTrace) {
+            debugPrint(
+              'Error parsing saved product IDs for user $uid: $error\n$stackTrace',
+            );
+            return [];
+          }
+        });
   }
 
   Future<void> toggleSaveProduct({
@@ -230,35 +273,42 @@ class ProductRemoteDataSource {
       final saveRef = _productSaves.doc(saveId);
       final productRef = _products.doc(productId);
 
-      await _firestore.runTransaction((transaction) async {
-        final saveSnapshot = await transaction.get(saveRef);
+      await _firestore
+          .runTransaction((transaction) async {
+            final saveSnapshot = await transaction.get(saveRef);
 
-        if (saveSnapshot.exists) {
-          transaction.delete(saveRef);
-          transaction.update(productRef, {
-            'savesCount': FieldValue.increment(-1),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        } else {
-          transaction.set(saveRef, {
-            'id': saveId,
-            'productId': productId,
-            'uid': uid,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-          transaction.update(productRef, {
-            'savesCount': FieldValue.increment(1),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        }
-      }).timeout(const Duration(seconds: 10));
+            if (saveSnapshot.exists) {
+              transaction.delete(saveRef);
+              transaction.update(productRef, {
+                'savesCount': FieldValue.increment(-1),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
+            } else {
+              transaction.set(saveRef, {
+                'id': saveId,
+                'productId': productId,
+                'uid': uid,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
+              transaction.update(productRef, {
+                'savesCount': FieldValue.increment(1),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
+            }
+          })
+          .timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
-     debugPrint('Error toggling save on product $productId by user $uid: $error\n$stackTrace');
+      debugPrint(
+        'Error toggling save on product $productId by user $uid: $error\n$stackTrace',
+      );
       rethrow;
     }
   }
 
-  Future<List<ProductModel>> searchProducts(String query, {int limit = 20}) async {
+  Future<List<ProductModel>> searchProducts(
+    String query, {
+    int limit = 20,
+  }) async {
     if (query.isEmpty) {
       return [];
     }
@@ -277,15 +327,18 @@ class ProductRemoteDataSource {
             try {
               return ProductModel.fromFirestore(doc);
             } catch (error, stackTrace) {
-             debugPrint('Error parsing product in search: $error\n$stackTrace');
+              debugPrint(
+                'Error parsing product in search: $error\n$stackTrace',
+              );
               return null;
             }
           })
           .whereType<ProductModel>()
           .where((product) {
             final nameMatch = product.name.toLowerCase().contains(queryLower);
-            final categoryMatch =
-                product.category.toLowerCase().contains(queryLower);
+            final categoryMatch = product.category.toLowerCase().contains(
+              queryLower,
+            );
             final tagsMatch = product.tags.any(
               (tag) => tag.toLowerCase().contains(queryLower),
             );
@@ -297,7 +350,7 @@ class ProductRemoteDataSource {
 
       return results;
     } catch (error, stackTrace) {
-     debugPrint('Error searching products: $error\n$stackTrace');
+      debugPrint('Error searching products: $error\n$stackTrace');
       return [];
     }
   }

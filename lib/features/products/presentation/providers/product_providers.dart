@@ -54,6 +54,13 @@ final productSaveStateProvider = FutureProvider.family<bool, String>((
       .hasSavedProduct(productId: productId, uid: user.uid);
 });
 
+final savedProductIdsByUserProvider =
+    StreamProvider.family<List<String>, String>((ref, uid) {
+      return ref
+          .watch(productRemoteDataSourceProvider)
+          .watchSavedProductIdsByUser(uid);
+    });
+
 final productControllerProvider =
     StateNotifierProvider<ProductController, AsyncValue<void>>((ref) {
       return ProductController(ref, ref.watch(productRemoteDataSourceProvider));
@@ -95,7 +102,9 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
         throw ValidationError('Product description cannot be empty');
       }
       if (description.length > 2000) {
-        throw ValidationError('Product description cannot exceed 2000 characters');
+        throw ValidationError(
+          'Product description cannot exceed 2000 characters',
+        );
       }
 
       if (category.trim().isEmpty) {
@@ -141,24 +150,27 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
         throw Exception('Profile not found. Please log in again.');
       }
 
-      await _productRemoteDataSource.createProduct(
-        profile: profile,
-        name: name,
-        tagline: tagline,
-        description: description,
-        category: category,
-        tags: tags,
-        pricing: pricing,
-        websiteUrl: websiteUrl,
-        demoUrl: demoUrl,
-        githubUrl: githubUrl,
-        platforms: platforms,
-        version: version,
-        screenshotFiles: screenshotFiles,
-      ).timeout(
-        const Duration(seconds: 120),
-        onTimeout: () => throw TimeoutException('Product creation timed out'),
-      );
+      await _productRemoteDataSource
+          .createProduct(
+            profile: profile,
+            name: name,
+            tagline: tagline,
+            description: description,
+            category: category,
+            tags: tags,
+            pricing: pricing,
+            websiteUrl: websiteUrl,
+            demoUrl: demoUrl,
+            githubUrl: githubUrl,
+            platforms: platforms,
+            version: version,
+            screenshotFiles: screenshotFiles,
+          )
+          .timeout(
+            const Duration(seconds: 120),
+            onTimeout: () =>
+                throw TimeoutException('Product creation timed out'),
+          );
 
       state = const AsyncData(null);
     } on ValidationError catch (error, stackTrace) {
@@ -170,7 +182,9 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
     } on TimeoutException catch (error, stackTrace) {
       debugPrint('Timeout creating product: $error');
       state = AsyncError(
-        Exception('Product creation took too long. Please check your connection and try again.'),
+        Exception(
+          'Product creation took too long. Please check your connection and try again.',
+        ),
         stackTrace,
       );
     } catch (error, stackTrace) {
@@ -192,10 +206,12 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
         throw ValidationError('Product description cannot be empty');
       }
 
-      await _productRemoteDataSource.updateProduct(product).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () => throw TimeoutException('Product update timed out'),
-      );
+      await _productRemoteDataSource
+          .updateProduct(product)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () => throw TimeoutException('Product update timed out'),
+          );
       state = const AsyncData(null);
     } on ValidationError catch (error, stackTrace) {
       debugPrint('Validation error updating product: $error');
@@ -216,10 +232,13 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
-      await _productRemoteDataSource.archiveProduct(productId).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Archive operation timed out'),
-      );
+      await _productRemoteDataSource
+          .archiveProduct(productId)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () =>
+                throw TimeoutException('Archive operation timed out'),
+          );
       state = const AsyncData(null);
     } on TimeoutException catch (error, stackTrace) {
       debugPrint('Timeout archiving product: $error');
@@ -237,10 +256,13 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
-      await _productRemoteDataSource.unlistProduct(productId).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Unlist operation timed out'),
-      );
+      await _productRemoteDataSource
+          .unlistProduct(productId)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () =>
+                throw TimeoutException('Unlist operation timed out'),
+          );
       state = const AsyncData(null);
     } on TimeoutException catch (error, stackTrace) {
       debugPrint('Timeout unlisting product: $error');
@@ -258,10 +280,13 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
-      await _productRemoteDataSource.makeProductPublic(productId).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Publish operation timed out'),
-      );
+      await _productRemoteDataSource
+          .makeProductPublic(productId)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () =>
+                throw TimeoutException('Publish operation timed out'),
+          );
       state = const AsyncData(null);
     } on TimeoutException catch (error, stackTrace) {
       debugPrint('Timeout publishing product: $error');
@@ -289,13 +314,12 @@ class ProductController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
-      await _productRemoteDataSource.toggleSaveProduct(
-        productId: productId,
-        uid: user.uid,
-      ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('Save operation timed out'),
-      );
+      await _productRemoteDataSource
+          .toggleSaveProduct(productId: productId, uid: user.uid)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException('Save operation timed out'),
+          );
 
       _ref.invalidate(productSaveStateProvider(productId));
 

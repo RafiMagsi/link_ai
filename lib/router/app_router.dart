@@ -10,6 +10,7 @@ import '../features/auth/presentation/providers/auth_providers.dart';
 import '../features/profile/presentation/pages/edit_profile_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/public_profile_page.dart';
+import '../features/profile/presentation/pages/saved_items_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/admin/presentation/pages/admin_settings_page.dart';
 import '../features/admin/presentation/providers/admin_providers.dart';
@@ -137,6 +138,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/profile/edit',
         name: 'edit-profile',
         builder: (context, state) => const EditProfilePage(),
+      ),
+      GoRoute(
+        path: '/profile/saved',
+        name: 'saved-items',
+        builder: (context, state) => const SavedItemsPage(),
       ),
       GoRoute(
         path: '/profiles/:uid',

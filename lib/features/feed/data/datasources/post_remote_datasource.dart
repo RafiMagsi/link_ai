@@ -65,29 +65,29 @@ class PostRemoteDataSource {
   }
 
   Stream<List<PostCommentModel>> watchComments(String postId) {
-    return _posts.doc(postId).collection('comments').snapshots().distinct().map((
-      snapshot,
-    ) {
-      try {
-        final comments = snapshot.docs
-            .map(PostCommentModel.fromFirestore)
-            .toList();
-        comments.sort((a, b) {
-          final aTime = a.createdAt ?? a.createdAtClient;
-          final bTime = b.createdAt ?? b.createdAtClient;
-          if (aTime == null && bTime == null) return 0;
-          if (aTime == null) return -1;
-          if (bTime == null) return 1;
-          return aTime.compareTo(bTime);
-        });
-        return comments;
-      } catch (error, stackTrace) {
-        debugPrint(
-          'Error parsing comments for post $postId: $error\n$stackTrace',
-        );
-        return [];
-      }
-    });
+    return _posts.doc(postId).collection('comments').snapshots().distinct().map(
+      (snapshot) {
+        try {
+          final comments = snapshot.docs
+              .map(PostCommentModel.fromFirestore)
+              .toList();
+          comments.sort((a, b) {
+            final aTime = a.createdAt ?? a.createdAtClient;
+            final bTime = b.createdAt ?? b.createdAtClient;
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return -1;
+            if (bTime == null) return 1;
+            return aTime.compareTo(bTime);
+          });
+          return comments;
+        } catch (error, stackTrace) {
+          debugPrint(
+            'Error parsing comments for post $postId: $error\n$stackTrace',
+          );
+          return [];
+        }
+      },
+    );
   }
 
   Future<void> createPost({
@@ -201,18 +201,20 @@ class PostRemoteDataSource {
 
   Stream<List<PostModel>> watchPostsByHashtag(String tag, {int limit = 50}) {
     final normalized = tag.toLowerCase();
-    return _posts.where('hashtags', arrayContains: normalized).snapshots().distinct().map((
-      snapshot,
-    ) {
-      final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
-      // Client-side sorting as fallback
-      posts.sort(
-        (a, b) => (b.createdAt ?? DateTime.now()).compareTo(
-          a.createdAt ?? DateTime.now(),
-        ),
-      );
-      return posts.take(limit).toList();
-    });
+    return _posts
+        .where('hashtags', arrayContains: normalized)
+        .snapshots()
+        .distinct()
+        .map((snapshot) {
+          final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
+          // Client-side sorting as fallback
+          posts.sort(
+            (a, b) => (b.createdAt ?? DateTime.now()).compareTo(
+              a.createdAt ?? DateTime.now(),
+            ),
+          );
+          return posts.take(limit).toList();
+        });
   }
 
   Stream<List<PostModel>> watchPostsByAuthor(String uid, {int limit = 50}) {
@@ -256,6 +258,27 @@ class PostRemoteDataSource {
         });
   }
 
+  Stream<List<String>> watchSavedPostIdsByUser(String uid, {int limit = 50}) {
+    return _postSaves
+        .where('uid', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) {
+          try {
+            return snapshot.docs
+                .map((doc) => (doc.data()['postId'] as String?) ?? '')
+                .where((id) => id.isNotEmpty)
+                .toList();
+          } catch (error, stackTrace) {
+            debugPrint(
+              'Error parsing saved post IDs for user $uid: $error\n$stackTrace',
+            );
+            return [];
+          }
+        });
+  }
+
   Stream<List<PostCommentModel>> watchCommentsByAuthor(
     String uid, {
     int limit = 50,
@@ -271,8 +294,7 @@ class PostRemoteDataSource {
         .transform(
           StreamTransformer.fromHandlers(
             handleData: (QuerySnapshot<Map<String, dynamic>> snapshot, sink) {
-              final docIds =
-                  snapshot.docs.map((d) => d.id).take(2).join(',');
+              final docIds = snapshot.docs.map((d) => d.id).take(2).join(',');
               debugPrint(
                 '🔴 [SNAPSHOT] ${snapshot.docs.length} docs [$docIds...]',
               );
@@ -292,7 +314,8 @@ class PostRemoteDataSource {
         .distinct()
         .map((snapshot) {
           try {
-            final snapshotDocs = (snapshot as QuerySnapshot<Map<String, dynamic>>).docs;
+            final snapshotDocs =
+                (snapshot as QuerySnapshot<Map<String, dynamic>>).docs;
             final comments = snapshotDocs
                 .map(PostCommentModel.fromFirestore)
                 .toList();

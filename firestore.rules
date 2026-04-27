@@ -70,7 +70,7 @@ service cloud.firestore {
     }
 
     match /postLikes/{likeId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid;
       allow delete: if isSignedIn()
@@ -79,7 +79,7 @@ service cloud.firestore {
     }
 
     match /postReposts/{repostId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid;
       allow delete: if isSignedIn()
@@ -88,11 +88,16 @@ service cloud.firestore {
     }
 
     match /postSaves/{saveId} {
-      allow read: if isSignedIn();
+      allow read: if true;
+
       allow create: if isSignedIn()
-        && request.resource.data.uid == request.auth.uid;
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.postId is string
+        && request.resource.data.id == saveId;
+
       allow delete: if isSignedIn()
         && resource.data.uid == request.auth.uid;
+
       allow update: if false;
     }
 
@@ -183,10 +188,13 @@ service cloud.firestore {
     }
 
     match /productSaves/{saveId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
 
       allow create: if isSignedIn()
-        && request.resource.data.uid == request.auth.uid;
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.productId is string
+        && request.resource.data.id == saveId;
 
       allow delete: if isSignedIn()
         && resource.data.uid == request.auth.uid;

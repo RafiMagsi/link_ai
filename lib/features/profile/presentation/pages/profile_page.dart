@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../../core/widgets/app_loader.dart';
+import '../widgets/profile_options_sidebar.dart';
 import '../widgets/profile_view.dart';
 
 class ProfilePage extends ConsumerWidget {
@@ -24,42 +25,40 @@ class ProfilePage extends ConsumerWidget {
               showBackButton: showBackButton,
               onEditProfile: () => context.push('/profile/edit'),
               onOpenMenu: () async {
-                final action = await showModalBottomSheet<String>(
+                await showProfileOptionsSidebar(
                   context: context,
-                  showDragHandle: true,
-                  builder: (context) {
-                    return SafeArea(
-                      top: false,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const ListTile(title: Text('Profile actions')),
-                          const Divider(height: 1),
-                          ListTile(
-                            leading: const Icon(Icons.settings),
-                            title: const Text('Settings'),
-                            onTap: () => Navigator.of(context).pop('settings'),
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.logout),
-                            title: const Text('Logout'),
-                            onTap: () => Navigator.of(context).pop('logout'),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                      ),
-                    );
-                  },
+                  title: 'Profile options',
+                  actions: [
+                    ProfileSidebarAction(
+                      icon: Icons.bookmark_border,
+                      label: 'View saved',
+                      onTap: () {
+                        if (context.mounted) context.push('/profile/saved');
+                      },
+                    ),
+                    ProfileSidebarAction(
+                      icon: Icons.notifications_outlined,
+                      label: 'Notifications',
+                      onTap: () {
+                        if (context.mounted) context.push('/notifications');
+                      },
+                    ),
+                    ProfileSidebarAction(
+                      icon: Icons.settings_outlined,
+                      label: 'Settings',
+                      onTap: () {
+                        if (context.mounted) context.push('/settings');
+                      },
+                    ),
+                    ProfileSidebarAction(
+                      icon: Icons.logout,
+                      label: 'Logout',
+                      onTap: () {
+                        ref.read(authControllerProvider.notifier).logout();
+                      },
+                    ),
+                  ],
                 );
-
-                if (!context.mounted || action == null) return;
-                if (action == 'settings') {
-                  context.push('/settings');
-                  return;
-                }
-                if (action == 'logout') {
-                  ref.read(authControllerProvider.notifier).logout();
-                }
               },
             ),
     );

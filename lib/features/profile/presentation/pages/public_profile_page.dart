@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../widgets/profile_options_sidebar.dart';
 import '../widgets/profile_view.dart';
 
 class PublicProfilePage extends ConsumerWidget {
@@ -18,39 +19,25 @@ class PublicProfilePage extends ConsumerWidget {
         showBackButton: true,
         onEditProfile: () {},
         onOpenMenu: () async {
-          final action = await showModalBottomSheet<String>(
+          await showProfileOptionsSidebar(
             context: context,
-            showDragHandle: true,
-            builder: (context) {
-              return SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const ListTile(title: Text('Profile actions')),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.link),
-                      title: const Text('Copy profile link'),
-                      onTap: () => Navigator.of(context).pop('copy'),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              );
-            },
+            title: 'Profile options',
+            actions: [
+              ProfileSidebarAction(
+                icon: Icons.link,
+                label: 'Copy profile link',
+                onTap: () async {
+                  await Clipboard.setData(
+                    ClipboardData(text: 'linkai://profiles/$uid'),
+                  );
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('Link copied')));
+                },
+              ),
+            ],
           );
-
-          if (!context.mounted || action == null) return;
-          if (action == 'copy') {
-            await Clipboard.setData(
-              ClipboardData(text: 'linkai://profiles/$uid'),
-            );
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Link copied')));
-          }
         },
       ),
     );
