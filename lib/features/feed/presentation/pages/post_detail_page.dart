@@ -28,6 +28,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
   final _scrollController = ScrollController();
 
   bool _isSending = false;
+  bool _shouldAutoScrollAfterSend = true;
 
   @override
   void dispose() {
@@ -36,13 +37,24 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
     super.dispose();
   }
 
-  void _scrollToComposer() {
+  void _scrollToBottom() {
     if (!_scrollController.hasClients) return;
     _scrollController.animateTo(
       _scrollController.position.maxScrollExtent,
       duration: const Duration(milliseconds: 240),
       curve: Curves.easeOutCubic,
     );
+  }
+
+  void _captureAutoScrollIntent() {
+    if (!_scrollController.hasClients) {
+      _shouldAutoScrollAfterSend = true;
+      return;
+    }
+
+    final position = _scrollController.position;
+    final distanceToBottom = position.maxScrollExtent - position.pixels;
+    _shouldAutoScrollAfterSend = distanceToBottom < 120;
   }
 
   Future<void> _addComment() async {
@@ -59,6 +71,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
       return;
     }
 
+    _captureAutoScrollIntent();
     setState(() => _isSending = true);
     final controller = ref.read(postControllerProvider.notifier);
     await controller.addComment(postId: widget.postId, text: text);
@@ -75,7 +88,9 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
     }
 
     _commentController.clear();
-    _scrollToComposer();
+    if (_shouldAutoScrollAfterSend) {
+      _scrollToBottom();
+    }
   }
 
   @override
@@ -107,7 +122,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                       child: FeedPostCard(
                         post: resolvedPost,
                         onTap: null,
-                        onCommentTap: _scrollToComposer,
+                        onCommentTap: _scrollToBottom,
                       ),
                     ),
                     if (resolvedPost.hashtags.isNotEmpty)
