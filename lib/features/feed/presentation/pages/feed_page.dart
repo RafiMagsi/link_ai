@@ -6,6 +6,8 @@ import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../../core/widgets/skeleton_post_card.dart';
+import '../../../../core/widgets/retry_error_widget.dart';
+import '../../../../core/errors/error_handler.dart';
 import '../../data/models/post_model.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/post_providers.dart';
@@ -34,7 +36,10 @@ class FeedPage extends ConsumerWidget {
             ],
           ),
           actions: [
-            IconButton(onPressed: () {}, icon: const Icon(Icons.search)),
+            IconButton(
+              onPressed: () => context.push('/search'),
+              icon: const Icon(Icons.search),
+            ),
             Consumer(
               builder: (context, ref, _) {
                 final unreadState = ref.watch(unreadNotificationsCountProvider);
@@ -80,7 +85,31 @@ class FeedPage extends ConsumerWidget {
         ),
         floatingActionButton: FloatingActionButton.extended(
           heroTag: 'feed_fab',
-          onPressed: () => context.push('/posts/create'),
+          onPressed: () async {
+            try {
+              if (context.mounted) {
+                context.push('/posts/create');
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(ErrorHandler.getUserFriendlyMessage(e)),
+                    action: SnackBarAction(
+                      label: 'Retry',
+                      onPressed: () async {
+                        try {
+                          if (context.mounted) {
+                            context.push('/posts/create');
+                          }
+                        } catch (_) {}
+                      },
+                    ),
+                  ),
+                );
+              }
+            }
+          },
           icon: const Icon(Icons.add),
           label: const Text('Post'),
         ),
@@ -168,10 +197,38 @@ class _FeedList extends ConsumerWidget {
               return FeedPostCard(
                 post: post,
                 onCommentTap: () {
-                  context.push('/posts/${post.id}', extra: post);
+                  try {
+                    if (context.mounted) {
+                      context.push('/posts/${post.id}', extra: post);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            ErrorHandler.getUserFriendlyMessage(e),
+                          ),
+                        ),
+                      );
+                    }
+                  }
                 },
                 onTap: () {
-                  context.push('/posts/${post.id}', extra: post);
+                  try {
+                    if (context.mounted) {
+                      context.push('/posts/${post.id}', extra: post);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            ErrorHandler.getUserFriendlyMessage(e),
+                          ),
+                        ),
+                      );
+                    }
+                  }
                 },
               );
             },
@@ -187,8 +244,10 @@ class _FeedList extends ConsumerWidget {
             return const SkeletonPostCard();
           },
         ),
-        error: (error, stackTrace) =>
-            const Center(child: Text('Unable to load feed.')),
+        error: (error, stackTrace) => RetryErrorWidget(
+          error: error,
+          onRetry: () => ref.invalidate(latestPostsProvider),
+        ),
       ),
     );
   }
@@ -214,13 +273,45 @@ class _FeedComposerEntry extends ConsumerWidget {
             AppUserAvatar(
               avatarUrl: myProfile?.avatarUrl,
               radius: 24,
-              onTap: () => context.push('/profile'),
+              onTap: () {
+                try {
+                  if (context.mounted) {
+                    context.push('/profile');
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          ErrorHandler.getUserFriendlyMessage(e),
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
             ),
             const SizedBox(width: AppSizes.lg),
             Expanded(
               child: InkWell(
                 borderRadius: BorderRadius.circular(AppSizes.radiusCircle),
-                onTap: () => context.push('/posts/create'),
+                onTap: () {
+                  try {
+                    if (context.mounted) {
+                      context.push('/posts/create');
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            ErrorHandler.getUserFriendlyMessage(e),
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSizes.lg,

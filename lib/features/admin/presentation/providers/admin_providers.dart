@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../../core/errors/error_handler.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/app_config_remote_datasource.dart';
@@ -45,16 +48,32 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
   Future<void> createDefaultConfigIfMissing() async {
     final user = _firebaseAuth.currentUser;
 
-    if (user == null) return;
+    if (user == null) {
+      state = AsyncError(
+        Exception('User is not logged in.'),
+        StackTrace.current,
+      );
+      return;
+    }
 
     state = const AsyncLoading();
 
     try {
       await _appConfigRemoteDataSource.createDefaultIfMissing(
         updatedBy: user.uid,
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw TimeoutException('Config initialization timed out'),
       );
       state = const AsyncData(null);
+    } on TimeoutException catch (error, stackTrace) {
+      print('Timeout creating default config: $error');
+      state = AsyncError(
+        Exception('Configuration initialization took too long. Please try again.'),
+        stackTrace,
+      );
     } catch (error, stackTrace) {
+      print('Error creating default config: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -70,15 +89,46 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
       return;
     }
 
+    // Check admin status
+    try {
+      final idTokenResult = await user.getIdTokenResult();
+      final isAdmin = idTokenResult.claims?['admin'] == true;
+
+      if (!isAdmin) {
+        state = AsyncError(
+          Exception('Only administrators can update app configuration.'),
+          StackTrace.current,
+        );
+        return;
+      }
+    } catch (e) {
+      print('Error checking admin status: $e');
+      state = AsyncError(
+        Exception('Unable to verify admin privileges. Please try again.'),
+        StackTrace.current,
+      );
+      return;
+    }
+
     state = const AsyncLoading();
 
     try {
       await _appConfigRemoteDataSource.updateGlobalConfig(
         config: config,
         updatedBy: user.uid,
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw TimeoutException('Config update timed out'),
       );
       state = const AsyncData(null);
+    } on TimeoutException catch (error, stackTrace) {
+      print('Timeout updating config: $error');
+      state = AsyncError(
+        Exception('Configuration update took too long. Please try again.'),
+        stackTrace,
+      );
     } catch (error, stackTrace) {
+      print('Error updating config: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -87,9 +137,21 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
-      await _firebaseAuth.currentUser?.getIdTokenResult(true);
+      await _firebaseAuth.currentUser
+          ?.getIdTokenResult(true)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw TimeoutException('Token refresh timed out'),
+          );
       state = const AsyncData(null);
+    } on TimeoutException catch (error, stackTrace) {
+      print('Timeout refreshing admin claim: $error');
+      state = AsyncError(
+        Exception('Token refresh took too long. Please try again.'),
+        stackTrace,
+      );
     } catch (error, stackTrace) {
+      print('Error refreshing admin claim: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }

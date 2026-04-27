@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/errors/error_handler.dart';
 import '../../data/models/product_model.dart';
 import '../providers/product_providers.dart';
 
@@ -72,34 +73,58 @@ class _EditProductPageState extends ConsumerState<EditProductPage> {
   }
 
   Future<void> _save() async {
-    final updated = widget.product.copyWith(
-      name: _nameController.text.trim(),
-      tagline: _taglineController.text.trim(),
-      description: _descriptionController.text.trim(),
-      category: _categoryController.text.trim(),
-      tags: _splitCsv(_tagsController.text),
-      pricing: _pricingController.text.trim(),
-      websiteUrl: _websiteUrlController.text.trim(),
-      demoUrl: _demoUrlController.text.trim(),
-      githubUrl: _githubUrlController.text.trim(),
-      platforms: _splitCsv(_platformsController.text),
-      version: _versionController.text.trim(),
-    );
-
-    await ref.read(productControllerProvider.notifier).updateProduct(updated);
-
-    final state = ref.read(productControllerProvider);
-
-    if (!mounted) return;
-
-    if (state.hasError) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to update product.')),
+    try {
+      final updated = widget.product.copyWith(
+        name: _nameController.text.trim(),
+        tagline: _taglineController.text.trim(),
+        description: _descriptionController.text.trim(),
+        category: _categoryController.text.trim(),
+        tags: _splitCsv(_tagsController.text),
+        pricing: _pricingController.text.trim(),
+        websiteUrl: _websiteUrlController.text.trim(),
+        demoUrl: _demoUrlController.text.trim(),
+        githubUrl: _githubUrlController.text.trim(),
+        platforms: _splitCsv(_platformsController.text),
+        version: _versionController.text.trim(),
       );
-      return;
-    }
 
-    Navigator.of(context).pop();
+      await ref.read(productControllerProvider.notifier).updateProduct(updated);
+
+      final state = ref.read(productControllerProvider);
+
+      if (!mounted) return;
+
+      if (state.hasError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Unable to update product: ${ErrorHandler.getUserFriendlyMessage(state.error)}',
+            ),
+            action: SnackBarAction(label: 'Retry', onPressed: _save),
+          ),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product updated successfully!')),
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to update product: ${ErrorHandler.getUserFriendlyMessage(e)}',
+          ),
+          action: SnackBarAction(label: 'Retry', onPressed: _save),
+        ),
+      );
+    }
   }
 
   @override

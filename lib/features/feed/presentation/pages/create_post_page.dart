@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../../../../core/config/app_limits.dart';
 import '../../../../core/config/app_limits_provider.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
+import '../../../../core/errors/error_handler.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/post_providers.dart';
 
@@ -60,31 +62,48 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
 
     final remaining = limits.postMaxMediaItems - _selectedMedia.length;
 
-    final pickedImages = await _imagePicker.pickMultiImage(
-      imageQuality: 85,
-      maxWidth: 1600,
-    );
+    try {
+      final pickedImages = await _imagePicker.pickMultiImage(
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
 
-    if (pickedImages.isEmpty) return;
+      if (pickedImages.isEmpty) return; // User cancelled
 
-    final selected = <File>[];
-    for (final image in pickedImages.take(remaining)) {
-      final file = File(image.path);
-      final sizeBytes = await file.length();
+      if (!mounted) return;
 
-      if (sizeBytes > limits.imageMaxBytes) {
-        _showMessage(
-          'Image is larger than ${_bytesToMb(limits.imageMaxBytes)} MB.',
-        );
-        continue;
+      final selected = <File>[];
+      for (final image in pickedImages.take(remaining)) {
+        try {
+          final file = File(image.path);
+          final sizeBytes = await file.length();
+
+          if (sizeBytes > limits.imageMaxBytes) {
+            _showMessage(
+              'Image is larger than ${_bytesToMb(limits.imageMaxBytes)} MB.',
+            );
+            continue;
+          }
+
+          selected.add(file);
+        } catch (e) {
+          if (mounted) {
+            _showMessage('Failed to process image: ${ErrorHandler.getUserFriendlyMessage(e)}');
+          }
+        }
       }
 
-      selected.add(file);
-    }
+      if (!mounted) return;
 
-    setState(() {
-      _selectedMedia.addAll(selected);
-    });
+      setState(() {
+        _selectedMedia.addAll(selected);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(
+        'Failed to pick images: ${ErrorHandler.getUserFriendlyMessage(e)}',
+      );
+    }
   }
 
   void _removeMedia(int index) {
@@ -97,6 +116,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     final limits = ref.read(appLimitsProvider);
     final text = _textController.text.trim();
 
+    // Validation
     if (!_isValidForSubmit(limits)) {
       if (!_hasAnyContent) {
         _showMessage('Write something or add media.');
@@ -118,38 +138,61 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     });
 
     // Until we have per-file progress, provide a simple "alive" indicator.
-    final progressTimer =
-        Stream.periodic(
-          const Duration(milliseconds: 220),
-          (tick) => tick,
-        ).listen((_) {
-          if (!mounted || !_isUploading) return;
-          setState(() {
-            _uploadProgress = (_uploadProgress + 0.07).clamp(0.05, 0.90);
+    late final StreamSubscription<int> progressTimer;
+    try {
+      progressTimer = Stream.periodic(
+            const Duration(milliseconds: 220),
+            (tick) => tick,
+          ).listen((_) {
+            if (!mounted || !_isUploading) return;
+            setState(() {
+              _uploadProgress = (_uploadProgress + 0.07).clamp(0.05, 0.90);
+            });
           });
-        });
 
-    await ref
-        .read(postControllerProvider.notifier)
-        .createPost(text: text, imageFiles: imageFiles);
+      await ref
+          .read(postControllerProvider.notifier)
+          .createPost(text: text, imageFiles: imageFiles);
 
-    await progressTimer.cancel();
+      await progressTimer.cancel();
 
-    final state = ref.read(postControllerProvider);
+      final state = ref.read(postControllerProvider);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isUploading = false;
-      _uploadProgress = 0;
-    });
+      setState(() {
+        _isUploading = false;
+        _uploadProgress = 0;
+      });
 
-    if (state.hasError) {
-      _showMessage('Unable to create post.');
-      return;
+      if (state.hasError) {
+        _showMessage(
+          'Unable to create post: ${ErrorHandler.getUserFriendlyMessage(state.error)}',
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post created successfully!')),
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      await progressTimer.cancel();
+
+      if (!mounted) return;
+
+      setState(() {
+        _isUploading = false;
+        _uploadProgress = 0;
+      });
+
+      _showMessage(
+        'Failed to create post: ${ErrorHandler.getUserFriendlyMessage(e)}',
+      );
     }
-
-    Navigator.of(context).pop();
   }
 
   void _showMessage(String message) {

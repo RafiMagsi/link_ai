@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/app_loader.dart';
+import '../../../../core/errors/error_handler.dart';
 import '../providers/product_providers.dart';
 
 class CreateProductPage extends ConsumerStatefulWidget {
@@ -65,18 +66,27 @@ class _CreateProductPageState extends ConsumerState<CreateProductPage> {
 
     final remaining = _maxScreenshots - _screenshots.length;
 
-    final images = await _imagePicker.pickMultiImage(
-      imageQuality: 85,
-      maxWidth: 1600,
-    );
-
-    if (images.isEmpty) return;
-
-    setState(() {
-      _screenshots.addAll(
-        images.take(remaining).map((image) => File(image.path)),
+    try {
+      final images = await _imagePicker.pickMultiImage(
+        imageQuality: 85,
+        maxWidth: 1600,
       );
-    });
+
+      if (images.isEmpty) return; // User cancelled
+
+      if (!mounted) return;
+
+      setState(() {
+        _screenshots.addAll(
+          images.take(remaining).map((image) => File(image.path)),
+        );
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(
+        'Failed to pick images: ${ErrorHandler.getUserFriendlyMessage(e)}',
+      );
+    }
   }
 
   void _removeScreenshot(int index) {
@@ -91,6 +101,7 @@ class _CreateProductPageState extends ConsumerState<CreateProductPage> {
     final description = _descriptionController.text.trim();
     final category = _categoryController.text.trim();
 
+    // Form validation
     if (name.isEmpty ||
         tagline.isEmpty ||
         description.isEmpty ||
@@ -99,33 +110,44 @@ class _CreateProductPageState extends ConsumerState<CreateProductPage> {
       return;
     }
 
-    await ref
-        .read(productControllerProvider.notifier)
-        .createProduct(
-          name: name,
-          tagline: tagline,
-          description: description,
-          category: category,
-          tags: _splitCsv(_tagsController.text),
-          pricing: _pricingController.text.trim(),
-          websiteUrl: _websiteUrlController.text.trim(),
-          demoUrl: _demoUrlController.text.trim(),
-          githubUrl: _githubUrlController.text.trim(),
-          platforms: _splitCsv(_platformsController.text),
-          version: _versionController.text.trim(),
-          screenshotFiles: _screenshots,
+    try {
+      await ref
+          .read(productControllerProvider.notifier)
+          .createProduct(
+            name: name,
+            tagline: tagline,
+            description: description,
+            category: category,
+            tags: _splitCsv(_tagsController.text),
+            pricing: _pricingController.text.trim(),
+            websiteUrl: _websiteUrlController.text.trim(),
+            demoUrl: _demoUrlController.text.trim(),
+            githubUrl: _githubUrlController.text.trim(),
+            platforms: _splitCsv(_platformsController.text),
+            version: _versionController.text.trim(),
+            screenshotFiles: _screenshots,
+          );
+
+      final state = ref.read(productControllerProvider);
+
+      if (!mounted) return;
+
+      if (state.hasError) {
+        _showMessage(
+          'Unable to create product: ${ErrorHandler.getUserFriendlyMessage(state.error)}',
         );
+        return;
+      }
 
-    final state = ref.read(productControllerProvider);
-
-    if (!mounted) return;
-
-    if (state.hasError) {
-      _showMessage('Unable to create product.');
-      return;
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(
+        'Failed to create product: ${ErrorHandler.getUserFriendlyMessage(e)}',
+      );
     }
-
-    Navigator.of(context).pop();
   }
 
   void _showMessage(String message) {

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:io';
 
+import 'package:image_picker/image_picker.dart';
+
+import '../../../../core/widgets/app_loader.dart';
+import '../../../../core/errors/error_handler.dart';
 import '../../data/models/profile_model.dart';
 import '../providers/profile_providers.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import '../../../../core/widgets/app_loader.dart';
 
 class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key});
@@ -80,72 +82,127 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   }
 
   Future<void> _save(ProfileModel profile) async {
-    String? avatarUrl = profile.avatarUrl;
+    try {
+      String? avatarUrl = profile.avatarUrl;
 
-    if (_selectedAvatarFile != null) {
-      avatarUrl = await ref
+      if (_selectedAvatarFile != null) {
+        try {
+          avatarUrl = await ref
+              .read(profileControllerProvider.notifier)
+              .uploadAvatar(uid: profile.uid, file: _selectedAvatarFile!);
+
+          if (avatarUrl == null) {
+            if (!mounted) return;
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Unable to upload avatar.'),
+                action: SnackBarAction(label: 'Retry', onPressed: () => _save(profile)),
+              ),
+            );
+            return;
+          }
+        } catch (e) {
+          if (!mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Avatar upload failed: ${ErrorHandler.getUserFriendlyMessage(e)}',
+              ),
+              action: SnackBarAction(label: 'Retry', onPressed: () => _save(profile)),
+            ),
+          );
+          return;
+        }
+      }
+
+      final updatedProfile = profile.copyWith(
+        name: _nameController.text.trim(),
+        role: _roleController.text.trim(),
+        bio: _bioController.text.trim(),
+        location: _locationController.text.trim(),
+        skills: _splitCsv(_skillsController.text),
+        tools: _splitCsv(_toolsController.text),
+        building: _buildingController.text.trim(),
+        need: _needController.text.trim(),
+        wantToMeet: _wantToMeetController.text.trim(),
+        avatarUrl: avatarUrl,
+        links: {
+          'website': _websiteController.text.trim(),
+          'linkedin': _linkedinController.text.trim(),
+          'github': _githubController.text.trim(),
+          'x': _xController.text.trim(),
+        },
+      );
+
+      await ref
           .read(profileControllerProvider.notifier)
-          .uploadAvatar(uid: profile.uid, file: _selectedAvatarFile!);
+          .updateProfile(updatedProfile);
 
-      if (avatarUrl == null) {
-        if (!mounted) return;
+      final state = ref.read(profileControllerProvider);
 
+      if (!mounted) return;
+
+      if (state.hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to upload avatar.')),
+          SnackBar(
+            content: Text(
+              'Unable to update profile: ${ErrorHandler.getUserFriendlyMessage(state.error)}',
+            ),
+            action: SnackBarAction(label: 'Retry', onPressed: () => _save(profile)),
+          ),
         );
         return;
       }
-    }
 
-    final updatedProfile = profile.copyWith(
-      name: _nameController.text.trim(),
-      role: _roleController.text.trim(),
-      bio: _bioController.text.trim(),
-      location: _locationController.text.trim(),
-      skills: _splitCsv(_skillsController.text),
-      tools: _splitCsv(_toolsController.text),
-      building: _buildingController.text.trim(),
-      need: _needController.text.trim(),
-      wantToMeet: _wantToMeetController.text.trim(),
-      avatarUrl: avatarUrl,
-      links: {
-        'website': _websiteController.text.trim(),
-        'linkedin': _linkedinController.text.trim(),
-        'github': _githubController.text.trim(),
-        'x': _xController.text.trim(),
-      },
-    );
-
-    await ref
-        .read(profileControllerProvider.notifier)
-        .updateProfile(updatedProfile);
-
-    final state = ref.read(profileControllerProvider);
-
-    if (!mounted) return;
-
-    if (state.hasError) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to update profile.')),
+        const SnackBar(content: Text('Profile updated successfully!')),
       );
-      return;
-    }
 
-    Navigator.of(context).pop();
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to update profile: ${ErrorHandler.getUserFriendlyMessage(e)}',
+          ),
+          action: SnackBarAction(label: 'Retry', onPressed: () => _save(profile)),
+        ),
+      );
+    }
   }
 
   Future<void> _pickAvatar() async {
-    final pickedFile = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 1200,
-    );
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1200,
+      );
 
-    if (pickedFile == null) return;
+      if (pickedFile == null) return; // User cancelled
 
-    setState(() {
-      _selectedAvatarFile = File(pickedFile.path);
-    });
+      if (!mounted) return;
+
+      setState(() {
+        _selectedAvatarFile = File(pickedFile.path);
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to pick image: ${ErrorHandler.getUserFriendlyMessage(e)}',
+          ),
+        ),
+      );
+    }
   }
 
   @override

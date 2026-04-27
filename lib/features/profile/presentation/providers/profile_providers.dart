@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:developer' as developer;
+import 'dart:async';
 
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../data/datasources/profile_remote_datasource.dart';
@@ -63,7 +65,26 @@ class ProfileController extends StateNotifier<AsyncValue<void>> {
     try {
       await _profileRemoteDataSource.updateProfile(profile);
       state = const AsyncData(null);
+    } on TimeoutException catch (error, stackTrace) {
+      developer.log(
+        'Timeout updating profile for UID: ${profile.uid}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = AsyncError(error, stackTrace);
+    } on FirebaseException catch (error, stackTrace) {
+      developer.log(
+        'Firebase error updating profile: ${error.code} - ${error.message}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = AsyncError(error, stackTrace);
     } catch (error, stackTrace) {
+      developer.log(
+        'Error updating profile for UID: ${profile.uid}',
+        error: error,
+        stackTrace: stackTrace,
+      );
       state = AsyncError(error, stackTrace);
     }
   }
@@ -82,7 +103,28 @@ class ProfileController extends StateNotifier<AsyncValue<void>> {
 
       state = const AsyncData(null);
       return avatarUrl;
+    } on TimeoutException catch (error, stackTrace) {
+      developer.log(
+        'Timeout uploading avatar for UID: $uid',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = AsyncError(error, stackTrace);
+      return null;
+    } on FirebaseException catch (error, stackTrace) {
+      developer.log(
+        'Firebase Storage error uploading avatar: ${error.code} - ${error.message}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = AsyncError(error, stackTrace);
+      return null;
     } catch (error, stackTrace) {
+      developer.log(
+        'Error uploading avatar for UID: $uid',
+        error: error,
+        stackTrace: stackTrace,
+      );
       state = AsyncError(error, stackTrace);
       return null;
     }

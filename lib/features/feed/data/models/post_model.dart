@@ -12,15 +12,60 @@ class PostMediaModel {
   });
 
   factory PostMediaModel.fromMap(Map<String, dynamic> map) {
-    return PostMediaModel(
-      url: map['url'] as String? ?? '',
-      type: map['type'] as String? ?? 'image',
-      order: map['order'] as int? ?? 0,
-    );
+    try {
+      // Safely extract and validate fields
+      final url = (map['url'] as String?)?.trim() ?? '';
+      final type = (map['type'] as String?)?.trim() ?? 'image';
+      final order = _safeParseInt(map['order']);
+
+      // Validate URL format
+      if (url.isNotEmpty && !_isValidUrl(url)) {
+        print('Invalid URL in PostMediaModel: $url');
+      }
+
+      return PostMediaModel(
+        url: url,
+        type: type,
+        order: order,
+      );
+    } catch (e) {
+      print('Error parsing PostMediaModel from map: $e');
+      return PostMediaModel(
+        url: (map['url'] as String?) ?? '',
+        type: (map['type'] as String?) ?? 'image',
+        order: 0,
+      );
+    }
+  }
+
+  static int _safeParseInt(dynamic value) {
+    try {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    } catch (e) {
+      print('Error parsing int value: $e');
+      return 0;
+    }
+  }
+
+  static bool _isValidUrl(String url) {
+    try {
+      Uri.parse(url);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   Map<String, dynamic> toMap() {
-    return {'url': url, 'type': type, 'order': order};
+    try {
+      return {'url': url, 'type': type, 'order': order};
+    } catch (e) {
+      print('Error converting PostMediaModel to map: $e');
+      return {'url': '', 'type': 'image', 'order': 0};
+    }
   }
 }
 
@@ -58,29 +103,120 @@ class PostModel {
   });
 
   factory PostModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data() ?? {};
+    try {
+      final data = doc.data() ?? {};
 
-    return PostModel(
-      id: data['id'] as String? ?? doc.id,
-      authorUid: data['authorUid'] as String? ?? '',
-      authorName: data['authorName'] as String? ?? '',
-      authorRole: data['authorRole'] as String? ?? '',
-      authorAvatarUrl: data['authorAvatarUrl'] as String?,
-      text: data['text'] as String? ?? '',
-      hashtags: List<String>.from(data['hashtags'] ?? const <String>[]),
-      media: ((data['media'] as List?) ?? [])
-          .map(
-            (item) =>
-                PostMediaModel.fromMap(Map<String, dynamic>.from(item as Map)),
-          )
-          .toList(),
-      likesCount: data['likesCount'] as int? ?? 0,
-      repostsCount: data['repostsCount'] as int? ?? 0,
-      commentsCount: data['commentsCount'] as int? ?? 0,
-      savesCount: data['savesCount'] as int? ?? 0,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
-    );
+      return PostModel(
+        id: _safeString(data['id'], fallback: doc.id),
+        authorUid: _safeString(data['authorUid']),
+        authorName: _safeString(data['authorName']),
+        authorRole: _safeString(data['authorRole']),
+        authorAvatarUrl: data['authorAvatarUrl'] as String?,
+        text: _safeString(data['text']),
+        hashtags: _safeStringList(data['hashtags']),
+        media: _safeMediaList(data['media']),
+        likesCount: _safeInt(data['likesCount']),
+        repostsCount: _safeInt(data['repostsCount']),
+        commentsCount: _safeInt(data['commentsCount']),
+        savesCount: _safeInt(data['savesCount']),
+        createdAt: _safeTimestamp(data['createdAt']),
+        updatedAt: _safeTimestamp(data['updatedAt']),
+      );
+    } catch (e) {
+      print('Error parsing PostModel from Firestore: $e');
+      // Return a minimal valid post on error
+      return PostModel(
+        id: doc.id,
+        authorUid: '',
+        authorName: '',
+        authorRole: '',
+        authorAvatarUrl: null,
+        text: '',
+        hashtags: const [],
+        media: const [],
+        likesCount: 0,
+        repostsCount: 0,
+        commentsCount: 0,
+        savesCount: 0,
+        createdAt: null,
+        updatedAt: null,
+      );
+    }
+  }
+
+  static String _safeString(dynamic value, {String fallback = ''}) {
+    try {
+      if (value == null) return fallback;
+      if (value is String) return value.trim();
+      return value.toString().trim();
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  static int _safeInt(dynamic value) {
+    try {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  static List<String> _safeStringList(dynamic value) {
+    try {
+      if (value == null) return [];
+      if (value is List) {
+        return value
+            .whereType<String>()
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error parsing string list: $e');
+      return [];
+    }
+  }
+
+  static List<PostMediaModel> _safeMediaList(dynamic value) {
+    try {
+      if (value == null) return [];
+      if (value is List) {
+        return value
+            .map((item) {
+              try {
+                return PostMediaModel.fromMap(
+                  Map<String, dynamic>.from(item as Map),
+                );
+              } catch (e) {
+                print('Error parsing media item: $e');
+                return null;
+              }
+            })
+            .whereType<PostMediaModel>()
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error parsing media list: $e');
+      return [];
+    }
+  }
+
+  static DateTime? _safeTimestamp(dynamic value) {
+    try {
+      if (value == null) return null;
+      if (value is Timestamp) return value.toDate();
+      if (value is DateTime) return value;
+      return null;
+    } catch (e) {
+      print('Error parsing timestamp: $e');
+      return null;
+    }
   }
 
   Map<String, dynamic> toCreateMap() {

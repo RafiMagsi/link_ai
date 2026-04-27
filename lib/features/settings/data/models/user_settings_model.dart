@@ -16,6 +16,9 @@ class UserSettingsModel {
   final bool videoAutoplay;
   final bool muteVideosByDefault;
 
+  final bool onboardingShown;
+  final DateTime? lastOnboardingDismissAt;
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -30,6 +33,8 @@ class UserSettingsModel {
     required this.notifyProductActivity,
     required this.videoAutoplay,
     required this.muteVideosByDefault,
+    required this.onboardingShown,
+    required this.lastOnboardingDismissAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -46,6 +51,8 @@ class UserSettingsModel {
       notifyProductActivity: true,
       videoAutoplay: true,
       muteVideosByDefault: true,
+      onboardingShown: false,
+      lastOnboardingDismissAt: null,
       createdAt: null,
       updatedAt: null,
     );
@@ -67,6 +74,9 @@ class UserSettingsModel {
       notifyProductActivity: data['notifyProductActivity'] as bool? ?? true,
       videoAutoplay: data['videoAutoplay'] as bool? ?? true,
       muteVideosByDefault: data['muteVideosByDefault'] as bool? ?? true,
+      onboardingShown: data['onboardingShown'] as bool? ?? false,
+      lastOnboardingDismissAt:
+          (data['lastOnboardingDismissAt'] as Timestamp?)?.toDate(),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
     );
@@ -84,6 +94,8 @@ class UserSettingsModel {
       'notifyProductActivity': notifyProductActivity,
       'videoAutoplay': videoAutoplay,
       'muteVideosByDefault': muteVideosByDefault,
+      'onboardingShown': onboardingShown,
+      'lastOnboardingDismissAt': lastOnboardingDismissAt,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -100,6 +112,8 @@ class UserSettingsModel {
       'notifyProductActivity': notifyProductActivity,
       'videoAutoplay': videoAutoplay,
       'muteVideosByDefault': muteVideosByDefault,
+      'onboardingShown': onboardingShown,
+      'lastOnboardingDismissAt': lastOnboardingDismissAt,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -114,6 +128,8 @@ class UserSettingsModel {
     bool? notifyProductActivity,
     bool? videoAutoplay,
     bool? muteVideosByDefault,
+    bool? onboardingShown,
+    DateTime? lastOnboardingDismissAt,
   }) {
     return UserSettingsModel(
       uid: uid,
@@ -128,6 +144,9 @@ class UserSettingsModel {
           notifyProductActivity ?? this.notifyProductActivity,
       videoAutoplay: videoAutoplay ?? this.videoAutoplay,
       muteVideosByDefault: muteVideosByDefault ?? this.muteVideosByDefault,
+      onboardingShown: onboardingShown ?? this.onboardingShown,
+      lastOnboardingDismissAt:
+          lastOnboardingDismissAt ?? this.lastOnboardingDismissAt,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

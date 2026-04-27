@@ -23,25 +23,35 @@ class _AppLoaderState extends State<AppLoader>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    )..repeat();
+    try {
+      _controller = AnimationController(
+        duration: const Duration(milliseconds: 1200),
+        vsync: this,
+      )..repeat();
 
-    _rotation = Tween<double>(begin: 0, end: 6.28).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.linear),
-    );
+      _rotation = Tween<double>(begin: 0, end: 6.28).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.linear),
+      );
 
-    _opacity = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.4, end: 1.0), weight: 50),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.4), weight: 50),
-    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+      _opacity = TweenSequence<double>([
+        TweenSequenceItem(tween: Tween(begin: 0.4, end: 1.0), weight: 50),
+        TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.4), weight: 50),
+      ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    } catch (e) {
+      print('Error initializing AppLoader animations: $e');
+      rethrow;
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
-    super.dispose();
+    try {
+      _controller.dispose();
+    } catch (e) {
+      print('Error disposing AppLoader animation controller: $e');
+    } finally {
+      super.dispose();
+    }
   }
 
   @override
@@ -89,55 +99,64 @@ class _GradientCirclePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width / 2) - (strokeWidth / 2);
+    try {
+      final center = Offset(size.width / 2, size.height / 2);
+      final radius = (size.width / 2) - (strokeWidth / 2);
 
-    // Create gradient
-    final gradient = SweepGradient(
-      colors: [
-        primaryColor.withValues(alpha: opacity),
-        secondaryColor.withValues(alpha: opacity),
-        primaryColor.withValues(alpha: opacity * 0.4),
-      ],
-      stops: const [0.0, 0.5, 1.0],
-      startAngle: 0,
-      endAngle: 6.28,
-    );
+      // Validate dimensions
+      if (radius <= 0 || !center.isFinite) {
+        return;
+      }
 
-    final paint = Paint()
-      ..shader = gradient.createShader(
+      // Create gradient
+      final gradient = SweepGradient(
+        colors: [
+          primaryColor.withValues(alpha: opacity),
+          secondaryColor.withValues(alpha: opacity),
+          primaryColor.withValues(alpha: opacity * 0.4),
+        ],
+        stops: const [0.0, 0.5, 1.0],
+        startAngle: 0,
+        endAngle: 6.28,
+      );
+
+      final paint = Paint()
+        ..shader = gradient.createShader(
+          Rect.fromCircle(center: center, radius: radius),
+        )
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round
+        ..style = PaintingStyle.stroke
+        ..isAntiAlias = true;
+
+      // Draw arc with animation
+      final sweepAngle = 2.5 + (progress * 0.5);
+      canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
-      )
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke
-      ..isAntiAlias = true;
+        0,
+        sweepAngle,
+        false,
+        paint,
+      );
 
-    // Draw arc with animation
-    final sweepAngle = 2.5 + (progress * 0.5);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      0,
-      sweepAngle,
-      false,
-      paint,
-    );
+      // Draw secondary arc (trailing)
+      final secondaryPaint = Paint()
+        ..color = secondaryColor.withValues(alpha: opacity * 0.2)
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round
+        ..style = PaintingStyle.stroke
+        ..isAntiAlias = true;
 
-    // Draw secondary arc (trailing)
-    final secondaryPaint = Paint()
-      ..color = secondaryColor.withValues(alpha: opacity * 0.2)
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke
-      ..isAntiAlias = true;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      sweepAngle + 0.3,
-      1.5,
-      false,
-      secondaryPaint,
-    );
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        sweepAngle + 0.3,
+        1.5,
+        false,
+        secondaryPaint,
+      );
+    } catch (e) {
+      print('Error painting AppLoader: $e');
+    }
   }
 
   @override

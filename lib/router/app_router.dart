@@ -21,14 +21,18 @@ import '../features/connect/presentation/pages/send_connect_request_page.dart';
 import '../features/notifications/presentation/pages/notifications_page.dart';
 import '../features/feed/data/models/post_model.dart';
 import '../features/explore/presentation/pages/hashtag_page.dart';
+import '../features/explore/presentation/pages/search_page.dart';
 import '../features/products/data/models/product_model.dart';
 import '../features/products/presentation/pages/create_product_page.dart';
 import '../features/products/presentation/pages/edit_product_page.dart';
 import '../features/products/presentation/pages/product_detail_page.dart';
+import '../features/onboarding/presentation/pages/onboarding_page.dart';
+import '../features/onboarding/presentation/providers/onboarding_providers.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
   final adminStatus = ref.watch(adminStatusProvider);
+  final shouldShowOnboarding = ref.watch(shouldShowOnboardingProvider);
 
   return GoRouter(
     initialLocation: '/feed',
@@ -36,40 +40,72 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ref.watch(authRemoteDataSourceProvider).authStateChanges(),
     ),
     redirect: (context, state) {
-      final user = authState.asData?.value;
-      final isLoggedIn = user != null;
+      try {
+        final user = authState.asData?.value;
+        final isLoggedIn = user != null;
 
-      final isAuthRoute =
-          state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register';
+        final isAuthRoute =
+            state.matchedLocation == '/login' ||
+            state.matchedLocation == '/register';
 
-      final isAdminRoute = state.matchedLocation.startsWith('/admin');
+        final isAdminRoute = state.matchedLocation.startsWith('/admin');
+        final isOnboardingRoute = state.matchedLocation == '/onboarding';
+        final isEditProfileRoute = state.matchedLocation == '/profile/edit';
 
-      if (authState.isLoading) {
-        return null;
-      }
-
-      if (!isLoggedIn && !isAuthRoute) {
-        return '/login';
-      }
-
-      if (isLoggedIn && isAuthRoute) {
-        return '/feed';
-      }
-
-      if (isAdminRoute) {
-        final isAdmin = adminStatus.asData?.value == true;
-
-        if (adminStatus.isLoading) {
+        // Handle auth state loading
+        if (authState.isLoading) {
           return null;
         }
 
-        if (!isAdmin) {
+        // Handle auth state errors
+        if (authState.hasError) {
+          return '/login';
+        }
+
+        // Redirect unauthenticated users to login
+        if (!isLoggedIn && !isAuthRoute) {
+          return '/login';
+        }
+
+        // Redirect authenticated users away from auth routes
+        if (isLoggedIn && isAuthRoute) {
           return '/feed';
         }
-      }
 
-      return null;
+        // Handle onboarding
+        if (isLoggedIn && !isOnboardingRoute && !isEditProfileRoute) {
+          try {
+            if (shouldShowOnboarding) {
+              return '/onboarding';
+            }
+          } catch (e) {
+            // Silently fail onboarding check and continue
+            debugPrint('Onboarding check error: $e');
+          }
+        }
+
+        // Handle admin access control
+        if (isAdminRoute) {
+          if (adminStatus.isLoading) {
+            return null;
+          }
+
+          if (adminStatus.hasError) {
+            return '/feed';
+          }
+
+          final isAdmin = adminStatus.asData?.value == true;
+          if (!isAdmin) {
+            return '/feed';
+          }
+        }
+
+        return null;
+      } catch (e) {
+        // On any redirect error, default to login for safety
+        debugPrint('Router redirect error: $e');
+        return '/login';
+      }
     },
     routes: [
       GoRoute(
@@ -81,6 +117,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/register',
         name: 'register',
         builder: (context, state) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingPage(),
       ),
       GoRoute(
         path: '/feed',
@@ -101,8 +142,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/profiles/:uid',
         name: 'public-profile',
         builder: (context, state) {
-          final uid = state.pathParameters['uid']!;
-          return PublicProfilePage(uid: uid);
+          try {
+            final uid = state.pathParameters['uid'];
+            if (uid == null || uid.isEmpty) {
+              return const Scaffold(
+                body: Center(child: Text('Invalid user ID.')),
+              );
+            }
+            return PublicProfilePage(uid: uid);
+          } catch (e) {
+            return Scaffold(
+              body: Center(child: Text('Error loading profile: $e')),
+            );
+          }
         },
       ),
       GoRoute(
@@ -124,19 +176,49 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/posts/:postId',
         name: 'post-detail',
         builder: (context, state) {
-          final postId = state.pathParameters['postId']!;
-          final initialPost = state.extra is PostModel
-              ? state.extra as PostModel
-              : null;
-          return PostDetailPage(postId: postId, initialPost: initialPost);
+          try {
+            final postId = state.pathParameters['postId'];
+            if (postId == null || postId.isEmpty) {
+              return const Scaffold(
+                body: Center(child: Text('Invalid post ID.')),
+              );
+            }
+            final initialPost = state.extra is PostModel
+                ? state.extra as PostModel
+                : null;
+            return PostDetailPage(postId: postId, initialPost: initialPost);
+          } catch (e) {
+            return Scaffold(
+              body: Center(child: Text('Error loading post: $e')),
+            );
+          }
         },
       ),
       GoRoute(
         path: '/hashtags/:tag',
         name: 'hashtag',
         builder: (context, state) {
-          final tag = state.pathParameters['tag']!;
-          return HashtagPage(tag: tag);
+          try {
+            final tag = state.pathParameters['tag'];
+            if (tag == null || tag.isEmpty) {
+              return const Scaffold(
+                body: Center(child: Text('Invalid hashtag.')),
+              );
+            }
+            return HashtagPage(tag: tag);
+          } catch (e) {
+            return Scaffold(
+              body: Center(child: Text('Error loading hashtag: $e')),
+            );
+          }
+        },
+      ),
+      GoRoute(
+        path: '/search',
+        name: 'search',
+        builder: (context, state) {
+          final tab = state.uri.queryParameters['tab'];
+          return SearchPage(initialTab: tab);
         },
       ),
       GoRoute(
@@ -148,21 +230,44 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/products/:productId',
         name: 'product-detail',
         builder: (context, state) {
-          final productId = state.pathParameters['productId']!;
-          return ProductDetailPage(productId: productId);
+          try {
+            final productId = state.pathParameters['productId'];
+            if (productId == null || productId.isEmpty) {
+              return const Scaffold(
+                body: Center(child: Text('Invalid product ID.')),
+              );
+            }
+            return ProductDetailPage(productId: productId);
+          } catch (e) {
+            return Scaffold(
+              body: Center(child: Text('Error loading product: $e')),
+            );
+          }
         },
       ),
       GoRoute(
         path: '/products/:productId/edit',
         name: 'edit-product',
         builder: (context, state) {
-          final extra = state.extra;
-          if (extra is! ProductModel) {
-            return const Scaffold(
-              body: Center(child: Text('Missing product data.')),
+          try {
+            final productId = state.pathParameters['productId'];
+            if (productId == null || productId.isEmpty) {
+              return const Scaffold(
+                body: Center(child: Text('Invalid product ID.')),
+              );
+            }
+            final extra = state.extra;
+            if (extra is! ProductModel) {
+              return const Scaffold(
+                body: Center(child: Text('Missing product data. Please go back and try again.')),
+              );
+            }
+            return EditProductPage(product: extra);
+          } catch (e) {
+            return Scaffold(
+              body: Center(child: Text('Error loading product: $e')),
             );
           }
-          return EditProductPage(product: extra);
         },
       ),
       GoRoute(
@@ -174,15 +279,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/connect/request/:uid',
         name: 'send-connect-request',
         builder: (context, state) {
-          final uid = state.pathParameters['uid']!;
-          final extra = state.extra;
-          final receiverName = extra is Map
-              ? (extra['receiverName'] as String?) ?? 'AI Builder'
-              : 'AI Builder';
-          return SendConnectRequestPage(
-            receiverUid: uid,
-            receiverName: receiverName,
-          );
+          try {
+            final uid = state.pathParameters['uid'];
+            if (uid == null || uid.isEmpty) {
+              return const Scaffold(
+                body: Center(child: Text('Invalid user ID.')),
+              );
+            }
+            final extra = state.extra;
+            final receiverName = extra is Map
+                ? (extra['receiverName'] as String?) ?? 'AI Builder'
+                : 'AI Builder';
+            return SendConnectRequestPage(
+              receiverUid: uid,
+              receiverName: receiverName,
+            );
+          } catch (e) {
+            return Scaffold(
+              body: Center(child: Text('Error loading page: $e')),
+            );
+          }
         },
       ),
       GoRoute(

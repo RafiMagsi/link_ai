@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'dart:developer' as developer;
 
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../../profile/data/datasources/profile_remote_datasource.dart';
@@ -8,6 +9,7 @@ import '../../../profile/data/models/profile_model.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../../settings/data/datasources/settings_remote_datasource.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
+import '../../../../core/errors/error_handler.dart';
 
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
   return FirebaseAuth.instance;
@@ -75,8 +77,27 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       );
 
       await _settingsRemoteDataSource.createSettingsIfNotExists(user.uid);
+
+      // Mark onboarding as not yet shown (will trigger onboarding flow)
+      await _settingsRemoteDataSource.updateOnboardingShown(
+        user.uid,
+        false,
+      );
+
       state = const AsyncData(null);
+    } on FirebaseAuthException catch (error, stackTrace) {
+      developer.log(
+        'FirebaseAuthException during register: ${error.code} - ${error.message}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = AsyncError(error, stackTrace);
     } catch (error, stackTrace) {
+      developer.log(
+        'Error during register',
+        error: error,
+        stackTrace: stackTrace,
+      );
       state = AsyncError(error, stackTrace);
     }
   }
@@ -106,7 +127,19 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
         user?.uid ?? '0',
       );
       state = const AsyncData(null);
+    } on FirebaseAuthException catch (error, stackTrace) {
+      developer.log(
+        'FirebaseAuthException during login: ${error.code} - ${error.message}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = AsyncError(error, stackTrace);
     } catch (error, stackTrace) {
+      developer.log(
+        'Error during login',
+        error: error,
+        stackTrace: stackTrace,
+      );
       state = AsyncError(error, stackTrace);
     }
   }
@@ -117,7 +150,19 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
     try {
       await _authRemoteDataSource.logout();
       state = const AsyncData(null);
+    } on FirebaseAuthException catch (error, stackTrace) {
+      developer.log(
+        'FirebaseAuthException during logout: ${error.code} - ${error.message}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      state = AsyncError(error, stackTrace);
     } catch (error, stackTrace) {
+      developer.log(
+        'Error during logout',
+        error: error,
+        stackTrace: stackTrace,
+      );
       state = AsyncError(error, stackTrace);
     }
   }

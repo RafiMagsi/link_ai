@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_loader.dart';
+import '../../../../core/errors/error_handler.dart';
 import '../providers/connect_providers.dart';
 
 class SendConnectRequestPage extends ConsumerStatefulWidget {
@@ -36,32 +37,57 @@ class _SendConnectRequestPageState
   Future<void> _send() async {
     final message = _messageController.text.trim();
 
+    // Validation
     if (message.length > _maxLength) {
       _showMessage('Message is too long.');
       return;
     }
 
-    await ref
-        .read(connectControllerProvider.notifier)
-        .sendRequest(receiverUid: widget.receiverUid, message: message);
+    try {
+      await ref
+          .read(connectControllerProvider.notifier)
+          .sendRequest(receiverUid: widget.receiverUid, message: message);
 
-    final state = ref.read(connectControllerProvider);
+      final state = ref.read(connectControllerProvider);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (state.hasError) {
-      _showMessage(_friendlyError(state.error));
-      return;
+      if (state.hasError) {
+        final errorMsg = _friendlyError(state.error);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            action: SnackBarAction(label: 'Retry', onPressed: _send),
+          ),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Connect request sent successfully!')),
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      final errorMsg = _friendlyError(e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg),
+          action: SnackBarAction(label: 'Retry', onPressed: _send),
+        ),
+      );
     }
-
-    Navigator.of(context).pop();
   }
 
   String _friendlyError(Object? error) {
     final raw = error.toString();
 
     if (raw.contains('resource-exhausted')) {
-      return 'Weekly connect request limit reached.';
+      return 'Weekly connect request limit reached. Try again later.';
     }
 
     if (raw.contains('already-exists')) {
@@ -69,10 +95,18 @@ class _SendConnectRequestPageState
     }
 
     if (raw.contains('unauthenticated')) {
-      return 'Please login again.';
+      return 'You\'re not authenticated. Please login again.';
     }
 
-    return 'Unable to send connect request.';
+    if (raw.contains('permission-denied')) {
+      return 'You don\'t have permission to send a connect request.';
+    }
+
+    if (raw.contains('network') || raw.contains('connection')) {
+      return 'Network error. Check your connection and try again.';
+    }
+
+    return ErrorHandler.getUserFriendlyMessage(error);
   }
 
   void _showMessage(String message) {

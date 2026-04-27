@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/errors/error_handler.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../providers/settings_providers.dart';
 import '../../../admin/presentation/providers/admin_providers.dart';
@@ -44,18 +45,44 @@ class SettingsPage extends ConsumerWidget {
       await FirebaseAuth.instance.currentUser?.delete();
 
       if (context.mounted) {
-        context.go('/login');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account deleted successfully.')),
+        );
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (context.mounted) {
+          context.go('/login');
+        }
       }
     } on FirebaseAuthException catch (error) {
       if (!context.mounted) return;
 
       final message = error.code == 'requires-recent-login'
           ? 'Please logout and login again before deleting your account.'
-          : 'Unable to delete account.';
+          : ErrorHandler.getUserFriendlyMessage(error);
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () => _deleteAccount(context, ref),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to delete account: ${ErrorHandler.getUserFriendlyMessage(e)}',
+          ),
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () => _deleteAccount(context, ref),
+          ),
+        ),
+      );
     }
   }
 
@@ -82,7 +109,23 @@ class SettingsPage extends ConsumerWidget {
                       title: const Text('Global Settings'),
                       subtitle: const Text('Limits, feature flags, throttles'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push('/admin/settings'),
+                      onTap: () {
+                        try {
+                          if (context.mounted) {
+                            context.push('/admin/settings');
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  ErrorHandler.getUserFriendlyMessage(e),
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      },
                     ),
                   ],
                 ),
@@ -95,7 +138,23 @@ class SettingsPage extends ConsumerWidget {
                     title: const Text('Edit Profile'),
                     subtitle: const Text('Name, bio, skills, links, avatar'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/profile/edit'),
+                    onTap: () {
+                      try {
+                        if (context.mounted) {
+                          context.push('/profile/edit');
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                ErrorHandler.getUserFriendlyMessage(e),
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
                   ),
                 ],
               ),
@@ -110,11 +169,23 @@ class SettingsPage extends ConsumerWidget {
                     onChanged: controllerState.isLoading
                         ? null
                         : (value) {
-                            ref
-                                .read(settingsControllerProvider.notifier)
-                                .updateSettings(
-                                  settings.copyWith(notifyLikes: value),
+                            try {
+                              ref
+                                  .read(settingsControllerProvider.notifier)
+                                  .updateSettings(
+                                    settings.copyWith(notifyLikes: value),
+                                  );
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Failed to update settings: ${ErrorHandler.getUserFriendlyMessage(e)}',
+                                    ),
+                                  ),
                                 );
+                              }
+                            }
                           },
                   ),
                   SwitchListTile(
@@ -258,8 +329,22 @@ class SettingsPage extends ConsumerWidget {
                     leading: const Icon(Icons.logout),
                     title: const Text('Logout'),
                     onTap: () {
-                      ref.read(authControllerProvider.notifier).logout();
-                      context.go('/login');
+                      try {
+                        ref.read(authControllerProvider.notifier).logout();
+                        if (context.mounted) {
+                          context.go('/login');
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Logout failed: ${ErrorHandler.getUserFriendlyMessage(e)}',
+                              ),
+                            ),
+                          );
+                        }
+                      }
                     },
                   ),
                   ListTile(

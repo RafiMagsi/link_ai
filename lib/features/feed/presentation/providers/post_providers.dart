@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../../core/errors/error_handler.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/datasources/post_remote_datasource.dart';
@@ -116,20 +118,58 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
+      // Validate input
+      if (text.trim().isEmpty) {
+        throw ValidationError('Post text cannot be empty');
+      }
+
+      // Validate image files
+      const maxImageSize = 5 * 1024 * 1024; // 5MB per image
+      const maxTotalSize = 20 * 1024 * 1024; // 20MB total
+      int totalSize = 0;
+
+      for (final file in imageFiles) {
+        final fileSize = file.lengthSync();
+        if (fileSize > maxImageSize) {
+          throw FileSizeError('Image size exceeds 5MB limit');
+        }
+        totalSize += fileSize;
+      }
+
+      if (totalSize > maxTotalSize) {
+        throw FileSizeError('Total image size exceeds 20MB limit');
+      }
+
       final profile = await _ref.read(myProfileProvider.future);
 
       if (profile == null) {
-        throw Exception('Profile not found.');
+        throw Exception('Profile not found. Please log in again.');
       }
 
       await _postRemoteDataSource.createPost(
         profile: profile,
         text: text,
         imageFiles: imageFiles,
+      ).timeout(
+        const Duration(seconds: 60),
+        onTimeout: () => throw TimeoutException('Post creation timed out'),
       );
 
       state = const AsyncData(null);
+    } on ValidationError catch (error, stackTrace) {
+      print('Validation error creating post: $error');
+      state = AsyncError(error, stackTrace);
+    } on FileSizeError catch (error, stackTrace) {
+      print('File size error creating post: $error');
+      state = AsyncError(error, stackTrace);
+    } on TimeoutException catch (error, stackTrace) {
+      print('Timeout creating post: $error');
+      state = AsyncError(
+        Exception('Post creation took too long. Please check your connection and try again.'),
+        stackTrace,
+      );
     } catch (error, stackTrace) {
+      print('Error creating post: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -165,20 +205,42 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
+      // Validate input
+      if (text.trim().isEmpty) {
+        throw ValidationError('Comment text cannot be empty');
+      }
+
+      if (text.length > 500) {
+        throw ValidationError('Comment text cannot exceed 500 characters');
+      }
+
       final profile = await _ref.read(myProfileProvider.future);
 
       if (profile == null) {
-        throw Exception('Profile not found.');
+        throw Exception('Profile not found. Please log in again.');
       }
 
       await _postRemoteDataSource.addComment(
         profile: profile,
         postId: postId,
         text: text,
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw TimeoutException('Adding comment timed out'),
       );
 
       state = const AsyncData(null);
+    } on ValidationError catch (error, stackTrace) {
+      print('Validation error adding comment: $error');
+      state = AsyncError(error, stackTrace);
+    } on TimeoutException catch (error, stackTrace) {
+      print('Timeout adding comment: $error');
+      state = AsyncError(
+        Exception('Comment submission took too long. Please try again.'),
+        stackTrace,
+      );
     } catch (error, stackTrace) {
+      print('Error adding comment: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -188,18 +250,46 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     required String reason,
   }) async {
     final user = _ref.read(currentUserProvider);
-    if (user == null) return;
+    if (user == null) {
+      state = AsyncError(
+        Exception('You must be logged in to report a post.'),
+        StackTrace.current,
+      );
+      return;
+    }
 
     state = const AsyncLoading();
 
     try {
+      // Validate input
+      if (reason.trim().isEmpty) {
+        throw ValidationError('Please provide a reason for reporting');
+      }
+
+      if (reason.length > 1000) {
+        throw ValidationError('Reason cannot exceed 1000 characters');
+      }
+
       await _postRemoteDataSource.reportPost(
         postId: postId,
         reporterUid: user.uid,
         reason: reason,
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw TimeoutException('Report submission timed out'),
       );
       state = const AsyncData(null);
+    } on ValidationError catch (error, stackTrace) {
+      print('Validation error reporting post: $error');
+      state = AsyncError(error, stackTrace);
+    } on TimeoutException catch (error, stackTrace) {
+      print('Timeout reporting post: $error');
+      state = AsyncError(
+        Exception('Report submission took too long. Please try again.'),
+        stackTrace,
+      );
     } catch (error, stackTrace) {
+      print('Error reporting post: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -210,17 +300,33 @@ class PostController extends StateNotifier<AsyncValue<void>> {
   }) async {
     final user = _ref.read(currentUserProvider);
 
-    if (user == null) return;
+    if (user == null) {
+      state = AsyncError(
+        Exception('You must be logged in to perform this action.'),
+        StackTrace.current,
+      );
+      return;
+    }
 
     state = const AsyncLoading();
 
     try {
-      await action(user.uid);
+      await action(user.uid).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException('Interaction request timed out'),
+      );
 
       _ref.invalidate(postInteractionStateProvider(postId));
 
       state = const AsyncData(null);
+    } on TimeoutException catch (error, stackTrace) {
+      print('Timeout toggling interaction: $error');
+      state = AsyncError(
+        Exception('Operation took too long. Please try again.'),
+        stackTrace,
+      );
     } catch (error, stackTrace) {
+      print('Error toggling interaction: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }

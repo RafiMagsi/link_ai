@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:async';
 
+import '../../../../core/errors/error_handler.dart';
 import '../models/connect_request_model.dart';
 import '../models/connection_model.dart';
 
@@ -23,21 +24,66 @@ class ConnectRemoteDataSource {
     required String receiverUid,
     required String message,
   }) async {
-    final callable = _functions.httpsCallable('sendConnectRequest');
-
-    await callable.call({'receiverUid': receiverUid, 'message': message});
+    try {
+      final callable = _functions.httpsCallable('sendConnectRequest');
+      await callable.call({
+        'receiverUid': receiverUid,
+        'message': message,
+      }).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () => throw TimeoutException('Connect request timed out'),
+      );
+    } on FirebaseFunctionsException catch (e) {
+      _handleCloudFunctionError(e, 'sendConnectRequest');
+    } on TimeoutException catch (e) {
+      print('Timeout in sendConnectRequest: $e');
+      throw Exception('Request timed out. Please check your connection and try again.');
+    } catch (e) {
+      print('Error sending connect request: $e');
+      rethrow;
+    }
   }
 
   Future<void> acceptConnectRequest(String requestId) async {
-    final callable = _functions.httpsCallable('respondConnectRequest');
-
-    await callable.call({'requestId': requestId, 'action': 'accept'});
+    try {
+      final callable = _functions.httpsCallable('respondConnectRequest');
+      await callable.call({
+        'requestId': requestId,
+        'action': 'accept',
+      }).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () => throw TimeoutException('Accept request timed out'),
+      );
+    } on FirebaseFunctionsException catch (e) {
+      _handleCloudFunctionError(e, 'acceptConnectRequest');
+    } on TimeoutException catch (e) {
+      print('Timeout in acceptConnectRequest: $e');
+      throw Exception('Request timed out. Please check your connection and try again.');
+    } catch (e) {
+      print('Error accepting connect request: $e');
+      rethrow;
+    }
   }
 
   Future<void> declineConnectRequest(String requestId) async {
-    final callable = _functions.httpsCallable('respondConnectRequest');
-
-    await callable.call({'requestId': requestId, 'action': 'decline'});
+    try {
+      final callable = _functions.httpsCallable('respondConnectRequest');
+      await callable.call({
+        'requestId': requestId,
+        'action': 'decline',
+      }).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () => throw TimeoutException('Decline request timed out'),
+      );
+    } on FirebaseFunctionsException catch (e) {
+      _handleCloudFunctionError(e, 'declineConnectRequest');
+    } on TimeoutException catch (e) {
+      print('Timeout in declineConnectRequest: $e');
+      throw Exception('Request timed out. Please check your connection and try again.');
+    } catch (e) {
+      print('Error declining connect request: $e');
+      rethrow;
+    }
   }
 
   Stream<List<ConnectRequestModel>> watchIncomingRequests(String uid) {
@@ -46,10 +92,18 @@ class ConnectRemoteDataSource {
         .where('status', isEqualTo: 'pending')
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map(ConnectRequestModel.fromFirestore).toList(),
-        );
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+          try {
+            return snapshot.docs.map(ConnectRequestModel.fromFirestore).toList();
+          } catch (error, stackTrace) {
+            print('Error parsing incoming requests for $uid: $error\n$stackTrace');
+            return [];
+          }
+        });
   }
 
   Stream<List<ConnectRequestModel>> watchOutgoingRequests(String uid) {
@@ -57,10 +111,18 @@ class ConnectRemoteDataSource {
         .where('senderUid', isEqualTo: uid)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map(ConnectRequestModel.fromFirestore).toList(),
-        );
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+          try {
+            return snapshot.docs.map(ConnectRequestModel.fromFirestore).toList();
+          } catch (error, stackTrace) {
+            print('Error parsing outgoing requests for $uid: $error\n$stackTrace');
+            return [];
+          }
+        });
   }
 
   Stream<List<ConnectionModel>> watchConnections(String uid) {
@@ -68,15 +130,38 @@ class ConnectRemoteDataSource {
         .where('userUid', isEqualTo: uid)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map(ConnectionModel.fromFirestore).toList(),
-        );
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+          try {
+            return snapshot.docs.map(ConnectionModel.fromFirestore).toList();
+          } catch (error, stackTrace) {
+            print('Error parsing connections for $uid: $error\n$stackTrace');
+            return [];
+          }
+        });
   }
 
   Future<void> sendPing({required String targetUid}) async {
-    final callable = _functions.httpsCallable('sendPing');
-    await callable.call({'targetUid': targetUid});
+    try {
+      final callable = _functions.httpsCallable('sendPing');
+      await callable.call({
+        'targetUid': targetUid,
+      }).timeout(
+        const Duration(seconds: 20),
+        onTimeout: () => throw TimeoutException('Ping request timed out'),
+      );
+    } on FirebaseFunctionsException catch (e) {
+      _handleCloudFunctionError(e, 'sendPing');
+    } on TimeoutException catch (e) {
+      print('Timeout in sendPing: $e');
+      throw Exception('Request timed out. Please check your connection and try again.');
+    } catch (e) {
+      print('Error sending ping: $e');
+      rethrow;
+    }
   }
 
   Future<ConnectRelationshipStatus> getRelationshipStatus({
@@ -132,6 +217,61 @@ class ConnectRemoteDataSource {
     }
 
     return ConnectRelationshipStatus.none;
+  }
+
+  /// Handles FirebaseFunctionsException with proper error mapping
+  Never _handleCloudFunctionError(
+    FirebaseFunctionsException error,
+    String functionName,
+  ) {
+    print('Cloud Function error in $functionName: ${error.code} - ${error.message}');
+
+    switch (error.code) {
+      case 'unauthenticated':
+        throw Exception(
+          'Authentication failed. Please log in again.',
+        );
+      case 'permission-denied':
+        throw Exception(
+          'You do not have permission to perform this action.',
+        );
+      case 'resource-exhausted':
+        throw Exception(
+          'Too many requests. Please wait a moment and try again.',
+        );
+      case 'not-found':
+        throw Exception(
+          'The requested resource was not found. The user may have been deleted.',
+        );
+      case 'invalid-argument':
+        throw Exception(
+          'Invalid request data. Please check your input and try again.',
+        );
+      case 'failed-precondition':
+        throw Exception(
+          'Cannot perform this action at the moment. Please try again.',
+        );
+      case 'aborted':
+        throw Exception(
+          'Operation was cancelled. Please try again.',
+        );
+      case 'internal':
+        throw Exception(
+          'Server error occurred. Please try again later.',
+        );
+      case 'deadline-exceeded':
+        throw Exception(
+          'Request timed out. Please check your connection and try again.',
+        );
+      case 'unavailable':
+        throw Exception(
+          'Service is temporarily unavailable. Please try again later.',
+        );
+      default:
+        throw Exception(
+          'An error occurred while processing your request. Please try again.',
+        );
+    }
   }
 }
 

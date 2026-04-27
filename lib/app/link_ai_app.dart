@@ -4,6 +4,7 @@ import '../core/theme/app_theme.dart';
 import '../core/theme/theme_mode_provider.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
 import '../features/notifications/presentation/providers/notification_providers.dart';
+import '../core/widgets/network_status_banner.dart';
 
 import '../router/app_router.dart';
 
@@ -33,6 +34,19 @@ class LinkAiApp extends ConsumerWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: themeMode,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            child!,
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: NetworkStatusBanner(),
+            ),
+          ],
+        );
+      },
     );
   }
 }

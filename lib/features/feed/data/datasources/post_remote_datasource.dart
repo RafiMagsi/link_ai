@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/errors/error_handler.dart';
 import '../../../../core/utils/hashtag_utils.dart';
 import '../../../profile/data/models/profile_model.dart';
 import '../models/post_comment_model.dart';
@@ -38,13 +40,34 @@ class PostRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map(PostModel.fromFirestore).toList());
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+      try {
+        return snapshot.docs.map(PostModel.fromFirestore).toList();
+      } catch (error, stackTrace) {
+        print('Error parsing posts: $error\n$stackTrace');
+        return [];
+      }
+    });
   }
 
   Stream<PostModel?> watchPost(String postId) {
-    return _posts.doc(postId).snapshots().map((snapshot) {
-      if (!snapshot.exists) return null;
-      return PostModel.fromFirestore(snapshot);
+    return _posts.doc(postId).snapshots()
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+      try {
+        if (!snapshot.exists) return null;
+        return PostModel.fromFirestore(snapshot);
+      } catch (error, stackTrace) {
+        print('Error parsing post $postId: $error\n$stackTrace');
+        return null;
+      }
     });
   }
 
@@ -54,10 +77,18 @@ class PostRemoteDataSource {
         .collection('comments')
         .orderBy('createdAt', descending: false)
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map(PostCommentModel.fromFirestore).toList(),
-        );
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+          try {
+            return snapshot.docs.map(PostCommentModel.fromFirestore).toList();
+          } catch (error, stackTrace) {
+            print('Error parsing comments for post $postId: $error\n$stackTrace');
+            return [];
+          }
+        });
   }
 
   Future<void> createPost({
@@ -65,50 +96,91 @@ class PostRemoteDataSource {
     required String text,
     required List<File> imageFiles,
   }) async {
-    final postId = _posts.doc().id;
+    try {
+      final postId = _posts.doc().id;
 
-    final uploadedMedia = <PostMediaModel>[];
-    final hashtags = HashtagUtils.extractNormalized(text);
+      final uploadedMedia = <PostMediaModel>[];
+      final hashtags = HashtagUtils.extractNormalized(text);
 
-    for (var i = 0; i < imageFiles.length; i++) {
-      final file = imageFiles[i];
-      final fileName = '${_uuid.v4()}.jpg';
+      for (var i = 0; i < imageFiles.length; i++) {
+        try {
+          final file = imageFiles[i];
+          final fileName = '${_uuid.v4()}.jpg';
 
-      final ref = _storage.ref().child(
-        'postMedia/${profile.uid}/$postId/$fileName',
+          final ref = _storage.ref().child(
+            'postMedia/${profile.uid}/$postId/$fileName',
+          );
+
+          await ref.putFile(
+            file,
+            SettableMetadata(
+              contentType: 'image/jpeg',
+              customMetadata: {'uid': profile.uid, 'postId': postId},
+            ),
+          ).timeout(
+            const Duration(seconds: 30),
+            onTimeout: () => throw TimeoutException('Image upload timed out'),
+          );
+
+          final url = await ref.getDownloadURL().timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException('Image URL retrieval timed out'),
+          );
+
+          uploadedMedia.add(PostMediaModel(url: url, type: 'image', order: i));
+        } on FirebaseException catch (e) {
+          print('Firebase error uploading image $i: ${e.code} - ${e.message}');
+          if (e.code == 'storage/quota-exceeded') {
+            throw StorageQuotaError('Storage quota exceeded. Please delete some posts and try again.');
+          } else if (e.code == 'storage/unauthorized') {
+            throw Exception('You do not have permission to upload images.');
+          }
+          rethrow;
+        } on TimeoutException catch (e) {
+          print('Timeout uploading image $i: $e');
+          throw Exception('Image upload took too long. Please check your connection and try again.');
+        } catch (error, stackTrace) {
+          print('Error uploading image $i: $error\n$stackTrace');
+          rethrow;
+        }
+      }
+
+      final post = PostModel(
+        id: postId,
+        authorUid: profile.uid,
+        authorName: profile.name,
+        authorRole: profile.role,
+        authorAvatarUrl: profile.avatarUrl,
+        text: text,
+        hashtags: hashtags,
+        media: uploadedMedia,
+        likesCount: 0,
+        repostsCount: 0,
+        commentsCount: 0,
+        savesCount: 0,
+        createdAt: null,
+        updatedAt: null,
       );
 
-      await ref.putFile(
-        file,
-        SettableMetadata(
-          contentType: 'image/jpeg',
-          customMetadata: {'uid': profile.uid, 'postId': postId},
-        ),
+      await _posts.doc(postId).set(post.toCreateMap()).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException('Post creation timed out'),
       );
-
-      final url = await ref.getDownloadURL();
-
-      uploadedMedia.add(PostMediaModel(url: url, type: 'image', order: i));
+    } on FirebaseException catch (e) {
+      print('Firebase error creating post: ${e.code} - ${e.message}');
+      if (e.code == 'permission-denied') {
+        throw Exception('You do not have permission to create posts.');
+      } else if (e.code == 'resource-exhausted') {
+        throw RateLimitError('Too many posts created recently. Please try again later.');
+      }
+      rethrow;
+    } on TimeoutException catch (e) {
+      print('Timeout creating post: $e');
+      throw Exception('Post creation took too long. Please check your connection and try again.');
+    } catch (error, stackTrace) {
+      print('Error creating post: $error\n$stackTrace');
+      rethrow;
     }
-
-    final post = PostModel(
-      id: postId,
-      authorUid: profile.uid,
-      authorName: profile.name,
-      authorRole: profile.role,
-      authorAvatarUrl: profile.avatarUrl,
-      text: text,
-      hashtags: hashtags,
-      media: uploadedMedia,
-      likesCount: 0,
-      repostsCount: 0,
-      commentsCount: 0,
-      savesCount: 0,
-      createdAt: null,
-      updatedAt: null,
-    );
-
-    await _posts.doc(postId).set(post.toCreateMap());
   }
 
   Stream<List<PostModel>> watchPostsByHashtag(String tag, {int limit = 50}) {
@@ -136,7 +208,18 @@ class PostRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map(PostModel.fromFirestore).toList());
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+          try {
+            return snapshot.docs.map(PostModel.fromFirestore).toList();
+          } catch (error, stackTrace) {
+            print('Error parsing posts by author $uid: $error\n$stackTrace');
+            return [];
+          }
+        });
   }
 
   Stream<List<String>> watchLikedPostIdsByUser(String uid, {int limit = 50}) {
@@ -145,12 +228,21 @@ class PostRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => (doc.data()['postId'] as String?) ?? '')
-              .where((id) => id.isNotEmpty)
-              .toList(),
-        );
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+          try {
+            return snapshot.docs
+                .map((doc) => (doc.data()['postId'] as String?) ?? '')
+                .where((id) => id.isNotEmpty)
+                .toList();
+          } catch (error, stackTrace) {
+            print('Error parsing liked post IDs for user $uid: $error\n$stackTrace');
+            return [];
+          }
+        });
   }
 
   Stream<List<PostCommentModel>> watchCommentsByAuthor(
@@ -163,10 +255,18 @@ class PostRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map(PostCommentModel.fromFirestore).toList(),
-        );
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+          try {
+            return snapshot.docs.map(PostCommentModel.fromFirestore).toList();
+          } catch (error, stackTrace) {
+            print('Error parsing comments by author $uid: $error\n$stackTrace');
+            return [];
+          }
+        });
   }
 
   Future<void> reportPost({
@@ -174,121 +274,170 @@ class PostRemoteDataSource {
     required String reporterUid,
     required String reason,
   }) async {
-    await _firestore.collection('reports').add({
-      'type': 'post',
-      'postId': postId,
-      'reason': reason,
-      'reporterUid': reporterUid,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _firestore.collection('reports').add({
+        'type': 'post',
+        'postId': postId,
+        'reason': reason,
+        'reporterUid': reporterUid,
+        'createdAt': FieldValue.serverTimestamp(),
+      }).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw TimeoutException('Report submission timed out'),
+      );
+    } on FirebaseException catch (e) {
+      print('Firebase error reporting post $postId: ${e.code} - ${e.message}');
+      if (e.code == 'permission-denied') {
+        throw Exception('You do not have permission to report posts.');
+      } else if (e.code == 'resource-exhausted') {
+        throw RateLimitError('Too many reports submitted. Please try again later.');
+      }
+      rethrow;
+    } on TimeoutException catch (e) {
+      print('Timeout reporting post $postId: $e');
+      throw Exception('Report submission took too long. Please try again.');
+    } catch (error, stackTrace) {
+      print('Error reporting post $postId: $error\n$stackTrace');
+      rethrow;
+    }
   }
 
   Future<bool> hasLiked({required String postId, required String uid}) async {
-    final doc = await _postLikes.doc('${postId}_$uid').get();
-    return doc.exists;
+    try {
+      final doc = await _postLikes.doc('${postId}_$uid').get().timeout(const Duration(seconds: 10));
+      return doc.exists;
+    } catch (error, stackTrace) {
+      print('Error checking if post $postId liked by $uid: $error\n$stackTrace');
+      return false;
+    }
   }
 
   Future<bool> hasReposted({
     required String postId,
     required String uid,
   }) async {
-    final doc = await _postReposts.doc('${postId}_$uid').get();
-    return doc.exists;
+    try {
+      final doc = await _postReposts.doc('${postId}_$uid').get().timeout(const Duration(seconds: 10));
+      return doc.exists;
+    } catch (error, stackTrace) {
+      print('Error checking if post $postId reposted by $uid: $error\n$stackTrace');
+      return false;
+    }
   }
 
   Future<bool> hasSaved({required String postId, required String uid}) async {
-    final doc = await _postSaves.doc('${postId}_$uid').get();
-    return doc.exists;
+    try {
+      final doc = await _postSaves.doc('${postId}_$uid').get().timeout(const Duration(seconds: 10));
+      return doc.exists;
+    } catch (error, stackTrace) {
+      print('Error checking if post $postId saved by $uid: $error\n$stackTrace');
+      return false;
+    }
   }
 
   Future<void> toggleLike({required String postId, required String uid}) async {
-    final likeId = '${postId}_$uid';
-    final likeRef = _postLikes.doc(likeId);
-    final postRef = _posts.doc(postId);
+    try {
+      final likeId = '${postId}_$uid';
+      final likeRef = _postLikes.doc(likeId);
+      final postRef = _posts.doc(postId);
 
-    await _firestore.runTransaction((transaction) async {
-      final likeSnapshot = await transaction.get(likeRef);
+      await _firestore.runTransaction((transaction) async {
+        final likeSnapshot = await transaction.get(likeRef);
 
-      if (likeSnapshot.exists) {
-        transaction.delete(likeRef);
-        transaction.update(postRef, {
-          'likesCount': FieldValue.increment(-1),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      } else {
-        transaction.set(likeRef, {
-          'id': likeId,
-          'postId': postId,
-          'uid': uid,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        transaction.update(postRef, {
-          'likesCount': FieldValue.increment(1),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      }
-    });
+        if (likeSnapshot.exists) {
+          transaction.delete(likeRef);
+          transaction.update(postRef, {
+            'likesCount': FieldValue.increment(-1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          transaction.set(likeRef, {
+            'id': likeId,
+            'postId': postId,
+            'uid': uid,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          transaction.update(postRef, {
+            'likesCount': FieldValue.increment(1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }).timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      print('Error toggling like on post $postId by user $uid: $error\n$stackTrace');
+      rethrow;
+    }
   }
 
   Future<void> toggleRepost({
     required String postId,
     required String uid,
   }) async {
-    final repostId = '${postId}_$uid';
-    final repostRef = _postReposts.doc(repostId);
-    final postRef = _posts.doc(postId);
+    try {
+      final repostId = '${postId}_$uid';
+      final repostRef = _postReposts.doc(repostId);
+      final postRef = _posts.doc(postId);
 
-    await _firestore.runTransaction((transaction) async {
-      final repostSnapshot = await transaction.get(repostRef);
+      await _firestore.runTransaction((transaction) async {
+        final repostSnapshot = await transaction.get(repostRef);
 
-      if (repostSnapshot.exists) {
-        transaction.delete(repostRef);
-        transaction.update(postRef, {
-          'repostsCount': FieldValue.increment(-1),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      } else {
-        transaction.set(repostRef, {
-          'id': repostId,
-          'postId': postId,
-          'uid': uid,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        transaction.update(postRef, {
-          'repostsCount': FieldValue.increment(1),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      }
-    });
+        if (repostSnapshot.exists) {
+          transaction.delete(repostRef);
+          transaction.update(postRef, {
+            'repostsCount': FieldValue.increment(-1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          transaction.set(repostRef, {
+            'id': repostId,
+            'postId': postId,
+            'uid': uid,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          transaction.update(postRef, {
+            'repostsCount': FieldValue.increment(1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }).timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      print('Error toggling repost on post $postId by user $uid: $error\n$stackTrace');
+      rethrow;
+    }
   }
 
   Future<void> toggleSave({required String postId, required String uid}) async {
-    final saveId = '${postId}_$uid';
-    final saveRef = _postSaves.doc(saveId);
-    final postRef = _posts.doc(postId);
+    try {
+      final saveId = '${postId}_$uid';
+      final saveRef = _postSaves.doc(saveId);
+      final postRef = _posts.doc(postId);
 
-    await _firestore.runTransaction((transaction) async {
-      final saveSnapshot = await transaction.get(saveRef);
+      await _firestore.runTransaction((transaction) async {
+        final saveSnapshot = await transaction.get(saveRef);
 
-      if (saveSnapshot.exists) {
-        transaction.delete(saveRef);
-        transaction.update(postRef, {
-          'savesCount': FieldValue.increment(-1),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      } else {
-        transaction.set(saveRef, {
-          'id': saveId,
-          'postId': postId,
-          'uid': uid,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        transaction.update(postRef, {
-          'savesCount': FieldValue.increment(1),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      }
-    });
+        if (saveSnapshot.exists) {
+          transaction.delete(saveRef);
+          transaction.update(postRef, {
+            'savesCount': FieldValue.increment(-1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          transaction.set(saveRef, {
+            'id': saveId,
+            'postId': postId,
+            'uid': uid,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          transaction.update(postRef, {
+            'savesCount': FieldValue.increment(1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }).timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      print('Error toggling save on post $postId by user $uid: $error\n$stackTrace');
+      rethrow;
+    }
   }
 
   Future<void> addComment({
@@ -296,26 +445,72 @@ class PostRemoteDataSource {
     required String postId,
     required String text,
   }) async {
-    final commentRef = _posts.doc(postId).collection('comments').doc();
+    try {
+      final commentRef = _posts.doc(postId).collection('comments').doc();
 
-    final comment = PostCommentModel(
-      id: commentRef.id,
-      postId: postId,
-      authorUid: profile.uid,
-      authorName: profile.name,
-      authorAvatarUrl: profile.avatarUrl,
-      text: text,
-      createdAt: null,
-    );
+      final comment = PostCommentModel(
+        id: commentRef.id,
+        postId: postId,
+        authorUid: profile.uid,
+        authorName: profile.name,
+        authorAvatarUrl: profile.avatarUrl,
+        text: text,
+        createdAt: null,
+      );
 
-    final postRef = _posts.doc(postId);
+      final postRef = _posts.doc(postId);
 
-    await _firestore.runTransaction((transaction) async {
-      transaction.set(commentRef, comment.toCreateMap());
-      transaction.update(postRef, {
-        'commentsCount': FieldValue.increment(1),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    });
+      await _firestore.runTransaction((transaction) async {
+        transaction.set(commentRef, comment.toCreateMap());
+        transaction.update(postRef, {
+          'commentsCount': FieldValue.increment(1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }).timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      print('Error adding comment to post $postId: $error\n$stackTrace');
+      rethrow;
+    }
+  }
+
+  Future<List<PostModel>> searchPosts(String query, {int limit = 20}) async {
+    if (query.isEmpty) {
+      return [];
+    }
+
+    try {
+      final queryLower = query.toLowerCase();
+      final snapshot = await _posts.limit(limit + 50).get().timeout(const Duration(seconds: 10));
+
+      final results = snapshot.docs
+          .map((doc) {
+            try {
+              return PostModel.fromFirestore(doc);
+            } catch (error, stackTrace) {
+              print('Error parsing post in search: $error\n$stackTrace');
+              return null;
+            }
+          })
+          .whereType<PostModel>()
+          .where((post) {
+            final textMatch = post.text.toLowerCase().contains(queryLower);
+            final hashtagMatch = post.hashtags.any(
+              (tag) => tag.toLowerCase().contains(queryLower),
+            );
+
+            return textMatch || hashtagMatch;
+          })
+          .take(limit)
+          .toList();
+
+      results.sort((a, b) =>
+          (b.createdAt ?? DateTime.now())
+              .compareTo(a.createdAt ?? DateTime.now()));
+
+      return results;
+    } catch (error, stackTrace) {
+      print('Error searching posts: $error\n$stackTrace');
+      return [];
+    }
   }
 }

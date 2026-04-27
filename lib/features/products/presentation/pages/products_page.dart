@@ -20,7 +20,12 @@ class ProductsPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Products'),
-        actions: [IconButton(onPressed: () {}, icon: const Icon(Icons.search))],
+        actions: [
+          IconButton(
+            onPressed: () => context.push('/search?tab=products'),
+            icon: const Icon(Icons.search),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'products_fab',

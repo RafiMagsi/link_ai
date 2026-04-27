@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,36 +17,52 @@ class NotificationRemoteDataSource {
   }
 
   Future<NotificationSettings> requestPermission() {
-    return _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
+    try {
+      return _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      ).timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      print('Error requesting notification permission: $error\n$stackTrace');
+      rethrow;
+    }
   }
 
-  Future<String?> getToken() {
-    return _messaging.getToken();
+  Future<String?> getToken() async {
+    try {
+      return await _messaging.getToken().timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      print('Error getting FCM token: $error\n$stackTrace');
+      return null;
+    }
   }
 
   Future<void> saveToken({required String uid, required String token}) async {
-    final platform = Platform.isIOS
-        ? 'ios'
-        : Platform.isAndroid
-        ? 'android'
-        : 'unknown';
+    try {
+      final platform = Platform.isIOS
+          ? 'ios'
+          : Platform.isAndroid
+          ? 'android'
+          : 'unknown';
 
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('fcmTokens')
-        .doc(token)
-        .set({
-          'token': token,
-          'platform': platform,
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('fcmTokens')
+          .doc(token)
+          .set({
+            'token': token,
+            'platform': platform,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      print('Error saving FCM token for user $uid: $error\n$stackTrace');
+      rethrow;
+    }
   }
 
   Stream<List<AppNotificationModel>> watchMyNotifications(String uid) {
@@ -54,10 +71,18 @@ class NotificationRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(50)
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map(AppNotificationModel.fromFirestore).toList(),
-        );
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+          try {
+            return snapshot.docs.map(AppNotificationModel.fromFirestore).toList();
+          } catch (error, stackTrace) {
+            print('Error parsing notifications for user $uid: $error\n$stackTrace');
+            return [];
+          }
+        });
   }
 
   Stream<int> watchUnreadCount(String uid) {
@@ -65,26 +90,48 @@ class NotificationRemoteDataSource {
         .where('receiverUid', isEqualTo: uid)
         .where('isRead', isEqualTo: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) => sink.close(),
+        )
+        .map((snapshot) {
+          try {
+            return snapshot.docs.length;
+          } catch (error, stackTrace) {
+            print('Error counting unread notifications for user $uid: $error\n$stackTrace');
+            return 0;
+          }
+        });
   }
 
   Future<void> markAsRead(String notificationId) async {
-    await _notifications.doc(notificationId).update({'isRead': true});
+    try {
+      await _notifications.doc(notificationId).update({'isRead': true}).timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      print('Error marking notification $notificationId as read: $error\n$stackTrace');
+      rethrow;
+    }
   }
 
   Future<void> markAllAsRead(String uid) async {
-    final snapshot = await _notifications
-        .where('receiverUid', isEqualTo: uid)
-        .where('isRead', isEqualTo: false)
-        .limit(100)
-        .get();
+    try {
+      final snapshot = await _notifications
+          .where('receiverUid', isEqualTo: uid)
+          .where('isRead', isEqualTo: false)
+          .limit(100)
+          .get()
+          .timeout(const Duration(seconds: 10));
 
-    final batch = _firestore.batch();
+      final batch = _firestore.batch();
 
-    for (final doc in snapshot.docs) {
-      batch.update(doc.reference, {'isRead': true});
+      for (final doc in snapshot.docs) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+
+      await batch.commit().timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      print('Error marking all notifications as read for user $uid: $error\n$stackTrace');
+      rethrow;
     }
-
-    await batch.commit();
   }
 }

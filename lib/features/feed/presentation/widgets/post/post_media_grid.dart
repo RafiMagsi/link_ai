@@ -86,67 +86,126 @@ class _MediaTileState extends State<_MediaTile> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
+    try {
+      final colors = context.appColors;
 
-    return GestureDetector(
-      onTap: widget.onTap,
-      onDoubleTap: widget.onDoubleTap == null
-          ? null
-          : () {
-              widget.onDoubleTap!.call();
-              _pulse();
-            },
-      child: Hero(
-        tag: widget.heroTag,
-        child: Container(
-          height: widget.height,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-            border: Border.all(color: colors.border),
-          ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              CachedNetworkImage(
-                imageUrl: widget.url,
-                fit: BoxFit.cover,
-                filterQuality: FilterQuality.high,
-                placeholder: (context, url) => Container(
-                  color: Theme.of(context).colorScheme.surface,
-                ),
-                errorWidget: (context, url, error) => Center(
-                  child: Icon(
-                    Icons.image_not_supported_outlined,
-                    color: colors.mutedText,
-                  ),
-                ),
-              ),
-              IgnorePointer(
-                child: Center(
-                  child: AnimatedOpacity(
-                    opacity: _showLikePulse ? 1 : 0,
-                    duration: const Duration(milliseconds: 160),
-                    child: AnimatedScale(
-                      scale: _showLikePulse ? 1 : 0.7,
+      return GestureDetector(
+        onTap: widget.onTap,
+        onDoubleTap: widget.onDoubleTap == null
+            ? null
+            : () {
+                try {
+                  widget.onDoubleTap!.call();
+                  _pulse();
+                } catch (e) {
+                  print('Error handling double tap: $e');
+                }
+              },
+        child: Hero(
+          tag: widget.heroTag,
+          child: Container(
+            height: widget.height,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+              border: Border.all(color: colors.border),
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _buildCachedImage(context, colors),
+                IgnorePointer(
+                  child: Center(
+                    child: AnimatedOpacity(
+                      opacity: _showLikePulse ? 1 : 0,
                       duration: const Duration(milliseconds: 160),
-                      curve: Curves.easeOutBack,
-                      child: Icon(
-                        Icons.favorite,
-                        size: 72,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.85),
+                      child: AnimatedScale(
+                        scale: _showLikePulse ? 1 : 0.7,
+                        duration: const Duration(milliseconds: 160),
+                        curve: Curves.easeOutBack,
+                        child: Icon(
+                          Icons.favorite,
+                          size: 72,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.85),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      print('Error building media tile: $e');
+      return _buildErrorPlaceholder(context);
+    }
+  }
+
+  Widget _buildCachedImage(BuildContext context, dynamic colors) {
+    try {
+      // Validate URL before attempting to load
+      if (widget.url.isEmpty) {
+        return Center(
+          child: Icon(
+            Icons.image_not_supported_outlined,
+            color: colors.mutedText,
+          ),
+        );
+      }
+
+      return CachedNetworkImage(
+        imageUrl: widget.url,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.high,
+        placeholder: (context, url) => Container(
+          color: Theme.of(context).colorScheme.surface,
+        ),
+        errorWidget: (context, url, error) {
+          print('Error loading image from $url: $error');
+          return Center(
+            child: Icon(
+              Icons.image_not_supported_outlined,
+              color: colors.mutedText,
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      print('Error building cached image widget: $e');
+      return Center(
+        child: Icon(
+          Icons.image_not_supported_outlined,
+          color: colors.mutedText,
+        ),
+      );
+    }
+  }
+
+  Widget _buildErrorPlaceholder(BuildContext context) {
+    try {
+      final colors = context.appColors;
+      return Container(
+        height: widget.height,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+          border: Border.all(color: colors.border),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.image_not_supported_outlined,
+            color: colors.mutedText,
+          ),
+        ),
+      );
+    } catch (e) {
+      return const SizedBox.shrink();
+    }
   }
 }

@@ -62,25 +62,134 @@ class ProfileModel {
   factory ProfileModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
-    final data = doc.data() ?? {};
+    try {
+      final data = doc.data() ?? {};
 
-    return ProfileModel(
-      uid: data['uid'] as String? ?? doc.id,
-      email: data['email'] as String? ?? '',
-      name: data['name'] as String? ?? '',
-      role: data['role'] as String? ?? '',
-      bio: data['bio'] as String? ?? '',
-      location: data['location'] as String? ?? '',
-      avatarUrl: data['avatarUrl'] as String?,
-      skills: List<String>.from(data['skills'] ?? []),
-      tools: List<String>.from(data['tools'] ?? []),
-      building: data['building'] as String? ?? '',
-      need: data['need'] as String? ?? '',
-      wantToMeet: data['wantToMeet'] as String? ?? '',
-      links: Map<String, String>.from(data['links'] ?? {}),
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
-    );
+      return ProfileModel(
+        uid: _safeString(data['uid'], fallback: doc.id),
+        email: _safeEmail(data['email']),
+        name: _safeString(data['name']),
+        role: _safeString(data['role']),
+        bio: _safeString(data['bio']),
+        location: _safeString(data['location']),
+        avatarUrl: _safeUrl(data['avatarUrl']),
+        skills: _safeStringList(data['skills']),
+        tools: _safeStringList(data['tools']),
+        building: _safeString(data['building']),
+        need: _safeString(data['need']),
+        wantToMeet: _safeString(data['wantToMeet']),
+        links: _safeStringMap(data['links']),
+        createdAt: _safeTimestamp(data['createdAt']),
+        updatedAt: _safeTimestamp(data['updatedAt']),
+      );
+    } catch (e) {
+      print('Error parsing ProfileModel from Firestore: $e');
+      // Return empty profile with valid uid
+      return ProfileModel.empty(
+        uid: doc.id,
+        email: '',
+        name: '',
+      );
+    }
+  }
+
+  static String _safeString(dynamic value, {String fallback = ''}) {
+    try {
+      if (value == null) return fallback;
+      if (value is String) return value.trim();
+      return value.toString().trim();
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  static String _safeEmail(dynamic value) {
+    try {
+      if (value == null) return '';
+      final email = (value as String).trim().toLowerCase();
+      // Basic email validation
+      if (_isValidEmail(email)) {
+        return email;
+      }
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  static bool _isValidEmail(String email) {
+    try {
+      final regex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+      return regex.hasMatch(email) && email.length <= 254;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  static String? _safeUrl(dynamic value) {
+    try {
+      if (value == null) return null;
+      final url = (value as String).trim();
+      if (url.isEmpty) return null;
+      Uri.parse(url); // Validate URL format
+      return url;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static List<String> _safeStringList(dynamic value) {
+    try {
+      if (value == null) return [];
+      if (value is List) {
+        return value
+            .whereType<String>()
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error parsing string list: $e');
+      return [];
+    }
+  }
+
+  static Map<String, String> _safeStringMap(dynamic value) {
+    try {
+      if (value == null) return {};
+      if (value is Map) {
+        final result = <String, String>{};
+        value.forEach((key, val) {
+          try {
+            final k = (key as String).trim();
+            final v = (val as String?)?.trim() ?? '';
+            if (k.isNotEmpty) {
+              result[k] = v;
+            }
+          } catch (e) {
+            print('Error processing map entry: $e');
+          }
+        });
+        return result;
+      }
+      return {};
+    } catch (e) {
+      print('Error parsing string map: $e');
+      return {};
+    }
+  }
+
+  static DateTime? _safeTimestamp(dynamic value) {
+    try {
+      if (value == null) return null;
+      if (value is Timestamp) return value.toDate();
+      if (value is DateTime) return value;
+      return null;
+    } catch (e) {
+      print('Error parsing timestamp: $e');
+      return null;
+    }
   }
 
   Map<String, dynamic> toCreateMap() {
