@@ -291,11 +291,34 @@ class _ActionButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         child: Row(
           children: [
-            Icon(active ? activeIcon : icon, size: 19, color: color),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 160),
+              switchInCurve: Curves.easeOutBack,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(scale: animation, child: child),
+                );
+              },
+              child: Icon(
+                active ? activeIcon : icon,
+                key: ValueKey<bool>(active),
+                size: 19,
+                color: color,
+              ),
+            ),
             const SizedBox(width: 4),
-            Text(
-              count.toString(),
-              style: TextStyle(color: color, fontSize: 13),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 160),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: Text(
+                count.toString(),
+                key: ValueKey<int>(count),
+                style: TextStyle(color: color, fontSize: 13),
+              ),
             ),
           ],
         ),

@@ -15,6 +15,8 @@ class PostCommentsPage extends ConsumerStatefulWidget {
 }
 
 class _PostCommentsPageState extends ConsumerState<PostCommentsPage> {
+  static const int _maxCommentChars = 500;
+
   final _commentController = TextEditingController();
 
   @override
@@ -28,18 +30,29 @@ class _PostCommentsPageState extends ConsumerState<PostCommentsPage> {
 
     if (text.isEmpty) return;
 
-    await ref
-        .read(postControllerProvider.notifier)
-        .addComment(postId: widget.post.id, text: text);
+    if (text.length > _maxCommentChars) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Comment must be 500 characters or less.'),
+        ),
+      );
+      return;
+    }
 
-    final state = ref.read(postControllerProvider);
+    final controller = ref.read(postControllerProvider.notifier);
+    await controller.addComment(postId: widget.post.id, text: text);
 
     if (!mounted) return;
+    final state = ref.read(postControllerProvider);
 
     if (state.hasError) {
+      final error = state.asError?.error;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Unable to add comment.')));
+      if (error != null) {
+        debugPrint('Add comment failed: $error');
+      }
       return;
     }
 
@@ -115,6 +128,7 @@ class _PostCommentsPageState extends ConsumerState<PostCommentsPage> {
                       controller: _commentController,
                       minLines: 1,
                       maxLines: 4,
+                      maxLength: _maxCommentChars,
                       decoration: const InputDecoration(
                         hintText: 'Write a comment...',
                         border: OutlineInputBorder(),
