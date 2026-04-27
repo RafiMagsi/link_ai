@@ -5,43 +5,60 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/app_empty_state.dart';
-import '../../../../core/utils/hashtag_utils.dart';
-import '../../../feed/presentation/providers/post_providers.dart';
+import '../providers/explore_providers.dart';
 
 class ExplorePage extends ConsumerWidget {
   const ExplorePage({super.key});
 
-  static const categories = [
-    'AI SaaS',
-    'AI Agents',
-    'Automation',
-    'Prompt Engineering',
-    'AI Video',
-    'AI Sales',
-    'AI Coding',
-    'AI Design',
-    'AI Education',
-    'No-Code AI',
+  static const topics = <_ExploreTopic>[
+    _ExploreTopic(label: 'AI SaaS', tag: 'aisaas'),
+    _ExploreTopic(label: 'AI Agents', tag: 'aiagents'),
+    _ExploreTopic(label: 'Automation', tag: 'automation'),
+    _ExploreTopic(label: 'Prompt Engineering', tag: 'prompts'),
+    _ExploreTopic(label: 'AI Video', tag: 'aivideo'),
+    _ExploreTopic(label: 'AI Sales', tag: 'aisales'),
+    _ExploreTopic(label: 'AI Coding', tag: 'aicoding'),
+    _ExploreTopic(label: 'AI Design', tag: 'aidesign'),
+    _ExploreTopic(label: 'AI Education', tag: 'aieducation'),
+    _ExploreTopic(label: 'No‑Code AI', tag: 'nocode'),
+  ];
+
+  static const links = <_ExploreLink>[
+    _ExploreLink(
+      title: 'OpenAI Blog',
+      subtitle: 'Official releases and research updates',
+      url: 'https://openai.com/blog',
+    ),
+    _ExploreLink(
+      title: 'Google AI Blog',
+      subtitle: 'Research and product announcements',
+      url: 'https://ai.googleblog.com/',
+    ),
+    _ExploreLink(
+      title: 'Anthropic News',
+      subtitle: 'Model updates and safety posts',
+      url: 'https://www.anthropic.com/news',
+    ),
   ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final latestState = ref.watch(latestPostsProvider);
+    final trendsState = ref.watch(trendingHashtagsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Explore')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            'Discover AI builders by category',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Topics', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
           Wrap(
             spacing: 10,
             runSpacing: 10,
-            children: categories.map((category) {
-              return ActionChip(label: Text(category), onPressed: () {});
+            children: topics.map((topic) {
+              return ActionChip(
+                label: Text(topic.label),
+                onPressed: () => context.push('/hashtags/${topic.tag}'),
+              );
             }).toList(),
           ),
           const SizedBox(height: 28),
@@ -50,22 +67,9 @@ class ExplorePage extends ConsumerWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
-          latestState.when(
-            data: (posts) {
-              final counts = <String, int>{};
-              for (final post in posts) {
-                final tags = post.hashtags.isNotEmpty
-                    ? post.hashtags
-                    : HashtagUtils.extractNormalized(post.text);
-                for (final t in tags) {
-                  counts[t] = (counts[t] ?? 0) + 1;
-                }
-              }
-
-              final top = counts.entries.toList()
-                ..sort((a, b) => b.value.compareTo(a.value));
-
-              if (top.isEmpty) {
+          trendsState.when(
+            data: (trends) {
+              if (trends.isEmpty) {
                 return const AppEmptyState(
                   title: 'No hashtags yet',
                   subtitle: 'Start a post with #hashtags to see them here.',
@@ -76,10 +80,10 @@ class ExplorePage extends ConsumerWidget {
               return Wrap(
                 spacing: 10,
                 runSpacing: 10,
-                children: top.take(20).map((e) {
+                children: trends.map((e) {
                   return ActionChip(
-                    label: Text('#${e.key} · ${e.value}'),
-                    onPressed: () => context.push('/hashtags/${e.key}'),
+                    label: Text('#${e.tag} · ${e.count}'),
+                    onPressed: () => context.push('/hashtags/${e.tag}'),
                   );
                 }).toList(),
               );
@@ -95,45 +99,28 @@ class ExplorePage extends ConsumerWidget {
           ),
           const SizedBox(height: 28),
           Text(
-            'AI news (links)',
+            'Media discovery',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
-          _LinkCard(
-            title: 'OpenAI Blog',
-            subtitle: 'Official releases and research updates',
-            url: 'https://openai.com/blog',
-          ),
-          _LinkCard(
-            title: 'Google AI Blog',
-            subtitle: 'Research and product announcements',
-            url: 'https://ai.googleblog.com/',
-          ),
-          _LinkCard(
-            title: 'Anthropic News',
-            subtitle: 'Model updates and safety posts',
-            url: 'https://www.anthropic.com/news',
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.grid_view_rounded),
+              title: Text('Coming soon'),
+              subtitle: Text(
+                'A grid for image/video discovery once the feed media viewer is fully polished.',
+              ),
+            ),
           ),
           const SizedBox(height: 28),
-          Text(
-            'People looking for help',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('AI news links', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          _ExploreCard(
-            title: 'Need beta users',
-            subtitle: 'AI founders testing MVPs',
-            icon: Icons.rocket_launch_outlined,
-          ),
-          _ExploreCard(
-            title: 'Need collaborators',
-            subtitle: 'Builders looking for designers, devs, and marketers',
-            icon: Icons.groups_outlined,
-          ),
-          _ExploreCard(
-            title: 'Need feedback',
-            subtitle: 'Projects waiting for honest product review',
-            icon: Icons.rate_review_outlined,
+          ...links.map(
+            (link) => _LinkCard(
+              title: link.title,
+              subtitle: link.subtitle,
+              url: link.url,
+            ),
           ),
         ],
       ),
@@ -141,29 +128,23 @@ class ExplorePage extends ConsumerWidget {
   }
 }
 
-class _ExploreCard extends StatelessWidget {
-  const _ExploreCard({
+class _ExploreTopic {
+  const _ExploreTopic({required this.label, required this.tag});
+
+  final String label;
+  final String tag;
+}
+
+class _ExploreLink {
+  const _ExploreLink({
     required this.title,
     required this.subtitle,
-    required this.icon,
+    required this.url,
   });
 
   final String title;
   final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {},
-      ),
-    );
-  }
+  final String url;
 }
 
 class _LinkCard extends StatelessWidget {
