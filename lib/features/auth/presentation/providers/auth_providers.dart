@@ -23,7 +23,11 @@ final authStateProvider = StreamProvider<User?>((ref) {
 });
 
 final currentUserProvider = Provider<User?>((ref) {
-  return ref.watch(firebaseAuthProvider).currentUser;
+  final authState = ref.watch(authStateProvider);
+  return authState.maybeWhen(
+    data: (user) => user,
+    orElse: () => ref.watch(firebaseAuthProvider).currentUser,
+  );
 });
 
 final authControllerProvider =
@@ -78,10 +82,7 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       await _settingsRemoteDataSource.createSettingsIfNotExists(user.uid);
 
       // Mark onboarding as not yet shown (will trigger onboarding flow)
-      await _settingsRemoteDataSource.updateOnboardingShown(
-        user.uid,
-        false,
-      );
+      await _settingsRemoteDataSource.updateOnboardingShown(user.uid, false);
 
       state = const AsyncData(null);
     } on FirebaseAuthException catch (error, stackTrace) {
@@ -134,11 +135,7 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       );
       state = AsyncError(error, stackTrace);
     } catch (error, stackTrace) {
-      developer.log(
-        'Error during login',
-        error: error,
-        stackTrace: stackTrace,
-      );
+      developer.log('Error during login', error: error, stackTrace: stackTrace);
       state = AsyncError(error, stackTrace);
     }
   }

@@ -236,10 +236,8 @@ class SettingsPage extends ConsumerWidget {
                   ),
                   SwitchListTile(
                     value: settings.notifyConnectRequests,
-                    title: const Text('Connect Requests'),
-                    subtitle: const Text(
-                      'Notify when someone wants to connect',
-                    ),
+                    title: const Text('New followers'),
+                    subtitle: const Text('Notify when someone follows you'),
                     onChanged: controllerState.isLoading
                         ? null
                         : (value) {

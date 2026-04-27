@@ -253,13 +253,15 @@ class _Header extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 12.0),
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                          mainAxisSize: MainAxisSize.max,
                           children: [
-                            _ProfilePrimaryAction(
-                              isSelf: isSelf,
-                              targetUid: targetUid,
-                              targetName: displayName,
-                              onEditProfile: onEditProfile,
+                            Flexible(
+                              child: _ProfilePrimaryAction(
+                                isSelf: isSelf,
+                                targetUid: targetUid,
+                                targetName: displayName,
+                                onEditProfile: onEditProfile,
+                              ),
                             ),
                             const SizedBox(width: AppSizes.sm),
                             _HeaderIconChip(
@@ -499,67 +501,174 @@ class _ProfilePrimaryAction extends ConsumerWidget {
       side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.22)),
     );
 
-    if (isSelf) {
-      return FilledButton(
-        style: buttonStyle,
-        onPressed: onEditProfile,
-        child: const Text('Edit'),
-      );
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact =
+            constraints.maxWidth.isFinite &&
+            constraints.maxWidth <= 104; // fits beside another icon chip
 
-    final statusState = ref.watch(relationshipStatusProvider(targetUid));
+        Widget iconAction({
+          required IconData icon,
+          required String tooltip,
+          required VoidCallback onPressed,
+        }) {
+          return _HeaderIconChip(
+            icon: icon,
+            tooltip: tooltip,
+            onPressed: onPressed,
+          );
+        }
 
-    return statusState.when(
-      data: (status) {
-        switch (status) {
-          case ConnectRelationshipStatus.connected:
-            return FilledButton.icon(
-              style: buttonStyle,
-              onPressed: () async {
-                await ref
-                    .read(connectControllerProvider.notifier)
-                    .pingUser(targetUid);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('Ping sent!')));
-                }
-              },
-              icon: const Icon(Icons.notifications_active_outlined, size: 18),
-              label: const Text('Ping'),
+        if (isSelf) {
+          if (isCompact) {
+            return iconAction(
+              icon: Icons.edit_outlined,
+              tooltip: 'Edit profile',
+              onPressed: onEditProfile,
             );
-          case ConnectRelationshipStatus.outgoingPending:
+          }
+
+          return FilledButton(
+            style: buttonStyle,
+            onPressed: onEditProfile,
+            child: const Text(
+              'Edit',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        }
+
+        final statusState = ref.watch(
+          relationshipStatusStreamProvider(targetUid),
+        );
+
+        return statusState.when(
+          data: (status) {
+            switch (status) {
+              case ConnectRelationshipStatus.connected:
+                if (isCompact) {
+                  return iconAction(
+                    icon: Icons.check,
+                    tooltip: 'Following',
+                    onPressed: () async {
+                      await ref
+                          .read(connectControllerProvider.notifier)
+                          .unfollowUser(targetUid);
+                    },
+                  );
+                }
+                return FilledButton.icon(
+                  style: buttonStyle,
+                  onPressed: () async {
+                    await ref
+                        .read(connectControllerProvider.notifier)
+                        .unfollowUser(targetUid);
+                  },
+                  icon: const Icon(Icons.check, size: 18),
+                  label: const Text(
+                    'Following',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              case ConnectRelationshipStatus.outgoingPending:
+              case ConnectRelationshipStatus.incomingPending:
+              case ConnectRelationshipStatus.none:
+                if (isCompact) {
+                  return iconAction(
+                    icon: Icons.person_add_alt_1,
+                    tooltip: 'Follow',
+                    onPressed: () => ref
+                        .read(connectControllerProvider.notifier)
+                        .followUser(targetUid),
+                  );
+                }
+                return FilledButton(
+                  style: buttonStyle,
+                  onPressed: () => ref
+                      .read(connectControllerProvider.notifier)
+                      .followUser(targetUid),
+                  child: const Text(
+                    'Follow',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+            }
+          },
+          loading: () {
+            if (isCompact) return const _HeaderBusyChip();
             return FilledButton(
               style: buttonStyle,
               onPressed: null,
-              child: const Text('Requested'),
-            );
-          case ConnectRelationshipStatus.incomingPending:
-            return FilledButton(
-              style: buttonStyle,
-              onPressed: () => context.push('/connect/requests'),
-              child: const Text('Respond'),
-            );
-          case ConnectRelationshipStatus.none:
-            return FilledButton(
-              style: buttonStyle,
-              onPressed: () => context.push(
-                '/connect/request/$targetUid',
-                extra: {'receiverName': targetName},
+              child: const Text(
+                'Checking…',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              child: const Text('Connect'),
             );
-        }
+          },
+          error: (error, stackTrace) {
+            if (isCompact) {
+              return iconAction(
+                icon: Icons.refresh,
+                tooltip: 'Retry',
+                onPressed: () =>
+                    ref.invalidate(relationshipStatusStreamProvider(targetUid)),
+              );
+            }
+            return FilledButton(
+              style: buttonStyle,
+              onPressed: () =>
+                  ref.invalidate(relationshipStatusStreamProvider(targetUid)),
+              child: const Text(
+                'Retry',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          },
+        );
       },
-      loading: () => FilledButton(
-        style: buttonStyle,
-        onPressed: null,
-        child: const Text('Checking…'),
-      ),
-      error: (error, stackTrace) => FilledButton(
-        style: buttonStyle,
-        onPressed: () => ref.invalidate(relationshipStatusProvider(targetUid)),
-        child: const Text('Retry'),
+    );
+  }
+}
+
+class _HeaderBusyChip extends StatelessWidget {
+  const _HeaderBusyChip();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 40,
+      height: 36,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: scheme.onPrimary.withValues(alpha: 0.12),
+              border: Border.all(
+                color: scheme.onPrimary.withValues(alpha: 0.18),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                scheme.onPrimary.withValues(alpha: 0.85),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1187,11 +1296,7 @@ class _HashtagsSliver extends ConsumerWidget {
 }
 
 class GradientChip extends StatelessWidget {
-  const GradientChip({
-    super.key,
-    required this.label,
-    this.onTap,
-  });
+  const GradientChip({super.key, required this.label, this.onTap});
 
   final String label;
   final VoidCallback? onTap;
@@ -1214,15 +1319,10 @@ class GradientChip extends StatelessWidget {
                 const Color(0xFFEC4899).withValues(alpha: 0.10),
               ],
             ),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.22),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 5,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             child: Text(
               label,
               style: const TextStyle(

@@ -8,6 +8,7 @@ class PostCommentModel {
   final String? authorAvatarUrl;
   final String text;
   final DateTime? createdAt;
+  final DateTime? createdAtClient;
 
   const PostCommentModel({
     required this.id,
@@ -17,6 +18,7 @@ class PostCommentModel {
     required this.authorAvatarUrl,
     required this.text,
     required this.createdAt,
+    required this.createdAtClient,
   });
 
   factory PostCommentModel.fromFirestore(
@@ -32,6 +34,7 @@ class PostCommentModel {
       authorAvatarUrl: data['authorAvatarUrl'] as String?,
       text: data['text'] as String? ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
+      createdAtClient: (data['createdAtClient'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -43,6 +46,8 @@ class PostCommentModel {
       'authorName': authorName,
       'authorAvatarUrl': authorAvatarUrl,
       'text': text,
+      // Used for immediate ordering on clients (serverTimestamp can be null locally).
+      'createdAtClient': Timestamp.now(),
       'createdAt': FieldValue.serverTimestamp(),
     };
   }

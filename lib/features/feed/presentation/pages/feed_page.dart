@@ -10,6 +10,7 @@ import '../../../../core/widgets/retry_error_widget.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../data/models/post_model.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
+import '../../../connect/presentation/providers/connect_providers.dart';
 import '../providers/post_providers.dart';
 import '../widgets/feed_post_card.dart';
 import '../../../notifications/presentation/providers/notification_providers.dart';
@@ -31,7 +32,7 @@ class FeedPage extends ConsumerWidget {
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Latest'),
-              Tab(text: 'Connected'),
+              Tab(text: 'Following'),
               Tab(text: 'Viral'),
             ],
           ),
@@ -119,8 +120,7 @@ class FeedPage extends ConsumerWidget {
             _FeedList(
               kind: _FeedKind.connected,
               posts: latestPosts,
-              emptyStateText:
-                  'Connected feed is coming next.\nFor now it shows the latest posts.',
+              emptyStateText: 'Follow people to see their posts here.',
             ),
             _FeedList(kind: _FeedKind.viral, posts: latestPosts),
           ],
@@ -152,16 +152,32 @@ class _FeedList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final followingState = kind == _FeedKind.connected
+        ? ref.watch(myConnectionsProvider)
+        : null;
+    final followingUids = followingState?.asData?.value
+        .map((c) => c.connectedUid)
+        .where((uid) => uid.isNotEmpty)
+        .toSet();
+
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(latestPostsProvider);
+        if (kind == _FeedKind.connected) {
+          ref.invalidate(myConnectionsProvider);
+        }
         await Future<void>.delayed(const Duration(milliseconds: 200));
       },
       child: posts.when(
         data: (items) {
           final visiblePosts = switch (kind) {
             _FeedKind.latest => items,
-            _FeedKind.connected => items,
+            _FeedKind.connected =>
+              followingUids == null
+                  ? items
+                  : items
+                        .where((p) => followingUids.contains(p.authorUid))
+                        .toList(),
             _FeedKind.viral =>
               (items.toList()..sort(
                 (a, b) =>
@@ -205,9 +221,7 @@ class _FeedList extends ConsumerWidget {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
-                            ErrorHandler.getUserFriendlyMessage(e),
-                          ),
+                          content: Text(ErrorHandler.getUserFriendlyMessage(e)),
                         ),
                       );
                     }
@@ -222,9 +236,7 @@ class _FeedList extends ConsumerWidget {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
-                            ErrorHandler.getUserFriendlyMessage(e),
-                          ),
+                          content: Text(ErrorHandler.getUserFriendlyMessage(e)),
                         ),
                       );
                     }
@@ -282,9 +294,7 @@ class _FeedComposerEntry extends ConsumerWidget {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                          ErrorHandler.getUserFriendlyMessage(e),
-                        ),
+                        content: Text(ErrorHandler.getUserFriendlyMessage(e)),
                       ),
                     );
                   }
@@ -304,9 +314,7 @@ class _FeedComposerEntry extends ConsumerWidget {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
-                            ErrorHandler.getUserFriendlyMessage(e),
-                          ),
+                          content: Text(ErrorHandler.getUserFriendlyMessage(e)),
                         ),
                       );
                     }

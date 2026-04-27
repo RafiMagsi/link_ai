@@ -41,12 +41,6 @@ class ProfilePage extends ConsumerWidget {
                             onTap: () => Navigator.of(context).pop('settings'),
                           ),
                           ListTile(
-                            leading: const Icon(Icons.group_add_outlined),
-                            title: const Text('Connect requests'),
-                            onTap: () =>
-                                Navigator.of(context).pop('connect_requests'),
-                          ),
-                          ListTile(
                             leading: const Icon(Icons.logout),
                             title: const Text('Logout'),
                             onTap: () => Navigator.of(context).pop('logout'),
@@ -61,10 +55,6 @@ class ProfilePage extends ConsumerWidget {
                 if (!context.mounted || action == null) return;
                 if (action == 'settings') {
                   context.push('/settings');
-                  return;
-                }
-                if (action == 'connect_requests') {
-                  context.push('/connect/requests');
                   return;
                 }
                 if (action == 'logout') {

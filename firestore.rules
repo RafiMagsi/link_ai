@@ -113,12 +113,28 @@ service cloud.firestore {
     }
 
     match /connections/{connectionId} {
+      // A user can read only their own follow edges.
+      // IMPORTANT: guard against `resource` being null on non-existent docs.
       allow read: if isSignedIn()
-        && resource.data.userUid == request.auth.uid;
+        && connectionId.matches('^' + request.auth.uid + '_.*')
+        && (resource == null || resource.data.userUid == request.auth.uid);
 
-      allow create: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.userUid == request.auth.uid
+        && request.resource.data.connectedUid is string
+        && request.resource.data.id == connectionId
+        && connectionId == request.auth.uid + '_' + request.resource.data.connectedUid
+        && request.resource.data.keys().hasOnly([
+          "id",
+          "userUid",
+          "connectedUid",
+          "createdAt"
+        ]);
+
       allow update: if false;
-      allow delete: if false;
+
+      allow delete: if isSignedIn()
+        && resource.data.userUid == request.auth.uid;
     }
 
     match /userConnectionStats/{uid} {

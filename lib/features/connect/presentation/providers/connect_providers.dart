@@ -71,6 +71,25 @@ final relationshipStatusProvider =
           .getRelationshipStatus(currentUid: user.uid, targetUid: targetUid);
     });
 
+/// Instant follow status: watch the single connection doc instead of doing
+/// multiple reads + showing a prolonged "Checking..." state.
+final relationshipStatusStreamProvider =
+    StreamProvider.family<ConnectRelationshipStatus, String>((ref, targetUid) {
+      final user = ref.watch(currentUserProvider);
+      if (user == null) return const Stream.empty();
+
+      final connectionId = '${user.uid}_$targetUid';
+
+      return ref
+          .watch(connectRemoteDataSourceProvider)
+          .watchConnectionDoc(connectionId)
+          .map(
+            (doc) => doc.exists
+                ? ConnectRelationshipStatus.connected
+                : ConnectRelationshipStatus.none,
+          );
+    });
+
 final connectControllerProvider =
     StateNotifierProvider<ConnectController, AsyncValue<void>>((ref) {
       return ConnectController(ref, ref.watch(connectRemoteDataSourceProvider));
@@ -146,6 +165,48 @@ class ConnectController extends StateNotifier<AsyncValue<void>> {
 
     try {
       await _connectRemoteDataSource.sendPing(targetUid: targetUid);
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
+  }
+
+  Future<void> followUser(String targetUid) async {
+    final user = _ref.read(currentUserProvider);
+    if (user == null) return;
+
+    state = const AsyncLoading();
+
+    try {
+      await _connectRemoteDataSource.followUser(
+        currentUid: user.uid,
+        targetUid: targetUid,
+      );
+
+      _ref.invalidate(myConnectionsProvider);
+      _ref.invalidate(relationshipStatusProvider(targetUid));
+
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+    }
+  }
+
+  Future<void> unfollowUser(String targetUid) async {
+    final user = _ref.read(currentUserProvider);
+    if (user == null) return;
+
+    state = const AsyncLoading();
+
+    try {
+      await _connectRemoteDataSource.unfollowUser(
+        currentUid: user.uid,
+        targetUid: targetUid,
+      );
+
+      _ref.invalidate(myConnectionsProvider);
+      _ref.invalidate(relationshipStatusProvider(targetUid));
+
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
