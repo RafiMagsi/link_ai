@@ -8,6 +8,7 @@ import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
+import '../../../../core/widgets/skeleton_post_card.dart';
 import '../../../connect/presentation/widgets/connect_button.dart';
 import '../../../feed/data/models/post_comment_model.dart';
 import '../../../feed/presentation/providers/post_providers.dart';
@@ -330,7 +331,11 @@ class _PostsTab extends ConsumerWidget {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => ListView.separated(
+        itemCount: 4,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) => const SkeletonPostCard(),
+      ),
       error: (error, stackTrace) =>
           const Center(child: Text('Unable to load posts.')),
     );
@@ -373,16 +378,17 @@ class _LikesTab extends ConsumerWidget {
                       context.push('/posts/${post.id}', extra: post),
                 );
               },
-              loading: () => const Padding(
-                padding: EdgeInsets.all(AppSizes.lg),
-                child: Center(child: CircularProgressIndicator()),
-              ),
+              loading: () => const SkeletonPostCard(),
               error: (error, stackTrace) => const SizedBox.shrink(),
             );
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => ListView.separated(
+        itemCount: 4,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) => const SkeletonPostCard(),
+      ),
       error: (error, stackTrace) =>
           const Center(child: Text('Unable to load likes.')),
     );

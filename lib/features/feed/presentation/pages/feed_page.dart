@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
+import '../../../../core/widgets/skeleton_post_card.dart';
 import '../../data/models/post_model.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/post_providers.dart';
@@ -63,8 +64,8 @@ class FeedPage extends ConsumerWidget {
                           child: Text(
                             unreadCount > 99 ? '99+' : unreadCount.toString(),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onError,
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                             ),
@@ -176,7 +177,16 @@ class _FeedList extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => ListView.separated(
+          itemCount: 6,
+          separatorBuilder: (context, index) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return const _FeedComposerEntry();
+            }
+            return const SkeletonPostCard();
+          },
+        ),
         error: (error, stackTrace) =>
             const Center(child: Text('Unable to load feed.')),
       ),

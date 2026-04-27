@@ -217,9 +217,9 @@ class _CreateProductPageState extends ConsumerState<CreateProductPage> {
                         child: IconButton(
                           padding: EdgeInsets.zero,
                           onPressed: () => _removeScreenshot(index),
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.close,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onError,
                             size: 17,
                           ),
                         ),

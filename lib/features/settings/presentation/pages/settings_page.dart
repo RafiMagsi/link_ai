@@ -25,7 +25,9 @@ class SettingsPage extends ConsumerWidget {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Delete'),
             ),
@@ -259,13 +261,15 @@ class SettingsPage extends ConsumerWidget {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(
+                    leading: Icon(
                       Icons.delete_forever,
-                      color: Colors.red,
+                      color: Theme.of(context).colorScheme.error,
                     ),
-                    title: const Text(
+                    title: Text(
                       'Delete Account',
-                      style: TextStyle(color: Colors.red),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                     subtitle: const Text('Permanent account deletion'),
                     onTap: () => _deleteAccount(context, ref),

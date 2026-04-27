@@ -399,7 +399,11 @@ class _SelectedMediaTile extends StatelessWidget {
               child: IconButton(
                 padding: EdgeInsets.zero,
                 onPressed: () => onRemove(index),
-                icon: const Icon(Icons.close, size: 17, color: Colors.white),
+                icon: Icon(
+                  Icons.close,
+                  size: 17,
+                  color: Theme.of(context).colorScheme.onError,
+                ),
               ),
             ),
           ),

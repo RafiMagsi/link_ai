@@ -43,7 +43,7 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        foregroundColor: scheme.onError,
         title: Text('${_index + 1}/${widget.mediaUrls.length}'),
       ),
       body: PageView.builder(
