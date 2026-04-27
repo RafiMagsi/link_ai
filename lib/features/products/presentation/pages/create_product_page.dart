@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/constants/app_sizes.dart';
 import '../providers/product_providers.dart';
 
 class CreateProductPage extends ConsumerStatefulWidget {
@@ -205,7 +206,7 @@ class _CreateProductPageState extends ConsumerState<CreateProductPage> {
                   fit: StackFit.expand,
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusLg),
                       child: Image.file(_screenshots[index], fit: BoxFit.cover),
                     ),
                     Positioned(

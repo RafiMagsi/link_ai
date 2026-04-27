@@ -40,7 +40,7 @@ class SkeletonPostCard extends StatelessWidget {
                     width: 200,
                     decoration: BoxDecoration(
                       color: colors.surfaceMuted,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppSizes.xs),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -49,7 +49,7 @@ class SkeletonPostCard extends StatelessWidget {
                     width: 100,
                     decoration: BoxDecoration(
                       color: colors.surfaceMuted,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppSizes.xs),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -57,7 +57,7 @@ class SkeletonPostCard extends StatelessWidget {
                     height: 60,
                     decoration: BoxDecoration(
                       color: colors.surfaceMuted,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppSizes.xs),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -70,7 +70,7 @@ class SkeletonPostCard extends StatelessWidget {
                         width: 40,
                         decoration: BoxDecoration(
                           color: colors.surfaceMuted,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(AppSizes.xs),
                         ),
                       ),
                     ),

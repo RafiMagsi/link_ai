@@ -69,7 +69,7 @@ class ProductDetailPage extends ConsumerWidget {
                       return Padding(
                         padding: const EdgeInsets.only(right: 10),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(22),
+                          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
                           child: Image.network(
                             screenshot.url,
                             fit: BoxFit.cover,

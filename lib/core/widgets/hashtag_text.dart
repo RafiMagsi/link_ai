@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../constants/app_sizes.dart';
+
 class HashtagText extends StatelessWidget {
   const HashtagText({
     super.key,
@@ -51,7 +53,7 @@ class HashtagText extends StatelessWidget {
           alignment: PlaceholderAlignment.baseline,
           baseline: TextBaseline.alphabetic,
           child: InkWell(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppSizes.sm),
             onTap: () => context.push('/hashtags/$normalized'),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),

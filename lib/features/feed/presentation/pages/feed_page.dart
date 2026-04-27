@@ -216,7 +216,7 @@ class _FeedComposerEntry extends ConsumerWidget {
             const SizedBox(width: AppSizes.md),
             Expanded(
               child: InkWell(
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(AppSizes.radiusCircle),
                 onTap: () => context.push('/posts/create'),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -224,7 +224,7 @@ class _FeedComposerEntry extends ConsumerWidget {
                     vertical: AppSizes.md,
                   ),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusCircle),
                     border: Border.all(color: colors.border),
                   ),
                   child: Text(

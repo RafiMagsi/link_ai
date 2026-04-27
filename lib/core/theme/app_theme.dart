@@ -166,7 +166,7 @@ abstract class AppTheme {
         backgroundColor: surfaceMuted,
         selectedColor: scheme.primary.withValues(alpha: 0.16),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppSizes.radiusCircle),
           side: BorderSide(color: border),
         ),
         labelStyle: TextStyle(

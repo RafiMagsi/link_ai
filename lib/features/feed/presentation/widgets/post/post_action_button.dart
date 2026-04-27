@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../../core/constants/app_sizes.dart';
 import '../../../../../core/theme/app_theme_colors.dart';
 
 class PostActionButton extends StatelessWidget {
@@ -27,7 +28,7 @@ class PostActionButton extends StatelessWidget {
         : colors.mutedText;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(AppSizes.radiusCircle),
       onTap: () {
         HapticFeedback.lightImpact();
         onTap();

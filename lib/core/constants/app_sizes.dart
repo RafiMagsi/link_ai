@@ -9,4 +9,5 @@ abstract class AppSizes {
   static const double radiusMd = 12;
   static const double radiusLg = 18;
   static const double radiusXl = 24;
+  static const double radiusCircle = 999;
 }
