@@ -80,6 +80,13 @@ class PostMoreMenuButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return IconButton(
+      iconSize: 10,
+      constraints: const BoxConstraints.tightFor(width: 68, height: 16),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
       tooltip: 'More',
       onPressed: () async {
         final action = await showModalBottomSheet<_PostMenuAction>(
@@ -92,6 +99,7 @@ class PostMoreMenuButton extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
+                    contentPadding: EdgeInsets.zero,
                     title: const Text('Post actions'),
                     subtitle: Text(
                       post.authorName.isEmpty ? 'Post' : post.authorName,
@@ -101,18 +109,21 @@ class PostMoreMenuButton extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   ListTile(
+                    contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.share_outlined),
                     title: const Text('Share'),
                     onTap: () =>
                         Navigator.of(context).pop(_PostMenuAction.share),
                   ),
                   ListTile(
+                    contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.link),
                     title: const Text('Copy link'),
                     onTap: () =>
                         Navigator.of(context).pop(_PostMenuAction.copyLink),
                   ),
                   ListTile(
+                    contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.flag_outlined),
                     title: const Text('Report'),
                     onTap: () =>
@@ -139,7 +150,7 @@ class PostMoreMenuButton extends ConsumerWidget {
             break;
         }
       },
-      icon: const Icon(Icons.more_horiz),
+      icon: const Icon(Icons.more_horiz, size: 18),
     );
   }
 }

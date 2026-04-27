@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/hashtag_text.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/models/post_model.dart';
 import '../providers/post_providers.dart';
 import '../pages/media_gallery_page.dart';
@@ -28,6 +29,18 @@ class FeedPostCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUid = ref.watch(currentUserProvider)?.uid;
+    final authorProfile = post.authorUid.isEmpty
+        ? null
+        : ref.watch(profileByUidProvider(post.authorUid)).asData?.value;
+
+    final resolvedAvatarUrl = authorProfile?.avatarUrl ?? post.authorAvatarUrl;
+    final resolvedName = (authorProfile?.name.trim().isNotEmpty ?? false)
+        ? authorProfile!.name.trim()
+        : post.authorName;
+    final resolvedRole = (authorProfile?.role.trim().isNotEmpty ?? false)
+        ? authorProfile!.role.trim()
+        : post.authorRole;
+
     final onAvatarTap = post.authorUid.isEmpty
         ? null
         : () {
@@ -43,28 +56,29 @@ class FeedPostCard extends ConsumerWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSizes.lg,
-            vertical: AppSizes.md,
-          ),
+          padding: const EdgeInsets.fromLTRB(AppSizes.lg, 6, 0, 6),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PostAvatar(avatarUrl: post.authorAvatarUrl, onTap: onAvatarTap),
+              PostAvatar(avatarUrl: resolvedAvatarUrl, onTap: onAvatarTap),
               const SizedBox(width: AppSizes.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    PostHeader(post: post),
-                    const SizedBox(height: 6),
+                    PostHeader(
+                      post: post,
+                      authorNameOverride: resolvedName,
+                      authorRoleOverride: resolvedRole,
+                    ),
+                    const SizedBox(height: 2),
                     if (post.text.trim().isNotEmpty)
                       HashtagText(
                         text: post.text,
-                        style: const TextStyle(fontSize: 15.5, height: 1.35),
+                        style: const TextStyle(fontSize: 15.5, height: 1.32),
                       ),
                     if (post.media.isNotEmpty) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       PostMediaGrid(
                         mediaUrls: post.media.map((e) => e.url).toList(),
                         heroTagPrefix: 'post_${post.id}_media_',
@@ -86,7 +100,6 @@ class FeedPostCard extends ConsumerWidget {
                         },
                       ),
                     ],
-                    const SizedBox(height: AppSizes.sm),
                     PostActionRow(post: post, onCommentTap: onCommentTap),
                   ],
                 ),

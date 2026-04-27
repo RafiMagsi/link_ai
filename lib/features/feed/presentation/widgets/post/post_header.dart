@@ -5,9 +5,16 @@ import '../../../data/models/post_model.dart';
 import 'post_more_menu_button.dart';
 
 class PostHeader extends StatelessWidget {
-  const PostHeader({super.key, required this.post});
+  const PostHeader({
+    super.key,
+    required this.post,
+    this.authorNameOverride,
+    this.authorRoleOverride,
+  });
 
   final PostModel post;
+  final String? authorNameOverride;
+  final String? authorRoleOverride;
 
   String _timeText() {
     final createdAt = post.createdAt;
@@ -27,11 +34,18 @@ class PostHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final authorName = (authorNameOverride?.trim().isNotEmpty ?? false)
+        ? authorNameOverride!.trim()
+        : post.authorName;
+    final authorRole = (authorRoleOverride?.trim().isNotEmpty ?? false)
+        ? authorRoleOverride!.trim()
+        : post.authorRole;
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Flexible(
           child: Text(
-            post.authorName.isEmpty ? 'Unknown Builder' : post.authorName,
+            authorName.isEmpty ? 'Unknown Builder' : authorName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -44,7 +58,7 @@ class PostHeader extends StatelessWidget {
         const SizedBox(width: 6),
         Flexible(
           child: Text(
-            post.authorRole.isEmpty ? 'AI Builder' : post.authorRole,
+            authorRole.isEmpty ? 'AI Builder' : authorRole,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: colors.mutedText, fontSize: 13),
@@ -58,7 +72,10 @@ class PostHeader extends StatelessWidget {
           style: TextStyle(color: colors.mutedText, fontSize: 13),
         ),
         const Spacer(),
-        PostMoreMenuButton(post: post),
+        Align(
+          alignment: Alignment.topCenter,
+          child: PostMoreMenuButton(post: post)
+          ),
       ],
     );
   }

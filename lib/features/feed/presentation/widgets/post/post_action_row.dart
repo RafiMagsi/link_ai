@@ -25,7 +25,7 @@ class PostActionRow extends ConsumerWidget {
     final saved = interactionState.asData?.value.saved ?? false;
 
     return Padding(
-      padding: const EdgeInsets.only(top: AppSizes.sm),
+      padding: const EdgeInsetsDirectional.only(end: AppSizes.lg),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

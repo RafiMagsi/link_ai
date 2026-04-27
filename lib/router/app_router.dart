@@ -131,7 +131,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile',
         name: 'profile',
-        builder: (context, state) => const ProfilePage(),
+        builder: (context, state) => const ProfilePage(showBackButton: true),
       ),
       GoRoute(
         path: '/profile/edit',
@@ -259,7 +259,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             final extra = state.extra;
             if (extra is! ProductModel) {
               return const Scaffold(
-                body: Center(child: Text('Missing product data. Please go back and try again.')),
+                body: Center(
+                  child: Text(
+                    'Missing product data. Please go back and try again.',
+                  ),
+                ),
               );
             }
             return EditProductPage(product: extra);

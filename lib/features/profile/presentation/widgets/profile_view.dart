@@ -10,7 +10,9 @@ import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../../core/widgets/skeleton_post_card.dart';
-import '../../../connect/presentation/widgets/connect_button.dart';
+import '../../../../core/utils/hashtag_utils.dart';
+import '../../../connect/data/datasources/connect_remote_datasource.dart';
+import '../../../connect/presentation/providers/connect_providers.dart';
 import '../../../feed/data/models/post_comment_model.dart';
 import '../../../feed/presentation/providers/post_providers.dart';
 import '../../../feed/presentation/widgets/feed_post_card.dart';
@@ -22,11 +24,15 @@ class ProfileView extends ConsumerStatefulWidget {
     required this.uid,
     required this.isSelf,
     required this.onEditProfile,
+    this.showBackButton = false,
+    this.onOpenMenu,
   });
 
   final String uid;
   final bool isSelf;
   final VoidCallback onEditProfile;
+  final bool showBackButton;
+  final VoidCallback? onOpenMenu;
 
   @override
   ConsumerState<ProfileView> createState() => _ProfileViewState();
@@ -90,13 +96,15 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                       tools: profile.tools,
                       targetUid: profile.uid,
                       onEditProfile: widget.onEditProfile,
+                      showBackButton: widget.showBackButton,
+                      onOpenMenu: widget.onOpenMenu,
                     ),
                     _StatsRow(
                       postsState: postsState,
                       likesState: likesState,
                       commentsState: commentsState,
                     ),
-                    const SizedBox(height: AppSizes.md),
+                    const SizedBox(height: AppSizes.xs),
                   ],
                 ),
               ),
@@ -113,10 +121,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                   ),
                 ),
               ),
-              _ProfileSelectedTabSliver(
-                uid: uid,
-                selectedTab: _selectedTab,
-              ),
+              _ProfileSelectedTabSliver(uid: uid, selectedTab: _selectedTab),
             ],
           ),
         );
@@ -144,6 +149,8 @@ class _Header extends StatelessWidget {
     required this.tools,
     required this.targetUid,
     required this.onEditProfile,
+    required this.showBackButton,
+    required this.onOpenMenu,
   });
 
   final bool isSelf;
@@ -160,244 +167,449 @@ class _Header extends StatelessWidget {
   final List<String> tools;
   final String targetUid;
   final VoidCallback onEditProfile;
+  final bool showBackButton;
+  final VoidCallback? onOpenMenu;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final displayName = name.isEmpty ? 'Unnamed Builder' : name;
     final displayRole = role.isEmpty ? 'AI Builder' : role;
+    final scheme = Theme.of(context).colorScheme;
+    final topInset = MediaQuery.paddingOf(context).top;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSizes.lg,
-        AppSizes.xl,
-        AppSizes.lg,
-        AppSizes.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _GradientAvatar(avatarUrl: avatarUrl),
-              const SizedBox(width: AppSizes.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: AppSizes.xs),
-                    Text(
-                      displayRole,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontSize: 13,
-                        color: colors.mutedText,
-                      ),
-                    ),
-                    if (location.trim().isNotEmpty) ...[
-                      const SizedBox(height: AppSizes.xs),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on_outlined,
-                            size: 16,
-                            color: colors.mutedText,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              location,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: colors.mutedText,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+    return Column(
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              height: topInset + 82,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    scheme.primary.withValues(alpha: 0.45),
+                    scheme.secondary.withValues(alpha: 0.35),
+                    scheme.surface,
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: AppSizes.lg),
-          if (bio.trim().isNotEmpty)
-            Text(
-              bio.trim(),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                height: 1.35,
-                fontWeight: FontWeight.w500,
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Container(height: 1, color: colors.border),
+                  ),
+                  Positioned(
+                    left: AppSizes.sm,
+                    right: AppSizes.sm,
+                    top: topInset - 10,
+                    child: Row(
+                      children: [
+                        if (showBackButton)
+                          IconButton(
+                            constraints: const BoxConstraints.tightFor(
+                              width: 40,
+                              height: 36,
+                            ),
+                            padding: EdgeInsets.zero,
+                            tooltip: 'Back',
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              foregroundColor: scheme.onPrimary,
+                              overlayColor: scheme.onPrimary.withValues(
+                                alpha: 0.10,
+                              ),
+                            ),
+                            onPressed: () => Navigator.of(context).maybePop(),
+                            icon: const Icon(Icons.arrow_back),
+                          )
+                        else
+                          const SizedBox(width: 40, height: 36),
+                        const Spacer(),
+                        // Keep the top row minimal: just navigation affordance(s).
+                        const SizedBox(width: 40, height: 36),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          if (building.trim().isNotEmpty ||
-              need.trim().isNotEmpty ||
-              wantToMeet.trim().isNotEmpty) ...[
-            const SizedBox(height: AppSizes.md),
-            _ProfileInfoPanel(
-              building: building,
-              need: need,
-              wantToMeet: wantToMeet,
+            Positioned(
+              bottom: -34,
+              left: AppSizes.lg,
+              right: AppSizes.lg,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Left side of avatar: message + share
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _ProfilePrimaryAction(
+                              isSelf: isSelf,
+                              targetUid: targetUid,
+                              targetName: displayName,
+                              onEditProfile: onEditProfile,
+                            ),
+                            const SizedBox(width: AppSizes.sm),
+                            _HeaderIconChip(
+                              icon: Icons.share_outlined,
+                              tooltip: 'Share profile',
+                              onPressed: () {
+                                Clipboard.setData(
+                                  ClipboardData(
+                                    text: 'linkai://profiles/$targetUid',
+                                  ),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Profile link copied'),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.sm),
+                  Center(
+                    child: _GradientAvatar(avatarUrl: avatarUrl, radius: 44),
+                  ),
+                  const SizedBox(width: AppSizes.sm),
+                  // Right side of avatar: primary action + menu
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _HeaderIconChip(
+                              icon: Icons.chat_bubble_outline,
+                              tooltip: 'Message (soon)',
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Messaging is coming soon.'),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(width: AppSizes.sm),
+                            if (onOpenMenu != null)
+                              _HeaderIconChip(
+                                icon: Icons.more_horiz,
+                                tooltip: 'More',
+                                onPressed: onOpenMenu!,
+                              )
+                            else
+                              const SizedBox(width: 40, height: 36),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
-          if (skills.isNotEmpty || tools.isNotEmpty) ...[
-            const SizedBox(height: AppSizes.md),
-            _ProfileChipsSection(
-              title: 'Skills & tools',
-              values: [...skills, ...tools],
-            ),
-          ],
-          if (links.values.any((value) => value.trim().isNotEmpty)) ...[
-            const SizedBox(height: AppSizes.md),
-            _LinksRow(links: links),
-          ],
-          const SizedBox(height: AppSizes.lg),
-          _ProfileActionButtons(
-            isSelf: isSelf,
-            targetUid: targetUid,
-            displayName: displayName,
-            onEditProfile: onEditProfile,
+        ),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSizes.lg,
+            0,
+            AppSizes.lg,
+            AppSizes.md,
           ),
-        ],
-      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  height: 1.05,
+                ),
+              ),
+              const SizedBox(height: AppSizes.xs),
+              Text(
+                displayRole,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.mutedText),
+              ),
+              if (location.trim().isNotEmpty) ...[
+                const SizedBox(height: AppSizes.xs),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: colors.mutedText,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        location,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: colors.mutedText, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (links.values.any((value) => value.trim().isNotEmpty)) ...[
+                const SizedBox(height: AppSizes.sm),
+                _LinksRow(links: links),
+              ],
+              const SizedBox(height: AppSizes.sm),
+              if (bio.trim().isNotEmpty)
+                Text(
+                  bio.trim(),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    height: 1.35,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              if (building.trim().isNotEmpty ||
+                  need.trim().isNotEmpty ||
+                  wantToMeet.trim().isNotEmpty) ...[
+                const SizedBox(height: AppSizes.sm),
+                _ProfileInfoPanel(
+                  building: building,
+                  need: need,
+                  wantToMeet: wantToMeet,
+                ),
+              ],
+              if (skills.isNotEmpty || tools.isNotEmpty) ...[
+                const SizedBox(height: AppSizes.sm),
+                _ProfileChipsSection(
+                  title: 'Skills & tools',
+                  values: [...skills, ...tools],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _GradientAvatar extends StatelessWidget {
-  const _GradientAvatar({required this.avatarUrl});
+  const _GradientAvatar({required this.avatarUrl, this.radius = 44});
 
   final String? avatarUrl;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: const BoxDecoration(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFFFACC15),
-            Color(0xFFEC4899),
-            Color(0xFF8B5CF6),
-            Color(0xFF2563EB),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border.all(color: colors.border, width: 1),
       ),
       child: Container(
-        padding: const EdgeInsets.all(3),
+        padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
+          color: Theme.of(context).colorScheme.surface,
           shape: BoxShape.circle,
+          border: Border.all(
+            color: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.35),
+            width: 1.5,
+          ),
         ),
-        child: _ProfileAvatarImage(avatarUrl: avatarUrl),
+        child: _ProfileAvatarImage(avatarUrl: avatarUrl, radius: radius),
       ),
     );
   }
 }
 
 class _ProfileAvatarImage extends StatelessWidget {
-  const _ProfileAvatarImage({required this.avatarUrl});
+  const _ProfileAvatarImage({required this.avatarUrl, required this.radius});
 
   final String? avatarUrl;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
     if (avatarUrl != null && avatarUrl!.trim().isNotEmpty) {
-      return AppUserAvatar(avatarUrl: avatarUrl, radius: 44);
+      return AppUserAvatar(avatarUrl: avatarUrl, radius: radius);
     }
 
     return CircleAvatar(
-      radius: 44,
+      radius: radius,
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Icon(
         Icons.person_rounded,
-        size: 52,
+        size: radius * 1.15,
         color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     );
   }
 }
 
-class _ProfileActionButtons extends StatelessWidget {
-  const _ProfileActionButtons({
+class _ProfilePrimaryAction extends ConsumerWidget {
+  const _ProfilePrimaryAction({
     required this.isSelf,
     required this.targetUid,
-    required this.displayName,
+    required this.targetName,
     required this.onEditProfile,
   });
 
   final bool isSelf;
   final String targetUid;
-  final String displayName;
+  final String targetName;
   final VoidCallback onEditProfile;
 
   @override
-  Widget build(BuildContext context) {
-    if (!isSelf) {
-      return Row(
-        children: [
-          Expanded(
-            child: ConnectButton(targetUid: targetUid, targetName: displayName),
-          ),
-          const SizedBox(width: AppSizes.sm),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.send_outlined, size: 18),
-              label: const Text('Message'),
-            ),
-          ),
-        ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final buttonStyle = FilledButton.styleFrom(
+      minimumSize: const Size(0, 36),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      shape: const StadiumBorder(),
+      textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+      backgroundColor: scheme.onPrimary.withValues(alpha: 0.14),
+      foregroundColor: scheme.onPrimary,
+      side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.22)),
+    );
+
+    if (isSelf) {
+      return FilledButton(
+        style: buttonStyle,
+        onPressed: onEditProfile,
+        child: const Text('Edit'),
       );
     }
 
-    return Row(
-      children: [
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: onEditProfile,
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            label: const Text('Edit profile'),
-          ),
-        ),
-        const SizedBox(width: AppSizes.sm),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => context.push('/connect/requests'),
-            icon: const Icon(Icons.group_add_outlined, size: 18),
-            label: const Text('Requests'),
-          ),
-        ),
-        const SizedBox(width: AppSizes.sm),
-        IconButton.filledTonal(
-          onPressed: () {
-            Clipboard.setData(
-              ClipboardData(text: 'ai-links://profiles/$targetUid'),
+    final statusState = ref.watch(relationshipStatusProvider(targetUid));
+
+    return statusState.when(
+      data: (status) {
+        switch (status) {
+          case ConnectRelationshipStatus.connected:
+            return FilledButton.icon(
+              style: buttonStyle,
+              onPressed: () async {
+                await ref
+                    .read(connectControllerProvider.notifier)
+                    .pingUser(targetUid);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('Ping sent!')));
+                }
+              },
+              icon: const Icon(Icons.notifications_active_outlined, size: 18),
+              label: const Text('Ping'),
             );
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Profile link copied')),
+          case ConnectRelationshipStatus.outgoingPending:
+            return FilledButton(
+              style: buttonStyle,
+              onPressed: null,
+              child: const Text('Requested'),
             );
-          },
-          icon: const Icon(Icons.share_outlined),
-          tooltip: 'Share profile',
-        ),
-      ],
+          case ConnectRelationshipStatus.incomingPending:
+            return FilledButton(
+              style: buttonStyle,
+              onPressed: () => context.push('/connect/requests'),
+              child: const Text('Respond'),
+            );
+          case ConnectRelationshipStatus.none:
+            return FilledButton(
+              style: buttonStyle,
+              onPressed: () => context.push(
+                '/connect/request/$targetUid',
+                extra: {'receiverName': targetName},
+              ),
+              child: const Text('Connect'),
+            );
+        }
+      },
+      loading: () => FilledButton(
+        style: buttonStyle,
+        onPressed: null,
+        child: const Text('Checking…'),
+      ),
+      error: (error, stackTrace) => FilledButton(
+        style: buttonStyle,
+        onPressed: () => ref.invalidate(relationshipStatusProvider(targetUid)),
+        child: const Text('Retry'),
+      ),
+    );
+  }
+}
+
+class _HeaderIconChip extends StatelessWidget {
+  const _HeaderIconChip({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 40,
+      height: 36,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: scheme.onPrimary.withValues(alpha: 0.12),
+              border: Border.all(
+                color: scheme.onPrimary.withValues(alpha: 0.18),
+              ),
+            ),
+          ),
+          IconButton(
+            constraints: const BoxConstraints.tightFor(width: 40, height: 36),
+            padding: EdgeInsets.zero,
+            tooltip: tooltip,
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              foregroundColor: scheme.onPrimary,
+              overlayColor: scheme.onPrimary.withValues(alpha: 0.10),
+            ),
+            onPressed: onPressed,
+            icon: Icon(icon, size: 20),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -416,16 +628,8 @@ class _ProfileInfoPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <({IconData icon, String label, String value})>[
-      (
-        icon: Icons.auto_awesome_outlined,
-        label: 'Building',
-        value: building,
-      ),
-      (
-        icon: Icons.lightbulb_outline,
-        label: 'Needs',
-        value: need,
-      ),
+      (icon: Icons.auto_awesome_outlined, label: 'Building', value: building),
+      (icon: Icons.lightbulb_outline, label: 'Needs', value: need),
       (
         icon: Icons.people_alt_outlined,
         label: 'Wants to meet',
@@ -440,15 +644,8 @@ class _ProfileInfoPanel extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF1E293B)),
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context).colorScheme.surface.withOpacity(0.95),
-            Theme.of(context).colorScheme.surface.withOpacity(0.70),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        border: Border.all(color: colors.border),
+        color: Theme.of(context).colorScheme.surface,
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.md),
@@ -468,9 +665,9 @@ class _ProfileInfoPanel extends StatelessWidget {
                   Expanded(
                     child: RichText(
                       text: TextSpan(
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          height: 1.35,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(height: 1.35),
                         children: [
                           TextSpan(
                             text: '${item.label}: ',
@@ -492,10 +689,7 @@ class _ProfileInfoPanel extends StatelessWidget {
 }
 
 class _ProfileChipsSection extends StatelessWidget {
-  const _ProfileChipsSection({
-    required this.title,
-    required this.values,
-  });
+  const _ProfileChipsSection({required this.title, required this.values});
 
   final String title;
   final List<String> values;
@@ -515,19 +709,16 @@ class _ProfileChipsSection extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: AppSizes.sm),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 2,
+          runSpacing: 0,
           children: uniqueValues.take(16).map((value) {
-            return Chip(
-              label: Text(value),
-              visualDensity: VisualDensity.compact,
-            );
+            return GradientChip(label: value);
           }).toList(),
         ),
       ],
@@ -573,17 +764,17 @@ class _LinksRow extends StatelessWidget {
       alignment: WrapAlignment.start,
       children: items.map((e) {
         return GestureDetector(
-          onTap: () async {
-            final uri = Uri.tryParse(e.value.trim());
-            if (uri != null) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            }
-          },
           onLongPress: () => _copy(context, e.value.trim()),
           child: ActionChip(
             avatar: Icon(iconFor(e.key), size: 18, color: colors.mutedText),
             label: Text(e.key),
-            onPressed: null,
+            visualDensity: VisualDensity.compact,
+            onPressed: () async {
+              final uri = Uri.tryParse(e.value.trim());
+              if (uri != null) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
           ),
         );
       }).toList(),
@@ -626,29 +817,19 @@ class _StatsRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSizes.lg,
-        AppSizes.sm,
+        AppSizes.xs,
         AppSizes.lg,
         0,
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF1E293B)),
-          color: Theme.of(context).colorScheme.surface.withOpacity(0.72),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              metric('Posts', posts),
-              _VerticalDivider(color: colors.mutedText.withOpacity(0.22)),
-              metric('Likes', likes),
-              _VerticalDivider(color: colors.mutedText.withOpacity(0.22)),
-              metric('Comments', comments),
-            ],
-          ),
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          metric('Posts', posts),
+          _VerticalDivider(color: colors.border),
+          metric('Likes', likes),
+          _VerticalDivider(color: colors.border),
+          metric('Comments', comments),
+        ],
       ),
     );
   }
@@ -661,11 +842,7 @@ class _VerticalDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 34,
-      color: color,
-    );
+    return Container(width: 1, height: 34, color: color);
   }
 }
 
@@ -678,52 +855,40 @@ class _ProfileTabsHeader extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onChanged;
 
-  static const _tabs = [
-    (icon: Icons.grid_on_rounded, label: 'Posts'),
-    (icon: Icons.favorite_border_rounded, label: 'Likes'),
-    (icon: Icons.chat_bubble_outline_rounded, label: 'Comments'),
-    (icon: Icons.tag_rounded, label: 'Hashtags'),
-  ];
+  static const _tabs = ['Posts', 'Likes', 'Comments', 'Hashtags'];
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Row(
         children: List.generate(_tabs.length, (index) {
-          final tab = _tabs[index];
           final selected = selectedIndex == index;
 
           return Expanded(
             child: InkWell(
               onTap: () => onChanged(index),
               child: SizedBox(
-                height: 52,
+                height: 48,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      tab.icon,
-                      size: 21,
-                      color: selected
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: 4),
                     Text(
-                      tab.label,
+                      _tabs[index],
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight:
-                            selected ? FontWeight.w800 : FontWeight.w500,
+                        fontSize: 13,
+                        fontWeight: selected
+                            ? FontWeight.w800
+                            : FontWeight.w500,
                         color: selected
                             ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                            : colors.mutedText,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 8),
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       height: 2,
@@ -750,10 +915,10 @@ class _ProfileTabsHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
 
   @override
-  double get minExtent => 52;
+  double get minExtent => 48;
 
   @override
-  double get maxExtent => 52;
+  double get maxExtent => 48;
 
   @override
   Widget build(
@@ -764,9 +929,13 @@ class _ProfileTabsHeaderDelegate extends SliverPersistentHeaderDelegate {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        border: const Border(
-          top: BorderSide(color: Color(0x141E293B)),
-          bottom: BorderSide(color: Color(0x331E293B)),
+        border: Border(
+          top: BorderSide(
+            color: context.appColors.border.withValues(alpha: 0.35),
+          ),
+          bottom: BorderSide(
+            color: context.appColors.border.withValues(alpha: 0.75),
+          ),
         ),
       ),
       child: child,
@@ -776,38 +945,6 @@ class _ProfileTabsHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _ProfileTabsHeaderDelegate oldDelegate) {
     return oldDelegate.child != child;
-  }
-}
-
-class _ScrollableEmptyProfileState extends StatelessWidget {
-  const _ScrollableEmptyProfileState({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      padding: EdgeInsets.zero,
-      children: [
-        SizedBox(
-          height: MediaQuery.sizeOf(context).height * 0.45,
-          child: AppEmptyState(
-            title: title,
-            subtitle: subtitle,
-            icon: icon,
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -966,11 +1103,7 @@ class _CommentsSliver extends ConsumerWidget {
           itemBuilder: (context, index) {
             final c = comments[index];
             return ListTile(
-              title: Text(
-                c.text,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              title: Text(c.text, maxLines: 2, overflow: TextOverflow.ellipsis),
               subtitle: const Text('On a post'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/posts/${c.postId}'),
@@ -1003,7 +1136,10 @@ class _HashtagsSliver extends ConsumerWidget {
       data: (posts) {
         final counts = <String, int>{};
         for (final post in posts) {
-          for (final t in post.hashtags) {
+          final tags = post.hashtags.isNotEmpty
+              ? post.hashtags
+              : HashtagUtils.extractNormalized(post.text);
+          for (final t in tags) {
             counts[t] = (counts[t] ?? 0) + 1;
           }
         }
@@ -1050,237 +1186,54 @@ class _HashtagsSliver extends ConsumerWidget {
   }
 }
 
-class _PostsTab extends ConsumerWidget {
-  const _PostsTab({required this.uid});
+class GradientChip extends StatelessWidget {
+  const GradientChip({
+    super.key,
+    required this.label,
+    this.onTap,
+  });
 
-  final String uid;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(postsByAuthorProvider(uid));
-    return state.when(
-      data: (posts) {
-        if (posts.isEmpty) {
-          return const _ScrollableEmptyProfileState(
-            title: 'No posts yet',
-            subtitle: 'No posts to show.',
-            icon: Icons.forum_outlined,
-          );
-        }
-
-        return ListView.separated(
-          physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
-          itemCount: posts.length,
-          separatorBuilder: (context, index) => const Divider(height: 1),
-          itemBuilder: (context, index) {
-            final post = posts[index];
-            return FeedPostCard(
-              post: post,
-              onTap: () => context.push('/posts/${post.id}', extra: post),
-              onCommentTap: () =>
-                  context.push('/posts/${post.id}', extra: post),
-            );
-          },
-        );
-      },
-      loading: () => ListView.separated(
-        itemCount: 4,
-        separatorBuilder: (context, index) => const Divider(height: 1),
-        itemBuilder: (context, index) => const SkeletonPostCard(),
-      ),
-      error: (error, stackTrace) =>
-          const Center(child: Text('Unable to load posts.')),
-    );
-  }
-}
-
-class _LikesTab extends ConsumerWidget {
-  const _LikesTab({required this.uid});
-
-  final String uid;
+  final String label;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(likedPostIdsByUserProvider(uid));
-
-    return state.when(
-      data: (postIds) {
-        if (postIds.isEmpty) {
-          return const _ScrollableEmptyProfileState(
-            title: 'No likes yet',
-            subtitle: 'Liked posts will show up here.',
-            icon: Icons.favorite_border,
-          );
-        }
-
-        return ListView.separated(
-          physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
-          itemCount: postIds.length,
-          separatorBuilder: (context, index) => const Divider(height: 1),
-          itemBuilder: (context, index) {
-            final postId = postIds[index];
-            final postState = ref.watch(postByIdProvider(postId));
-
-            return postState.when(
-              data: (post) {
-                if (post == null) return const SizedBox.shrink();
-                return FeedPostCard(
-                  post: post,
-                  onTap: () => context.push('/posts/${post.id}', extra: post),
-                  onCommentTap: () =>
-                      context.push('/posts/${post.id}', extra: post),
-                );
-              },
-              loading: () => const SkeletonPostCard(),
-              error: (error, stackTrace) => const SizedBox.shrink(),
-            );
-          },
-        );
-      },
-      loading: () => ListView.separated(
-        itemCount: 4,
-        separatorBuilder: (context, index) => const Divider(height: 1),
-        itemBuilder: (context, index) => const SkeletonPostCard(),
-      ),
-      error: (error, stackTrace) =>
-          const Center(child: Text('Unable to load likes.')),
-    );
-  }
-}
-
-class _CommentsTab extends ConsumerWidget {
-  const _CommentsTab({required this.uid});
-
-  final String uid;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(commentsByAuthorProvider(uid));
-
-    return state.when(
-      data: (comments) {
-        if (comments.isEmpty) {
-          return const _ScrollableEmptyProfileState(
-            title: 'No comments yet',
-            subtitle: 'Comments made by this user will show up here.',
-            icon: Icons.chat_bubble_outline,
-          );
-        }
-
-        return ListView.separated(
-          physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
-          itemCount: comments.length,
-          separatorBuilder: (context, index) => const Divider(height: 1),
-          itemBuilder: (context, index) {
-            final c = comments[index];
-            return ListTile(
-              title: Text(c.text, maxLines: 2, overflow: TextOverflow.ellipsis),
-              subtitle: const Text('On a post'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/posts/${c.postId}'),
-            );
-          },
-        );
-      },
-      loading: () => const Center(child: AppLoader()),
-      error: (error, stackTrace) =>
-          const Center(child: Text('Unable to load comments.')),
-    );
-  }
-}
-
-class _HashtagsTab extends ConsumerWidget {
-  const _HashtagsTab({required this.uid});
-
-  final String uid;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final postsState = ref.watch(postsByAuthorProvider(uid));
-
-    return postsState.when(
-      data: (posts) {
-        final counts = <String, int>{};
-        for (final post in posts) {
-          for (final t in post.hashtags) {
-            counts[t] = (counts[t] ?? 0) + 1;
-          }
-        }
-
-        final top = counts.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-
-        if (top.isEmpty) {
-          return const _ScrollableEmptyProfileState(
-            title: 'No hashtags yet',
-            subtitle: 'Hashtags used by this user will show up here.',
-            icon: Icons.tag,
-          );
-        }
-
-        return ListView(
-          physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
-          padding: const EdgeInsets.all(AppSizes.lg),
-          children: [
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: top.take(40).map((e) {
-                return ActionChip(
-                  label: Text('#${e.key} · ${e.value}'),
-                  onPressed: () => context.push('/hashtags/${e.key}'),
-                );
-              }).toList(),
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFF2563EB).withValues(alpha: 0.14),
+                const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                const Color(0xFFEC4899).withValues(alpha: 0.10),
+              ],
             ),
-          ],
-        );
-      },
-      loading: () => const Center(child: AppLoader()),
-      error: (error, stackTrace) =>
-          const Center(child: Text('Unable to load hashtags.')),
-    );
-  }
-}
-
-class _ProfileTabBarDelegate extends SliverPersistentHeaderDelegate {
-  const _ProfileTabBarDelegate({required this.child});
-
-  final Widget child;
-
-  @override
-  double get minExtent => 48;
-
-  @override
-  double get maxExtent => 48;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        border: const Border(
-          top: BorderSide(color: Color(0x141E293B)),
-          bottom: BorderSide(color: Color(0x331E293B)),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.22),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 5,
+            ),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                height: 1.2,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ),
       ),
-      child: child,
     );
-  }
-
-  @override
-  bool shouldRebuild(covariant _ProfileTabBarDelegate oldDelegate) {
-    return oldDelegate.child != child;
   }
 }
