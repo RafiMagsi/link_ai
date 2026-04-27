@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/config/app_limits.dart';
 import '../../../../core/config/app_limits_provider.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
@@ -26,6 +27,22 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
 
   bool _isUploading = false;
   double _uploadProgress = 0;
+
+  bool get _hasAnyContent {
+    return _textController.text.trim().isNotEmpty || _selectedMedia.isNotEmpty;
+  }
+
+  bool _isValidForSubmit(AppLimits limits) {
+    final text = _textController.text.trim();
+    if (text.length > limits.postMaxChars) return false;
+    if (_selectedMedia.length > limits.postMaxMediaItems) return false;
+    if (!_hasAnyContent) return false;
+
+    final hasVideo = _selectedMedia.any((file) => _isVideoPath(file.path));
+    if (hasVideo) return false;
+
+    return true;
+  }
 
   @override
   void dispose() {
@@ -70,36 +87,6 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     });
   }
 
-  Future<void> _pickVideo() async {
-    final limits = ref.read(appLimitsProvider);
-
-    if (_selectedMedia.length >= limits.postMaxMediaItems) {
-      _showMessage('Maximum ${limits.postMaxMediaItems} media items allowed.');
-      return;
-    }
-
-    final pickedVideo = await _imagePicker.pickVideo(
-      source: ImageSource.gallery,
-      maxDuration: Duration(seconds: limits.videoMaxDurationSeconds),
-    );
-
-    if (pickedVideo == null) return;
-
-    final file = File(pickedVideo.path);
-    final sizeBytes = await file.length();
-
-    if (sizeBytes > limits.videoMaxBytes) {
-      _showMessage(
-        'Video is larger than ${_bytesToMb(limits.videoMaxBytes)} MB.',
-      );
-      return;
-    }
-
-    setState(() {
-      _selectedMedia.add(file);
-    });
-  }
-
   void _removeMedia(int index) {
     setState(() {
       _selectedMedia.removeAt(index);
@@ -110,21 +97,16 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     final limits = ref.read(appLimitsProvider);
     final text = _textController.text.trim();
 
-    if (text.isEmpty && _selectedMedia.isEmpty) {
-      _showMessage('Write something or add media.');
-      return;
-    }
-
-    if (text.length > limits.postMaxChars) {
-      _showMessage('Post text is too long.');
-      return;
-    }
-
-    final hasVideo = _selectedMedia.any((file) => _isVideoPath(file.path));
-    if (hasVideo) {
-      _showMessage(
-        'Video posts are not supported yet. Remove the video to post.',
-      );
+    if (!_isValidForSubmit(limits)) {
+      if (!_hasAnyContent) {
+        _showMessage('Write something or add media.');
+        return;
+      }
+      if (text.length > limits.postMaxChars) {
+        _showMessage('Post text is too long.');
+        return;
+      }
+      _showMessage('Unable to post. Remove unsupported media and try again.');
       return;
     }
 
@@ -132,12 +114,26 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
 
     setState(() {
       _isUploading = true;
-      _uploadProgress = 0;
+      _uploadProgress = 0.05;
     });
+
+    // Until we have per-file progress, provide a simple "alive" indicator.
+    final progressTimer =
+        Stream.periodic(
+          const Duration(milliseconds: 220),
+          (tick) => tick,
+        ).listen((_) {
+          if (!mounted || !_isUploading) return;
+          setState(() {
+            _uploadProgress = (_uploadProgress + 0.07).clamp(0.05, 0.90);
+          });
+        });
 
     await ref
         .read(postControllerProvider.notifier)
         .createPost(text: text, imageFiles: imageFiles);
+
+    await progressTimer.cancel();
 
     final state = ref.read(postControllerProvider);
 
@@ -172,6 +168,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     final isOverLimit = remaining < 0;
     final colors = context.appColors;
     final myProfile = ref.watch(myProfileProvider).asData?.value;
+    final canSubmit = !_isUploading && _isValidForSubmit(limits);
 
     return Scaffold(
       appBar: AppBar(
@@ -180,7 +177,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: FilledButton(
-              onPressed: _isUploading || isOverLimit ? null : _submit,
+              onPressed: canSubmit ? _submit : null,
               child: const Text('Post'),
             ),
           ),
@@ -189,7 +186,29 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
       body: SafeArea(
         child: Column(
           children: [
-            if (_isUploading) LinearProgressIndicator(value: _uploadProgress),
+            if (_isUploading) ...[
+              LinearProgressIndicator(value: _uploadProgress),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSizes.lg,
+                  AppSizes.sm,
+                  AppSizes.lg,
+                  0,
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.cloud_upload_outlined, color: colors.mutedText),
+                    const SizedBox(width: AppSizes.sm),
+                    Expanded(
+                      child: Text(
+                        'Uploading… ${(_uploadProgress * 100).round()}%',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(AppSizes.lg),
@@ -245,9 +264,16 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
                     onPressed: _isUploading ? null : _pickImages,
                     icon: const Icon(Icons.image_outlined),
                   ),
-                  IconButton(
-                    onPressed: _isUploading ? null : _pickVideo,
-                    icon: const Icon(Icons.videocam_outlined),
+                  Tooltip(
+                    message: 'Video posts coming soon',
+                    child: IconButton(
+                      onPressed: _isUploading
+                          ? null
+                          : () {
+                              _showMessage('Video posts coming soon.');
+                            },
+                      icon: const Icon(Icons.videocam_outlined),
+                    ),
                   ),
                   const Spacer(),
                   Text(
