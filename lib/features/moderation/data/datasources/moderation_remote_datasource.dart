@@ -17,6 +17,14 @@ class ModerationRemoteDataSource {
     return _firestore.collection('userBlocks');
   }
 
+  CollectionReference<Map<String, dynamic>> get _posts {
+    return _firestore.collection('posts');
+  }
+
+  CollectionReference<Map<String, dynamic>> get _userModeration {
+    return _firestore.collection('userModeration');
+  }
+
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchBlockDoc(String blockId) {
     return _userBlocks.doc(blockId).snapshots();
   }
@@ -50,6 +58,9 @@ class ModerationRemoteDataSource {
           'targetUid': targetUid,
           'reason': reason,
           'status': 'open',
+          'actionType': null,
+          'actionBy': null,
+          'actionAt': null,
           'createdAt': FieldValue.serverTimestamp(),
           'resolvedAt': null,
           'resolvedBy': null,
@@ -85,17 +96,55 @@ class ModerationRemoteDataSource {
   }
 
   Future<void> resolveReport({
-    required String reportId,
+    required ModerationReportModel report,
     required String adminUid,
     required String status,
+    String? actionType,
   }) async {
-    await _reports
-        .doc(reportId)
-        .update({
-          'status': status,
-          'resolvedBy': adminUid,
-          'resolvedAt': FieldValue.serverTimestamp(),
-        })
-        .timeout(const Duration(seconds: 10));
+    final batch = _firestore.batch();
+    final reportRef = _reports.doc(report.id);
+
+    batch.update(reportRef, {
+      'status': status,
+      'resolvedBy': adminUid,
+      'resolvedAt': FieldValue.serverTimestamp(),
+      'actionType': actionType,
+      'actionBy': actionType == null ? null : adminUid,
+      'actionAt': actionType == null ? null : FieldValue.serverTimestamp(),
+    });
+
+    if (actionType == 'hide_post' && report.postId != null) {
+      batch.update(_posts.doc(report.postId), {
+        'visibility': 'hidden',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    if (actionType == 'restore_post' && report.postId != null) {
+      batch.update(_posts.doc(report.postId), {
+        'visibility': 'active',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    if (actionType == 'suspend_user' && report.targetUid != null) {
+      batch.set(_userModeration.doc(report.targetUid), {
+        'uid': report.targetUid,
+        'status': 'suspended',
+        'updatedBy': adminUid,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
+    if (actionType == 'restore_user' && report.targetUid != null) {
+      batch.set(_userModeration.doc(report.targetUid), {
+        'uid': report.targetUid,
+        'status': 'active',
+        'updatedBy': adminUid,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
+    await batch.commit().timeout(const Duration(seconds: 10));
   }
 }

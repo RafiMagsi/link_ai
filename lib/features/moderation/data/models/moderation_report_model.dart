@@ -10,6 +10,9 @@ class ModerationReportModel {
     required this.postId,
     required this.targetUid,
     required this.resolvedBy,
+    required this.actionType,
+    required this.actionBy,
+    required this.actionAt,
     required this.createdAt,
     required this.resolvedAt,
   });
@@ -22,6 +25,9 @@ class ModerationReportModel {
   final String? postId;
   final String? targetUid;
   final String? resolvedBy;
+  final String? actionType;
+  final String? actionBy;
+  final DateTime? actionAt;
   final DateTime? createdAt;
   final DateTime? resolvedAt;
 
@@ -41,6 +47,9 @@ class ModerationReportModel {
       postId: data['postId'] as String?,
       targetUid: data['targetUid'] as String?,
       resolvedBy: data['resolvedBy'] as String?,
+      actionType: data['actionType'] as String?,
+      actionBy: data['actionBy'] as String?,
+      actionAt: (data['actionAt'] as Timestamp?)?.toDate(),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       resolvedAt: (data['resolvedAt'] as Timestamp?)?.toDate(),
     );

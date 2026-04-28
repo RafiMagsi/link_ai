@@ -620,6 +620,7 @@ export const deleteMyAccount = onCall(async (request) => {
 
   await Promise.all([
     db.collection("profiles").doc(uid).delete().catch(() => undefined),
+    db.collection("userModeration").doc(uid).delete().catch(() => undefined),
     db.collection("userSettings").doc(uid).delete().catch(() => undefined),
     db
       .collection("userConnectionStats")

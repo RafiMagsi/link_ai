@@ -34,10 +34,14 @@ class AdminReportsPage extends ConsumerWidget {
               return _ReportTile(
                 report: report,
                 isBusy: moderationState.isLoading,
-                onResolve: (status) async {
+                onResolve: (status, actionType) async {
                   await ref
                       .read(moderationControllerProvider.notifier)
-                      .resolveReport(reportId: report.id, status: status);
+                      .resolveReport(
+                        report: report,
+                        status: status,
+                        actionType: actionType,
+                      );
                 },
               );
             },
@@ -61,7 +65,7 @@ class _ReportTile extends StatelessWidget {
 
   final ModerationReportModel report;
   final bool isBusy;
-  final ValueChanged<String> onResolve;
+  final void Function(String status, String? actionType) onResolve;
 
   @override
   Widget build(BuildContext context) {
@@ -88,14 +92,46 @@ class _ReportTile extends StatelessWidget {
           Text('Reporter: ${report.reporterUid}'),
           Text('Target: $targetLabel'),
           Text('Status: ${report.status}'),
+          if (report.actionType != null) Text('Action: ${report.actionType}'),
         ],
       ),
       trailing: PopupMenuButton<String>(
         enabled: !isBusy,
-        onSelected: onResolve,
-        itemBuilder: (context) => const [
-          PopupMenuItem(value: 'resolved', child: Text('Mark resolved')),
-          PopupMenuItem(value: 'dismissed', child: Text('Dismiss')),
+        onSelected: (value) {
+          switch (value) {
+            case 'resolved':
+              onResolve('resolved', null);
+              break;
+            case 'dismissed':
+              onResolve('dismissed', null);
+              break;
+            case 'hide_post':
+              onResolve('actioned', 'hide_post');
+              break;
+            case 'restore_post':
+              onResolve('resolved', 'restore_post');
+              break;
+            case 'suspend_user':
+              onResolve('actioned', 'suspend_user');
+              break;
+            case 'restore_user':
+              onResolve('resolved', 'restore_user');
+              break;
+          }
+        },
+        itemBuilder: (context) => [
+          const PopupMenuItem(value: 'resolved', child: Text('Mark resolved')),
+          const PopupMenuItem(value: 'dismissed', child: Text('Dismiss')),
+          if (report.type == 'post' && report.postId != null) ...const [
+            PopupMenuDivider(),
+            PopupMenuItem(value: 'hide_post', child: Text('Hide post')),
+            PopupMenuItem(value: 'restore_post', child: Text('Restore post')),
+          ],
+          if (report.type == 'user' && report.targetUid != null) ...const [
+            PopupMenuDivider(),
+            PopupMenuItem(value: 'suspend_user', child: Text('Suspend user')),
+            PopupMenuItem(value: 'restore_user', child: Text('Restore user')),
+          ],
         ],
       ),
       isThreeLine: true,

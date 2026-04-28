@@ -15,16 +15,46 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.admin == true;
     }
 
+    function userModerationPath(uid) {
+      return /databases/$(database)/documents/userModeration/$(uid);
+    }
+
+    function isActiveUser(uid) {
+      return !exists(userModerationPath(uid))
+        || !(
+          get(userModerationPath(uid)).data.status in ["suspended", "banned"]
+        );
+    }
+
+    function isVisiblePost(postData) {
+      return !postData.keys().hasAny(["visibility"])
+        || postData.visibility == "active";
+    }
+
+    function isBlockedPair(uidA, uidB) {
+      return exists(/databases/$(database)/documents/userBlocks/$(uidA + "_" + uidB))
+        || exists(/databases/$(database)/documents/userBlocks/$(uidB + "_" + uidA));
+    }
+
     // Explicit collectionGroup rules for comments
-    match /{document=**}/comments/{commentId} {
-      allow read: if true;
+    match /posts/{postId}/comments/{commentId} {
+      allow read: if isVisiblePost(
+        get(/databases/$(database)/documents/posts/$(postId)).data
+      );
     }
 
     match /profiles/{uid} {
       allow read: if true;
-      allow create: if isOwner(uid);
-      allow update: if isOwner(uid);
+      allow create: if isOwner(uid) && isActiveUser(request.auth.uid);
+      allow update: if isOwner(uid) && isActiveUser(request.auth.uid);
       allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    match /userModeration/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if false;
     }
 
     match /userSettings/{uid} {
@@ -42,8 +72,11 @@ service cloud.firestore {
     }
 
     match /posts/{postId} {
-      allow read: if true;
+      allow read: if isVisiblePost(resource.data)
+        || isAdmin()
+        || (isSignedIn() && resource.data.authorUid == request.auth.uid);
       allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.text is string
         && request.resource.data.text.size() <= 280
@@ -52,16 +85,23 @@ service cloud.firestore {
         && request.resource.data.media is list
         && request.resource.data.media.size() <= 4;
 
-      allow update: if isSignedIn();
+      allow update: if isSignedIn() && isActiveUser(request.auth.uid);
       allow delete: if isAdmin() ||
         resource.data.authorUid == request.auth.uid;
 
       match /comments/{commentId} {
-        allow read: if true;
+        allow read: if isVisiblePost(
+          get(/databases/$(database)/documents/posts/$(postId)).data
+        );
         allow create: if isSignedIn()
+          && isActiveUser(request.auth.uid)
           && request.resource.data.authorUid == request.auth.uid
           && request.resource.data.text is string
-          && request.resource.data.text.size() <= 500;
+          && request.resource.data.text.size() <= 500
+          && !isBlockedPair(
+            request.auth.uid,
+            get(/databases/$(database)/documents/posts/$(postId)).data.authorUid
+          );
 
         allow update: if false;
         allow delete: if isAdmin() ||
@@ -72,7 +112,12 @@ service cloud.firestore {
     match /postLikes/{likeId} {
       allow read: if true;
       allow create: if isSignedIn()
-        && request.resource.data.uid == request.auth.uid;
+        && isActiveUser(request.auth.uid)
+        && request.resource.data.uid == request.auth.uid
+        && !isBlockedPair(
+          request.auth.uid,
+          get(/databases/$(database)/documents/posts/$(request.resource.data.postId)).data.authorUid
+        );
       allow delete: if isSignedIn()
         && resource.data.uid == request.auth.uid;
       allow update: if false;
@@ -81,19 +126,30 @@ service cloud.firestore {
     match /postReposts/{repostId} {
       allow read: if true;
       allow create: if isSignedIn()
-        && request.resource.data.uid == request.auth.uid;
+        && isActiveUser(request.auth.uid)
+        && request.resource.data.uid == request.auth.uid
+        && !isBlockedPair(
+          request.auth.uid,
+          get(/databases/$(database)/documents/posts/$(request.resource.data.postId)).data.authorUid
+        );
       allow delete: if isSignedIn()
         && resource.data.uid == request.auth.uid;
       allow update: if false;
     }
 
     match /postSaves/{saveId} {
-      allow read: if true;
+      allow read: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
 
       allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.postId is string
-        && request.resource.data.id == saveId;
+        && request.resource.data.id == saveId
+        && !isBlockedPair(
+          request.auth.uid,
+          get(/databases/$(database)/documents/posts/$(request.resource.data.postId)).data.authorUid
+        );
 
       allow delete: if isSignedIn()
         && resource.data.uid == request.auth.uid;
@@ -104,6 +160,7 @@ service cloud.firestore {
     match /reports/{reportId} {
       allow read: if isAdmin();
       allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
         && request.resource.data.type is string
         && request.resource.data.type in ["post", "user"]
         && request.resource.data.reason is string
@@ -112,9 +169,16 @@ service cloud.firestore {
         && request.resource.data.reporterUid == request.auth.uid
         && request.resource.data.status == "open";
       allow update: if isAdmin()
-        && request.resource.data.status in ["open", "resolved", "dismissed"]
+        && request.resource.data.status in ["open", "resolved", "dismissed", "actioned"]
         && request.resource.data.diff(resource.data).changedKeys()
-          .hasOnly(["status", "resolvedAt", "resolvedBy"]);
+          .hasOnly([
+            "status",
+            "resolvedAt",
+            "resolvedBy",
+            "actionType",
+            "actionAt",
+            "actionBy"
+          ]);
       allow delete: if isAdmin();
     }
 
@@ -124,6 +188,7 @@ service cloud.firestore {
         && (resource == null || resource.data.blockerUid == request.auth.uid);
 
       allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
         && request.resource.data.blockerUid == request.auth.uid
         && request.resource.data.blockedUid is string
         && request.resource.data.id == blockId
@@ -143,10 +208,12 @@ service cloud.firestore {
         && (resource == null || resource.data.userUid == request.auth.uid);
 
       allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
         && request.resource.data.userUid == request.auth.uid
         && request.resource.data.connectedUid is string
         && request.resource.data.id == connectionId
         && connectionId == request.auth.uid + '_' + request.resource.data.connectedUid
+        && !isBlockedPair(request.auth.uid, request.resource.data.connectedUid)
         && request.resource.data.keys().hasOnly([
           "id",
           "userUid",
@@ -172,10 +239,12 @@ service cloud.firestore {
         && resource.data.participantUids.hasAny([request.auth.uid]);
 
       allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
         && request.resource.data.participantUids.hasAll([request.auth.uid])
         && request.resource.data.participantUids.size() == 2;
 
       allow update: if isSignedIn()
+        && isActiveUser(request.auth.uid)
         && resource.data.participantUids.hasAny([request.auth.uid]);
 
       allow delete: if false;
@@ -186,6 +255,7 @@ service cloud.firestore {
                .data.participantUids.hasAny([request.auth.uid]);
 
         allow create: if isSignedIn()
+          && isActiveUser(request.auth.uid)
           && request.resource.data.senderUid == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
@@ -203,6 +273,7 @@ service cloud.firestore {
         || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
 
       allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
@@ -213,6 +284,7 @@ service cloud.firestore {
         && request.resource.data.description.size() <= 3000;
 
       allow update: if isSignedIn()
+        && isActiveUser(request.auth.uid)
         && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.name is string
@@ -234,6 +306,7 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
 
       allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.productId is string
         && request.resource.data.id == saveId;

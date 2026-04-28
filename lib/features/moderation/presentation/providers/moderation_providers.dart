@@ -115,8 +115,9 @@ class ModerationController extends StateNotifier<AsyncValue<void>> {
   }
 
   Future<void> resolveReport({
-    required String reportId,
+    required ModerationReportModel report,
     required String status,
+    String? actionType,
   }) async {
     final user = _ref.read(currentUserProvider);
     if (user == null) return;
@@ -125,9 +126,10 @@ class ModerationController extends StateNotifier<AsyncValue<void>> {
 
     try {
       await _remoteDataSource.resolveReport(
-        reportId: reportId,
+        report: report,
         adminUid: user.uid,
         status: status,
+        actionType: actionType,
       );
       state = const AsyncData(null);
     } catch (error, stackTrace) {
