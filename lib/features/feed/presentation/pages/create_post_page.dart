@@ -15,7 +15,14 @@ import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/post_providers.dart';
 
 class CreatePostPage extends ConsumerStatefulWidget {
-  const CreatePostPage({super.key});
+  const CreatePostPage({
+    super.key,
+    this.showAppBar = true,
+    this.compact = false,
+  });
+
+  final bool showAppBar;
+  final bool compact;
 
   @override
   ConsumerState<CreatePostPage> createState() => _CreatePostPageState();
@@ -213,20 +220,26 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     final myProfile = ref.watch(myProfileProvider).asData?.value;
     final canSubmit = !_isUploading && _isValidForSubmit(limits);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Post'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: FilledButton(
-              onPressed: canSubmit ? _submit : null,
-              child: const Text('Post'),
-            ),
-          ),
-        ],
-      ),
-      body: SafeArea(
+    return MediaQuery.removePadding(
+      context: context,
+      removeTop: true,
+      child: Scaffold(
+        appBar: widget.showAppBar
+            ? AppBar(
+              actionsPadding: EdgeInsets.only(top: 6),
+                title: const Text('Create Post'),
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: FilledButton(
+                      onPressed: canSubmit ? _submit : null,
+                      child: const Text('Post'),
+                    ),
+                  ),
+                ],
+              )
+            : null,
+        body: SafeArea(
         child: Column(
           children: [
             if (_isUploading) ...[
@@ -254,7 +267,12 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
             ],
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.all(AppSizes.lg),
+                padding: EdgeInsets.fromLTRB(
+                  widget.compact ? AppSizes.md : AppSizes.lg,
+                  widget.compact ? AppSizes.sm : AppSizes.lg,
+                  widget.compact ? AppSizes.md : AppSizes.lg,
+                  AppSizes.lg,
+                ),
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,6 +351,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

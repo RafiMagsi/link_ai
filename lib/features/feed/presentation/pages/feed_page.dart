@@ -15,6 +15,7 @@ import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../../connect/presentation/providers/connect_providers.dart';
 import '../providers/post_providers.dart';
 import '../widgets/post_design_switcher.dart';
+import 'create_post_page.dart';
 import '../../../notifications/presentation/providers/notification_providers.dart';
 
 class FeedPage extends ConsumerWidget {
@@ -86,12 +87,11 @@ class FeedPage extends ConsumerWidget {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          heroTag: 'feed_fab',
-          onPressed: () async {
+        floatingActionButton: _CreatePostFabButton(
+          onOpen: () async {
             try {
               if (context.mounted) {
-                context.push('/posts/create');
+                await _showCreatePostSheet(context);
               }
             } catch (e) {
               if (context.mounted) {
@@ -103,7 +103,7 @@ class FeedPage extends ConsumerWidget {
                       onPressed: () async {
                         try {
                           if (context.mounted) {
-                            context.push('/posts/create');
+                            await _showCreatePostSheet(context);
                           }
                         } catch (_) {}
                       },
@@ -113,8 +113,6 @@ class FeedPage extends ConsumerWidget {
               }
             }
           },
-          icon: const Icon(Icons.add),
-          label: const Text('Post'),
         ),
         body: TabBarView(
           children: [
@@ -140,6 +138,235 @@ class FeedPage extends ConsumerWidget {
 }
 
 enum _FeedKind { latest, connected, viral }
+
+
+Future<void> _showCreatePostSheet(BuildContext context) async {
+  await showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Create post',
+    barrierColor: Colors.black.withValues(alpha: 0.34),
+    transitionDuration: const Duration(milliseconds: 420),
+    pageBuilder: (context, animation, secondaryAnimation) {
+      return const SizedBox.shrink();
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutExpo,
+        reverseCurve: Curves.easeInCubic,
+      );
+
+      return Align(
+        alignment: Alignment.bottomCenter,
+        child: AnimatedBuilder(
+          animation: curved,
+          builder: (context, _) {
+            final value = curved.value;
+            final slide = 96 * (1 - value);
+            final scaleY = 0.90 + (0.10 * value);
+            final scaleX = 0.985 + (0.015 * value);
+            final opacity = value.clamp(0.0, 1.0);
+
+            return Opacity(
+              opacity: opacity,
+              child: Transform.translate(
+                offset: Offset(0, slide),
+                child: Transform.scale(
+                  scaleX: scaleX,
+                  scaleY: scaleY,
+                  alignment: Alignment.bottomCenter,
+                  child: _CreatePostBottomSheetShell(
+                    animationValue: value,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+
+class _CreatePostBottomSheetShell extends StatelessWidget {
+  const _CreatePostBottomSheetShell({required this.animationValue});
+
+  final double animationValue;
+
+  @override
+  Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final sheetHeight = (screenHeight * 0.64).clamp(430.0, 590.0);
+
+    return Material(
+      color: Colors.transparent,
+      child: SizedBox(
+        height: sheetHeight,
+        width: double.infinity,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(28),
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.18),
+                ),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 34,
+                  offset: const Offset(0, -10),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: -4 + (animationValue * 18),
+                  left: -74,
+                  child: _AnimatedSheetGlow(
+                    color: const Color(0xFF60A5FA).withValues(alpha: 0.18),
+                    size: 180,
+                  ),
+                ),
+                Positioned(
+                  top: -6 + (animationValue * 20),
+                  right: -74,
+                  child: _AnimatedSheetGlow(
+                    color: const Color(0xFFF9A8D4).withValues(alpha: 0.18),
+                    size: 10,
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 4,
+                  child: Transform.scale(
+                    scaleX: animationValue.clamp(0.0, 1.0),
+                    alignment: Alignment.centerLeft,
+                    child: const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Color(0xFF60A5FA),
+                            Color(0xFFA78BFA),
+                            Color(0xFFF9A8D4),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant
+                            .withValues(alpha: 0.30),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color(0xFF60A5FA),
+                                  Color(0xFFA78BFA),
+                                  Color(0xFFF9A8D4),
+                                ],
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.auto_awesome_rounded,
+                              color: Color(0xFF312E81),
+                              size: 15,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Create post',
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.w900,
+                                        height: 1,
+                                      ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  'Thought, ask, or ship something.',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant
+                                            .withValues(alpha: 0.82),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            tooltip: 'Close',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 34,
+                              minHeight: 34,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: Transform.translate(
+                        offset: Offset(0, 10 * (1 - animationValue)),
+                        child: Opacity(
+                          opacity: animationValue.clamp(0.0, 1.0),
+                          child: const ClipRect(
+                            child: CreatePostPage(  
+                              showAppBar: true,
+                              compact: true,),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _FeedList extends ConsumerWidget {
   const _FeedList({
@@ -267,6 +494,328 @@ class _FeedList extends ConsumerWidget {
   }
 }
 
+class _CreatePostFabButton extends StatefulWidget {
+  const _CreatePostFabButton({required this.onOpen});
+
+  final Future<void> Function() onOpen;
+
+  @override
+  State<_CreatePostFabButton> createState() => _CreatePostFabButtonState();
+}
+
+class _CreatePostFabButtonState extends State<_CreatePostFabButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 620),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleTap() async {
+    if (_controller.isAnimating) return;
+
+    await _controller.forward(from: 0);
+
+    if (!mounted) return;
+
+    await widget.onOpen();
+
+    if (!mounted) return;
+    _controller.value = 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final progress = _controller.value;
+        final pressScale = progress == 0
+            ? 1.0
+            : 1.0 + (Curves.easeOutBack.transform(progress.clamp(0.0, 1.0)) * 0.055);
+
+        return Transform.scale(
+          scale: pressScale,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF60A5FA), // soft blue
+                  Color(0xFFA78BFA), // soft violet
+                  Color(0xFFF9A8D4), // soft pink
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFA78BFA).withValues(alpha: 0.28),
+                  blurRadius: 24,
+                  offset: const Offset(0, 9),
+                ),
+              ],
+            ),
+            child: FloatingActionButton(
+              heroTag: 'feed_fab',
+              elevation: 0,
+              highlightElevation: 0,
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
+              onPressed: _handleTap,
+              tooltip: 'Create post',
+              child: _CreatePostFabIcon(progress: progress),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CreatePostFabIcon extends StatelessWidget {
+  const _CreatePostFabIcon({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFF312E81);
+    final sparkleTurn = progress == 0 ? 0.0 : Curves.easeOutCubic.transform(progress) * 6.28318;
+    final glowOpacity = progress == 0 ? 0.0 : 0.45 + (Curves.easeOut.transform(progress) * 0.35);
+
+    return SizedBox(
+      width: 38,
+      height: 38,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _WaterDropPulsePainter(
+                color: color,
+                progress: progress,
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _AiComposeIconPainter(color: color),
+            ),
+          ),
+          Positioned(
+            right: -3,
+            top: -3,
+            child: Transform.rotate(
+              angle: sparkleTurn,
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                size: 14,
+                color: color,
+              ),
+            ),
+          ),
+          Positioned(
+            left: -3,
+            bottom: 3,
+            child: Opacity(
+              opacity: glowOpacity,
+              child: Icon(
+                Icons.blur_on_rounded,
+                size: 9,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WaterDropPulsePainter extends CustomPainter {
+  const _WaterDropPulsePainter({
+    required this.color,
+    required this.progress,
+  });
+
+  final Color color;
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = size.shortestSide * 0.72;
+
+    for (var i = 0; i < 3; i++) {
+      final localProgress = ((progress * 1.18) - (i * 0.16)).clamp(0.0, 1.0);
+      final radius = maxRadius * localProgress;
+      final opacity = progress < 0.98
+          ? (1 - localProgress).clamp(0.0, 1.0) * 0.72
+          : 0.0;
+
+      final paint = Paint()
+        ..color = color.withValues(alpha: opacity)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8 + (1.8 * (1 - localProgress));
+
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    final dropPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          color.withValues(alpha: 0.42),
+          color.withValues(alpha: 0.00),
+        ],
+      ).createShader(
+        Rect.fromCircle(center: center, radius: size.shortestSide * 0.52),
+      );
+
+    canvas.drawCircle(center, size.shortestSide * 0.45, dropPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _WaterDropPulsePainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.progress != progress;
+  }
+}
+
+class _AnimatedSheetGlow extends StatefulWidget {
+  const _AnimatedSheetGlow({
+    required this.color,
+    required this.size,
+  });
+
+  final Color color;
+  final double size;
+
+  @override
+  State<_AnimatedSheetGlow> createState() => _AnimatedSheetGlowState();
+}
+
+class _AnimatedSheetGlowState extends State<_AnimatedSheetGlow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final scale = 0.92 + (_controller.value * 0.12);
+        return Transform.scale(
+          scale: scale,
+          child: child,
+        );
+      },
+      child: Container(
+        width: widget.size,
+        height: widget.size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              widget.color,
+              widget.color.withValues(alpha: 0),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AiComposeIconPainter extends CustomPainter {
+  const _AiComposeIconPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final pageRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        size.width * 0.12,
+        size.height * 0.18,
+        size.width * 0.58,
+        size.height * 0.66,
+      ),
+      Radius.circular(size.width * 0.13),
+    );
+
+    canvas.drawRRect(pageRect, paint);
+
+    final penPath = Path()
+      ..moveTo(size.width * 0.45, size.height * 0.70)
+      ..lineTo(size.width * 0.83, size.height * 0.32)
+      ..lineTo(size.width * 0.92, size.height * 0.41)
+      ..lineTo(size.width * 0.54, size.height * 0.79)
+      ..lineTo(size.width * 0.39, size.height * 0.84)
+      ..close();
+
+    canvas.drawPath(penPath, paint);
+
+    final linePaint = Paint()
+      ..color = color.withValues(alpha: 0.82)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(size.width * 0.24, size.height * 0.36),
+      Offset(size.width * 0.52, size.height * 0.36),
+      linePaint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.24, size.height * 0.49),
+      Offset(size.width * 0.45, size.height * 0.49),
+      linePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _AiComposeIconPainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
+}
+
 class _FeedComposerEntry extends ConsumerWidget {
   const _FeedComposerEntry();
 
@@ -310,10 +859,10 @@ class _FeedComposerEntry extends ConsumerWidget {
             Expanded(
               child: InkWell(
                 borderRadius: BorderRadius.circular(AppSizes.radiusCircle),
-                onTap: () {
+                onTap: () async {
                   try {
                     if (context.mounted) {
-                      context.push('/posts/create');
+                      await _showCreatePostSheet(context);
                     }
                   } catch (e) {
                     if (context.mounted) {
