@@ -31,4 +31,29 @@ class ShadowStyle {
       width: 0.7,
     );
   }
+
+  static List<BoxShadow> messageAura({Color? color}) {
+    final glowColor = color ?? const Color(0xFFA78BFA);
+
+    return [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.030),
+        blurRadius: 10,
+        spreadRadius: 0.4,
+        offset: Offset.zero,
+      ),
+      BoxShadow(
+        color: glowColor.withValues(alpha: 0.075),
+        blurRadius: 18,
+        spreadRadius: 1.2,
+        offset: Offset.zero,
+      ),
+      BoxShadow(
+        color: glowColor.withValues(alpha: 0.038),
+        blurRadius: 28,
+        spreadRadius: 0.2,
+        offset: Offset.zero,
+      ),
+    ];
+  }
 }
