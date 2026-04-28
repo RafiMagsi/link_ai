@@ -32,8 +32,6 @@ class ConnectButton extends ConsumerWidget {
               label: const Text('Following'),
             );
 
-          case ConnectRelationshipStatus.outgoingPending:
-          case ConnectRelationshipStatus.incomingPending:
           case ConnectRelationshipStatus.none:
             return FilledButton.icon(
               onPressed: () => ref

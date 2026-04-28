@@ -135,18 +135,6 @@ service cloud.firestore {
         && resource.data.blockerUid == request.auth.uid;
     }
 
-    match /connectRequests/{requestId} {
-      allow read: if isSignedIn()
-        && (
-          resource.data.senderUid == request.auth.uid ||
-          resource.data.receiverUid == request.auth.uid
-        );
-
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
     match /connections/{connectionId} {
       // A user can read only their own follow edges.
       // IMPORTANT: guard against `resource` being null on non-existent docs.
@@ -177,6 +165,35 @@ service cloud.firestore {
       allow create: if false;
       allow update: if false;
       allow delete: if false;
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn()
+        && resource.data.participantUids.hasAny([request.auth.uid]);
+
+      allow create: if isSignedIn()
+        && request.resource.data.participantUids.hasAll([request.auth.uid])
+        && request.resource.data.participantUids.size() == 2;
+
+      allow update: if isSignedIn()
+        && resource.data.participantUids.hasAny([request.auth.uid]);
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn()
+          && get(/databases/$(database)/documents/conversations/$(conversationId))
+               .data.participantUids.hasAny([request.auth.uid]);
+
+        allow create: if isSignedIn()
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
+
+        allow update: if false;
+        allow delete: if false;
+      }
     }
 
     match /products/{productId} {

@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
-import '../models/connect_request_model.dart';
 import '../models/connection_model.dart';
 
 class ConnectRemoteDataSource {
@@ -10,10 +9,6 @@ class ConnectRemoteDataSource {
 
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
-
-  CollectionReference<Map<String, dynamic>> get _connectRequests {
-    return _firestore.collection('connectRequests');
-  }
 
   CollectionReference<Map<String, dynamic>> get _connections {
     return _firestore.collection('connections');
@@ -23,116 +18,6 @@ class ConnectRemoteDataSource {
     String connectionId,
   ) {
     return _connections.doc(connectionId).snapshots();
-  }
-
-  Future<void> sendConnectRequest({
-    required String receiverUid,
-    required String message,
-  }) async {
-    try {
-      final callable = _functions.httpsCallable('sendConnectRequest');
-      await callable
-          .call({'receiverUid': receiverUid, 'message': message})
-          .timeout(
-            const Duration(seconds: 20),
-            onTimeout: () =>
-                throw TimeoutException('Connect request timed out'),
-          );
-    } on FirebaseFunctionsException catch (e) {
-      _handleCloudFunctionError(e, 'sendConnectRequest');
-    } on TimeoutException catch (e) {
-      debugPrint('Timeout in sendConnectRequest: $e');
-      throw Exception(
-        'Request timed out. Please check your connection and try again.',
-      );
-    } catch (e) {
-      debugPrint('Error sending connect request: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> acceptConnectRequest(String requestId) async {
-    try {
-      final callable = _functions.httpsCallable('respondConnectRequest');
-      await callable
-          .call({'requestId': requestId, 'action': 'accept'})
-          .timeout(
-            const Duration(seconds: 20),
-            onTimeout: () => throw TimeoutException('Accept request timed out'),
-          );
-    } on FirebaseFunctionsException catch (e) {
-      _handleCloudFunctionError(e, 'acceptConnectRequest');
-    } on TimeoutException catch (e) {
-      debugPrint('Timeout in acceptConnectRequest: $e');
-      throw Exception(
-        'Request timed out. Please check your connection and try again.',
-      );
-    } catch (e) {
-      debugPrint('Error accepting connect request: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> declineConnectRequest(String requestId) async {
-    try {
-      final callable = _functions.httpsCallable('respondConnectRequest');
-      await callable
-          .call({'requestId': requestId, 'action': 'decline'})
-          .timeout(
-            const Duration(seconds: 20),
-            onTimeout: () =>
-                throw TimeoutException('Decline request timed out'),
-          );
-    } on FirebaseFunctionsException catch (e) {
-      _handleCloudFunctionError(e, 'declineConnectRequest');
-    } on TimeoutException catch (e) {
-      debugPrint('Timeout in declineConnectRequest: $e');
-      throw Exception(
-        'Request timed out. Please check your connection and try again.',
-      );
-    } catch (e) {
-      debugPrint('Error declining connect request: $e');
-      rethrow;
-    }
-  }
-
-  Stream<List<ConnectRequestModel>> watchIncomingRequests(String uid) {
-    return _connectRequests
-        .where('receiverUid', isEqualTo: uid)
-        .where('status', isEqualTo: 'pending')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-          try {
-            return snapshot.docs
-                .map(ConnectRequestModel.fromFirestore)
-                .toList();
-          } catch (error, stackTrace) {
-            debugPrint(
-              'Error parsing incoming requests for $uid: $error\n$stackTrace',
-            );
-            return [];
-          }
-        });
-  }
-
-  Stream<List<ConnectRequestModel>> watchOutgoingRequests(String uid) {
-    return _connectRequests
-        .where('senderUid', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-          try {
-            return snapshot.docs
-                .map(ConnectRequestModel.fromFirestore)
-                .toList();
-          } catch (error, stackTrace) {
-            debugPrint(
-              'Error parsing outgoing requests for $uid: $error\n$stackTrace',
-            );
-            return [];
-          }
-        });
   }
 
   Stream<List<ConnectionModel>> watchConnections(String uid) {
@@ -267,7 +152,5 @@ class ConnectRemoteDataSource {
 
 enum ConnectRelationshipStatus {
   none,
-  outgoingPending,
-  incomingPending,
   connected,
 }

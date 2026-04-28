@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../explore/presentation/pages/explore_page.dart';
 import '../../../feed/presentation/pages/feed_page.dart';
+import '../../../messaging/presentation/pages/inbox_page.dart';
 import '../../../products/presentation/pages/products_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 import '../widgets/main_bottom_nav_bar.dart';
@@ -21,6 +22,7 @@ class _MainShellPageState extends State<MainShellPage> {
   final _pages = const [
     FeedPage(),
     ExplorePage(),
+    InboxPage(),
     ProductsPage(),
     ProfilePage(),
   ];

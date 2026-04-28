@@ -19,9 +19,10 @@ import '../features/admin/presentation/providers/admin_providers.dart';
 import '../features/feed/presentation/pages/create_post_page.dart';
 import '../features/feed/presentation/pages/post_detail_page.dart';
 import '../features/main/presentation/pages/main_shell_page.dart';
-import '../features/connect/presentation/pages/connect_requests_page.dart';
-import '../features/connect/presentation/pages/send_connect_request_page.dart';
 import '../features/notifications/presentation/pages/notifications_page.dart';
+import '../features/messaging/presentation/pages/inbox_page.dart';
+import '../features/messaging/presentation/pages/conversation_page.dart';
+import '../features/messaging/data/models/conversation_model.dart';
 import '../features/feed/data/models/post_model.dart';
 import '../features/explore/presentation/pages/hashtag_page.dart';
 import '../features/explore/presentation/pages/search_page.dart';
@@ -308,40 +309,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/connect/requests',
-        name: 'connect-requests',
-        builder: (context, state) => const ConnectRequestsPage(),
-      ),
-      GoRoute(
-        path: '/connect/request/:uid',
-        name: 'send-connect-request',
-        builder: (context, state) {
-          try {
-            final uid = state.pathParameters['uid'];
-            if (uid == null || uid.isEmpty) {
-              return const Scaffold(
-                body: Center(child: Text('Invalid user ID.')),
-              );
-            }
-            final extra = state.extra;
-            final receiverName = extra is Map
-                ? (extra['receiverName'] as String?) ?? 'AI Builder'
-                : 'AI Builder';
-            return SendConnectRequestPage(
-              receiverUid: uid,
-              receiverName: receiverName,
-            );
-          } catch (e) {
-            return Scaffold(
-              body: Center(child: Text('Error loading page: $e')),
-            );
-          }
-        },
-      ),
-      GoRoute(
         path: '/notifications',
         name: 'notifications',
         builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: '/messages',
+        name: 'messages',
+        builder: (context, state) => const InboxPage(),
+      ),
+      GoRoute(
+        path: '/messages/:conversationId',
+        name: 'conversation',
+        builder: (context, state) {
+          final convId = state.pathParameters['conversationId']!;
+          final extra = state.extra as ConversationModel?;
+          return ConversationPage(
+            conversationId: convId,
+            initialConversation: extra,
+          );
+        },
       ),
     ],
   );

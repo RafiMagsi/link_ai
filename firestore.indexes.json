@@ -85,33 +85,15 @@
       ]
     },
     {
-      "collectionGroup": "connectRequests",
+      "collectionGroup": "conversations",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "receiverUid",
-          "order": "ASCENDING"
+          "fieldPath": "participantUids",
+          "arrayConfig": "CONTAINS"
         },
         {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "connectRequests",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "senderUid",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
+          "fieldPath": "lastMessageAt",
           "order": "DESCENDING"
         }
       ]

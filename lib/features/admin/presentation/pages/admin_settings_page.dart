@@ -19,7 +19,6 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
   final _maxImageSizeMbController = TextEditingController();
   final _maxVideoSizeMbController = TextEditingController();
   final _maxVideoDurationSecondsController = TextEditingController();
-  final _connectRequestsPerWeekController = TextEditingController();
   final _postRateLimitPerHourController = TextEditingController();
   final _connectCooldownMinutesController = TextEditingController();
 
@@ -37,7 +36,6 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
     _maxImageSizeMbController.dispose();
     _maxVideoSizeMbController.dispose();
     _maxVideoDurationSecondsController.dispose();
-    _connectRequestsPerWeekController.dispose();
     _postRateLimitPerHourController.dispose();
     _connectCooldownMinutesController.dispose();
     super.dispose();
@@ -51,8 +49,6 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
     _maxImageSizeMbController.text = config.maxImageSizeMb.toString();
     _maxVideoSizeMbController.text = config.maxVideoSizeMb.toString();
     _maxVideoDurationSecondsController.text = config.maxVideoDurationSeconds
-        .toString();
-    _connectRequestsPerWeekController.text = config.connectRequestsPerWeek
         .toString();
     _postRateLimitPerHourController.text = config.postRateLimitPerHour
         .toString();
@@ -79,9 +75,6 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
     final maxVideoDurationSeconds = _parseInt(
       _maxVideoDurationSecondsController.text,
     );
-    final connectRequestsPerWeek = _parseInt(
-      _connectRequestsPerWeekController.text,
-    );
     final postRateLimitPerHour = _parseInt(
       _postRateLimitPerHourController.text,
     );
@@ -94,7 +87,6 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
         maxImageSizeMb == null ||
         maxVideoSizeMb == null ||
         maxVideoDurationSeconds == null ||
-        connectRequestsPerWeek == null ||
         postRateLimitPerHour == null ||
         connectCooldownMinutes == null) {
       _showMessage('All limit fields must be valid numbers.');
@@ -132,7 +124,6 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
       maxImageSizeMb: maxImageSizeMb,
       maxVideoSizeMb: maxVideoSizeMb,
       maxVideoDurationSeconds: maxVideoDurationSeconds,
-      connectRequestsPerWeek: connectRequestsPerWeek,
       enableReposts: _enableReposts,
       enableComments: _enableComments,
       enableProducts: _enableProducts,
@@ -223,10 +214,6 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
                   _NumberField(
                     controller: _maxVideoDurationSecondsController,
                     label: 'Max video duration seconds',
-                  ),
-                  _NumberField(
-                    controller: _connectRequestsPerWeekController,
-                    label: 'Connect requests per week',
                   ),
                 ],
               ),

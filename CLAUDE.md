@@ -36,7 +36,7 @@ lib/
 │   │   └── presentation/# Feed pages, post cards, widgets
 │   ├── profile/
 │   ├── products/        # Product showcase (app store-like)
-│   ├── connect/         # Connection requests, relationship status
+│   ├── connect/         # Follow/unfollow, relationship status, ping notifications
 │   ├── explore/         # Discover by hashtags and topics
 │   ├── notifications/   # Push + in-app notifications
 │   ├── settings/        # User preferences, account management
@@ -77,7 +77,7 @@ final myControllerProvider = StateNotifierProvider<MyController, AsyncValue<MySt
 
 - Models use `@freezed` for immutability
 - Implement `.fromJson` / `.toJson` via `@JsonSerializable`
-- Example: `PostModel`, `ProfileModel`, `ConnectionRequest`
+- Example: `PostModel`, `ProfileModel`, `ConnectionModel`
 
 ### Firebase Integration
 
@@ -240,16 +240,17 @@ state.when(
 ### Posts & Feed
 
 - Posts stored in Firestore `posts` collection
-- Three feed tabs: **Latest** (newest), **Connected** (from accepted connections), **Viral** (score-based)
+- Three feed tabs: **Latest** (newest), **Connected** (from users you follow), **Viral** (score-based)
 - Comments are flat (no nesting); stored in `postComments` collection
 - Media per post uploaded to Storage; URLs stored in post doc
 
-### Connection Requests & Status
+### Follow / Relationship Model
 
-- `ConnectRelationshipStatus` enum: `none`, `outgoingPending`, `incomingPending`, `connected`
-- Requests stored in Firestore `connectRequests` collection
+- **Single model:** Simple follow/unfollow system (no request acceptance flow)
+- `ConnectRelationshipStatus` enum: `none`, `connected` (pending states removed)
+- Follows stored in Firestore `connections` collection with structure: `{id, userUid, connectedUid, createdAt}`
 - "Ping" button (active only when `connected`) sends notification via `sendPing` Cloud Function
-- Links in profile are tap-to-open, long-press-to-copy (via `url_launcher` + `Clipboard`)
+- Links in profile are tap-to-open (via `url_launcher`), long-press-to-copy (via `Clipboard`)
 
 ### Products (App Store-like)
 

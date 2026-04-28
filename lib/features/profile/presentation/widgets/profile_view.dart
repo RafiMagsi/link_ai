@@ -11,10 +11,12 @@ import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../../core/widgets/skeleton_post_card.dart';
 import '../../../../core/utils/hashtag_utils.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../connect/data/datasources/connect_remote_datasource.dart';
 import '../../../connect/presentation/providers/connect_providers.dart';
 import '../../../feed/presentation/providers/post_providers.dart';
 import '../../../feed/presentation/widgets/feed_post_card.dart';
+import '../../../messaging/data/models/conversation_model.dart';
 import '../providers/profile_providers.dart';
 
 class ProfileView extends ConsumerStatefulWidget {
@@ -88,6 +90,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                   children: [
                     _Header(
                       isSelf: widget.isSelf,
+                      currentUid: ref.watch(currentUserProvider)?.uid ?? '',
                       name: profile.name,
                       role: profile.role,
                       bio: profile.bio,
@@ -141,6 +144,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
 class _Header extends StatelessWidget {
   const _Header({
     required this.isSelf,
+    required this.currentUid,
     required this.name,
     required this.role,
     required this.bio,
@@ -159,6 +163,7 @@ class _Header extends StatelessWidget {
   });
 
   final bool isSelf;
+  final String currentUid;
   final String name;
   final String role;
   final String bio;
@@ -304,17 +309,21 @@ class _Header extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _HeaderIconChip(
-                              icon: Icons.chat_bubble_outline,
-                              tooltip: 'Message (soon)',
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Messaging is coming soon.'),
-                                  ),
-                                );
-                              },
-                            ),
+                            if (!isSelf)
+                              _HeaderIconChip(
+                                icon: Icons.chat_bubble_outline,
+                                tooltip: 'Message',
+                                onPressed: () {
+                                  final convId =
+                                      ConversationModel.buildId(
+                                    currentUid,
+                                    targetUid,
+                                  );
+                                  context.push('/messages/$convId');
+                                },
+                              )
+                            else
+                              const SizedBox(width: 40, height: 36),
                             const SizedBox(width: AppSizes.sm),
                             if (onOpenMenu != null)
                               _HeaderIconChip(
@@ -577,8 +586,6 @@ class _ProfilePrimaryAction extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 );
-              case ConnectRelationshipStatus.outgoingPending:
-              case ConnectRelationshipStatus.incomingPending:
               case ConnectRelationshipStatus.none:
                 if (isCompact) {
                   return iconAction(
