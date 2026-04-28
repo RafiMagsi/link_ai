@@ -101,7 +101,7 @@ class PostMoreMenuButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return IconButton(
       iconSize: 10,
-      constraints: const BoxConstraints.tightFor(width: 68, height: 16),
+      constraints: const BoxConstraints.tightFor(width: 68, height: 68),
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
       style: IconButton.styleFrom(

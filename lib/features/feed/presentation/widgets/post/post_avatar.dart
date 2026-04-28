@@ -10,6 +10,6 @@ class PostAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppUserAvatar(avatarUrl: avatarUrl, radius: 23, onTap: onTap);
+    return AppUserAvatar(avatarUrl: avatarUrl, radius: 26, onTap: onTap);
   }
 }

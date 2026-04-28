@@ -71,11 +71,7 @@ class PostHeader extends StatelessWidget {
           _timeText(),
           style: TextStyle(color: colors.mutedText, fontSize: 13),
         ),
-        const Spacer(),
-        Align(
-          alignment: Alignment.topCenter,
-          child: PostMoreMenuButton(post: post)
-          ),
+        const SizedBox(width: 44),
       ],
     );
   }
