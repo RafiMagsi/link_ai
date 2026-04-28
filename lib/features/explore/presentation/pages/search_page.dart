@@ -71,9 +71,7 @@ class _SearchPageState extends ConsumerState<SearchPage>
           decoration: InputDecoration(
             hintText: 'Search...',
             border: InputBorder.none,
-            hintStyle: TextStyle(
-              color: context.appColors.mutedText,
-            ),
+            hintStyle: TextStyle(color: context.appColors.mutedText),
           ),
           textInputAction: TextInputAction.search,
           onChanged: (value) {
@@ -130,7 +128,8 @@ class _UserSearchResults extends ConsumerWidget {
         return ListView.separated(
           padding: const EdgeInsets.all(AppSizes.lg),
           itemCount: users.length,
-          separatorBuilder: (context, index) => const SizedBox(height: AppSizes.md),
+          separatorBuilder: (context, index) =>
+              const SizedBox(height: AppSizes.md),
           itemBuilder: (context, index) {
             final user = users[index];
             return _UserCard(user: user);
@@ -189,11 +188,7 @@ class _UserCard extends ConsumerWidget {
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                ErrorHandler.getUserFriendlyMessage(e),
-              ),
-            ),
+            SnackBar(content: Text(ErrorHandler.getUserFriendlyMessage(e))),
           );
         }
       }
@@ -228,24 +223,42 @@ class _UserCard extends ConsumerWidget {
                     if (user.role.isNotEmpty)
                       Text(
                         user.role,
-                        style: TextStyle(
-                          color: colors.mutedText,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: colors.mutedText, fontSize: 14),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    if (user.skills.isNotEmpty) ...[
+                    if (user.collaborationIntent.isNotEmpty ||
+                        user.projectStage.isNotEmpty ||
+                        user.lookingFor.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 6,
                         runSpacing: 4,
-                        children: user.skills.take(3).map((skill) {
-                          return Chip(
-                            label: Text(skill),
+                        children: [
+                          Chip(
+                            label: Text(_intentLabel(user.collaborationIntent)),
                             visualDensity: VisualDensity.compact,
-                          );
-                        }).toList(),
+                          ),
+                          Chip(
+                            label: Text(_stageLabel(user.projectStage)),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          ...user.lookingFor.take(2).map((item) {
+                            return Chip(
+                              label: Text(item),
+                              visualDensity: VisualDensity.compact,
+                            );
+                          }),
+                        ],
+                      ),
+                    ],
+                    if (user.need.trim().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Needs: ${user.need}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ],
@@ -256,6 +269,36 @@ class _UserCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _intentLabel(String value) {
+    switch (value) {
+      case 'hiring':
+        return 'Hiring';
+      case 'looking_for_cofounder':
+        return 'Cofounder';
+      case 'open_to_consulting':
+        return 'Consulting';
+      case 'not_looking':
+        return 'Not looking';
+      case 'open_to_collaborate':
+      default:
+        return 'Collaborate';
+    }
+  }
+
+  String _stageLabel(String value) {
+    switch (value) {
+      case 'idea':
+        return 'Idea';
+      case 'launched':
+        return 'Launched';
+      case 'growing':
+        return 'Growing';
+      case 'mvp':
+      default:
+        return 'MVP';
+    }
   }
 }
 
@@ -301,9 +344,7 @@ class _PostSearchResults extends ConsumerWidget {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                          ErrorHandler.getUserFriendlyMessage(e),
-                        ),
+                        content: Text(ErrorHandler.getUserFriendlyMessage(e)),
                       ),
                     );
                   }
@@ -318,9 +359,7 @@ class _PostSearchResults extends ConsumerWidget {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                          ErrorHandler.getUserFriendlyMessage(e),
-                        ),
+                        content: Text(ErrorHandler.getUserFriendlyMessage(e)),
                       ),
                     );
                   }
@@ -493,11 +532,7 @@ class _HashtagTile extends StatelessWidget {
           } catch (e) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    ErrorHandler.getUserFriendlyMessage(e),
-                  ),
-                ),
+                SnackBar(content: Text(ErrorHandler.getUserFriendlyMessage(e))),
               );
             }
           }
@@ -521,10 +556,7 @@ class _HashtagTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       label,
-                      style: TextStyle(
-                        color: colors.mutedText,
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: colors.mutedText, fontSize: 13),
                     ),
                   ],
                 ),
@@ -582,9 +614,7 @@ class _ProductSearchResults extends ConsumerWidget {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                          ErrorHandler.getUserFriendlyMessage(e),
-                        ),
+                        content: Text(ErrorHandler.getUserFriendlyMessage(e)),
                       ),
                     );
                   }
@@ -629,10 +659,7 @@ class _EmptySearchState extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _EmptySearchState({
-    required this.title,
-    required this.subtitle,
-  });
+  const _EmptySearchState({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -652,19 +679,13 @@ class _EmptySearchState extends StatelessWidget {
             const SizedBox(height: AppSizes.lg),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSizes.md),
             Text(
               subtitle,
-              style: TextStyle(
-                color: colors.mutedText,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: colors.mutedText, fontSize: 14),
               textAlign: TextAlign.center,
             ),
           ],

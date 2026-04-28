@@ -26,6 +26,7 @@ import '../features/messaging/data/models/conversation_model.dart';
 import '../features/feed/data/models/post_model.dart';
 import '../features/explore/presentation/pages/hashtag_page.dart';
 import '../features/explore/presentation/pages/search_page.dart';
+import '../features/network/presentation/pages/network_page.dart';
 import '../features/products/data/models/product_model.dart';
 import '../features/products/presentation/pages/create_product_page.dart';
 import '../features/products/presentation/pages/edit_product_page.dart';
@@ -254,6 +255,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final tab = state.uri.queryParameters['tab'];
           return SearchPage(initialTab: tab);
         },
+      ),
+      GoRoute(
+        path: '/network',
+        name: 'network',
+        builder: (context, state) => const NetworkPage(),
       ),
       GoRoute(
         path: '/products/create',

@@ -46,10 +46,31 @@ class ExplorePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final trendsState = ref.watch(trendingHashtagsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Explore')),
+      appBar: AppBar(
+        title: const Text('Explore'),
+        actions: [
+          IconButton(
+            onPressed: () => context.push('/network'),
+            icon: const Icon(Icons.people_outline),
+            tooltip: 'Network',
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(AppSizes.lg),
         children: [
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.hub_outlined),
+              title: const Text('Network discovery'),
+              subtitle: const Text(
+                'Find collaboration matches, people you follow, and builders open to work together.',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/network'),
+            ),
+          ),
+          const SizedBox(height: AppSizes.xxxl),
           Text('Topics', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSizes.lg),
           Wrap(

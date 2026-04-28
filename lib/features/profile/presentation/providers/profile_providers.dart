@@ -44,6 +44,11 @@ final publicProfilesProvider = FutureProvider<List<ProfileModel>>((ref) {
   return ref.watch(profileRemoteDataSourceProvider).getPublicProfiles();
 });
 
+final profilesByIdsProvider =
+    FutureProvider.family<List<ProfileModel>, List<String>>((ref, uids) {
+      return ref.watch(profileRemoteDataSourceProvider).getProfilesByIds(uids);
+    });
+
 final profileControllerProvider =
     StateNotifierProvider<ProfileController, AsyncValue<void>>((ref) {
       return ProfileController(ref.watch(profileRemoteDataSourceProvider));

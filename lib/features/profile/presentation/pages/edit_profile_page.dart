@@ -27,10 +27,13 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final _buildingController = TextEditingController();
   final _needController = TextEditingController();
   final _wantToMeetController = TextEditingController();
+  final _lookingForController = TextEditingController();
   final _websiteController = TextEditingController();
   final _linkedinController = TextEditingController();
   final _githubController = TextEditingController();
   final _xController = TextEditingController();
+  String _collaborationIntent = 'open_to_collaborate';
+  String _projectStage = 'mvp';
 
   bool _initialized = false;
   final _imagePicker = ImagePicker();
@@ -62,6 +65,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     _buildingController.dispose();
     _needController.dispose();
     _wantToMeetController.dispose();
+    _lookingForController.dispose();
     _websiteController.dispose();
     _linkedinController.dispose();
     _githubController.dispose();
@@ -81,10 +85,13 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     _buildingController.text = profile.building;
     _needController.text = profile.need;
     _wantToMeetController.text = profile.wantToMeet;
+    _lookingForController.text = profile.lookingFor.join(', ');
     _websiteController.text = profile.links['website'] ?? '';
     _linkedinController.text = profile.links['linkedin'] ?? '';
     _githubController.text = profile.links['github'] ?? '';
     _xController.text = profile.links['x'] ?? '';
+    _collaborationIntent = profile.collaborationIntent;
+    _projectStage = profile.projectStage;
 
     _initialized = true;
   }
@@ -155,6 +162,9 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         building: _buildingController.text.trim(),
         need: _needController.text.trim(),
         wantToMeet: _wantToMeetController.text.trim(),
+        collaborationIntent: _collaborationIntent,
+        projectStage: _projectStage,
+        lookingFor: _splitCsv(_lookingForController.text),
         avatarUrl: avatarUrl,
         links: {
           'website': _websiteController.text.trim(),
@@ -324,6 +334,53 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                 label: 'Who do you want to meet?',
                 maxLines: 3,
               ),
+              const SizedBox(height: 8),
+              _DropdownField<String>(
+                label: 'Collaboration intent',
+                value: _collaborationIntent,
+                items: const [
+                  DropdownMenuItem(
+                    value: 'open_to_collaborate',
+                    child: Text('Open to collaborate'),
+                  ),
+                  DropdownMenuItem(value: 'hiring', child: Text('Hiring')),
+                  DropdownMenuItem(
+                    value: 'looking_for_cofounder',
+                    child: Text('Looking for cofounder'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'open_to_consulting',
+                    child: Text('Open to consulting'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'not_looking',
+                    child: Text('Not looking right now'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _collaborationIntent = value);
+                },
+              ),
+              _DropdownField<String>(
+                label: 'Project stage',
+                value: _projectStage,
+                items: const [
+                  DropdownMenuItem(value: 'idea', child: Text('Idea')),
+                  DropdownMenuItem(value: 'mvp', child: Text('MVP')),
+                  DropdownMenuItem(value: 'launched', child: Text('Launched')),
+                  DropdownMenuItem(value: 'growing', child: Text('Growing')),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _projectStage = value);
+                },
+              ),
+              _Field(
+                controller: _lookingForController,
+                label: 'Looking for',
+                hint: 'Engineer, Designer, Growth, Feedback',
+              ),
               const SizedBox(height: 12),
               const Text(
                 'Links',
@@ -387,6 +444,41 @@ class _Field extends StatelessWidget {
           labelText: label,
           hintText: hint,
           border: const OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+}
+
+class _DropdownField<T> extends StatelessWidget {
+  const _DropdownField({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  final String label;
+  final T value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
+            isExpanded: true,
+            value: value,
+            items: items,
+            onChanged: onChanged,
+          ),
         ),
       ),
     );

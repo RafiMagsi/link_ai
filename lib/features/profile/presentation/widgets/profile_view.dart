@@ -100,6 +100,9 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                       building: profile.building,
                       need: profile.need,
                       wantToMeet: profile.wantToMeet,
+                      collaborationIntent: profile.collaborationIntent,
+                      projectStage: profile.projectStage,
+                      lookingFor: profile.lookingFor,
                       skills: profile.skills,
                       tools: profile.tools,
                       targetUid: profile.uid,
@@ -154,6 +157,9 @@ class _Header extends StatelessWidget {
     required this.building,
     required this.need,
     required this.wantToMeet,
+    required this.collaborationIntent,
+    required this.projectStage,
+    required this.lookingFor,
     required this.skills,
     required this.tools,
     required this.targetUid,
@@ -173,6 +179,9 @@ class _Header extends StatelessWidget {
   final String building;
   final String need;
   final String wantToMeet;
+  final String collaborationIntent;
+  final String projectStage;
+  final List<String> lookingFor;
   final List<String> skills;
   final List<String> tools;
   final String targetUid;
@@ -314,8 +323,7 @@ class _Header extends StatelessWidget {
                                 icon: Icons.chat_bubble_outline,
                                 tooltip: 'Message',
                                 onPressed: () {
-                                  final convId =
-                                      ConversationModel.buildId(
+                                  final convId = ConversationModel.buildId(
                                     currentUid,
                                     targetUid,
                                   );
@@ -408,12 +416,18 @@ class _Header extends StatelessWidget {
                 ),
               if (building.trim().isNotEmpty ||
                   need.trim().isNotEmpty ||
-                  wantToMeet.trim().isNotEmpty) ...[
+                  wantToMeet.trim().isNotEmpty ||
+                  lookingFor.isNotEmpty ||
+                  collaborationIntent.trim().isNotEmpty ||
+                  projectStage.trim().isNotEmpty) ...[
                 const SizedBox(height: AppSizes.sm),
                 _ProfileInfoPanel(
                   building: building,
                   need: need,
                   wantToMeet: wantToMeet,
+                  collaborationIntent: collaborationIntent,
+                  projectStage: projectStage,
+                  lookingFor: lookingFor,
                 ),
               ],
               if (skills.isNotEmpty || tools.isNotEmpty) ...[
@@ -740,11 +754,17 @@ class _ProfileInfoPanel extends StatelessWidget {
     required this.building,
     required this.need,
     required this.wantToMeet,
+    required this.collaborationIntent,
+    required this.projectStage,
+    required this.lookingFor,
   });
 
   final String building;
   final String need;
   final String wantToMeet;
+  final String collaborationIntent;
+  final String projectStage;
+  final List<String> lookingFor;
 
   @override
   Widget build(BuildContext context) {
@@ -761,6 +781,8 @@ class _ProfileInfoPanel extends StatelessWidget {
     if (items.isEmpty) return const SizedBox.shrink();
 
     final colors = context.appColors;
+    final intentLabel = _collaborationIntentLabel(collaborationIntent);
+    final stageLabel = _projectStageLabel(projectStage);
 
     return Container(
       decoration: BoxDecoration(
@@ -771,39 +793,126 @@ class _ProfileInfoPanel extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.md),
         child: Column(
-          children: items.asMap().entries.map((entry) {
-            final index = entry.key;
-            final item = entry.value;
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: index == items.length - 1 ? 0 : AppSizes.sm,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(item.icon, size: 19, color: colors.mutedText),
-                  const SizedBox(width: AppSizes.sm),
-                  Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(height: 1.35),
-                        children: [
-                          TextSpan(
-                            text: '${item.label}: ',
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          TextSpan(text: item.value.trim()),
-                        ],
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            ...items.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index == items.length - 1 ? 0 : AppSizes.sm,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(item.icon, size: 19, color: colors.mutedText),
+                    const SizedBox(width: AppSizes.sm),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(height: 1.35),
+                          children: [
+                            TextSpan(
+                              text: '${item.label}: ',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            TextSpan(text: item.value.trim()),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: AppSizes.sm),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _MetaChip(icon: Icons.handshake_outlined, label: intentLabel),
+                _MetaChip(
+                  icon: Icons.rocket_launch_outlined,
+                  label: stageLabel,
+                ),
+                ...lookingFor
+                    .where((value) => value.trim().isNotEmpty)
+                    .take(4)
+                    .map(
+                      (value) => _MetaChip(
+                        icon: Icons.person_search_outlined,
+                        label: value,
+                      ),
+                    ),
+              ],
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  String _collaborationIntentLabel(String value) {
+    switch (value) {
+      case 'hiring':
+        return 'Hiring';
+      case 'looking_for_cofounder':
+        return 'Looking for cofounder';
+      case 'open_to_consulting':
+        return 'Open to consulting';
+      case 'not_looking':
+        return 'Not looking now';
+      case 'open_to_collaborate':
+      default:
+        return 'Open to collaborate';
+    }
+  }
+
+  String _projectStageLabel(String value) {
+    switch (value) {
+      case 'idea':
+        return 'Idea stage';
+      case 'launched':
+        return 'Launched';
+      case 'growing':
+        return 'Growing';
+      case 'mvp':
+      default:
+        return 'MVP';
+    }
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: colors.mutedText),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
     );
   }

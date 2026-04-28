@@ -20,15 +20,18 @@ class ProfileRemoteDataSource {
       final docRef = _profiles.doc(profile.uid);
       final snapshot = await docRef.get().timeout(
         const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('Failed to fetch profile document'),
+        onTimeout: () =>
+            throw TimeoutException('Failed to fetch profile document'),
       );
 
       if (snapshot.exists) return;
 
-      await docRef.set(profile.toCreateMap()).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('Failed to create profile'),
-      );
+      await docRef
+          .set(profile.toCreateMap())
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException('Failed to create profile'),
+          );
       developer.log('Profile created successfully for UID: ${profile.uid}');
     } on TimeoutException catch (e, stackTrace) {
       developer.log(
@@ -38,21 +41,20 @@ class ProfileRemoteDataSource {
       );
       rethrow;
     } catch (e, stackTrace) {
-      developer.log(
-        'Error creating profile',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      developer.log('Error creating profile', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }
 
   Future<ProfileModel?> getProfile(String uid) async {
     try {
-      final snapshot = await _profiles.doc(uid).get().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('Failed to fetch profile'),
-      );
+      final snapshot = await _profiles
+          .doc(uid)
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException('Failed to fetch profile'),
+          );
 
       if (!snapshot.exists) return null;
 
@@ -92,10 +94,13 @@ class ProfileRemoteDataSource {
 
   Future<void> updateProfile(ProfileModel profile) async {
     try {
-      await _profiles.doc(profile.uid).update(profile.toUpdateMap()).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('Failed to update profile'),
-      );
+      await _profiles
+          .doc(profile.uid)
+          .update(profile.toUpdateMap())
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException('Failed to update profile'),
+          );
       developer.log('Profile updated successfully for UID: ${profile.uid}');
     } on TimeoutException catch (e, stackTrace) {
       developer.log(
@@ -122,7 +127,8 @@ class ProfileRemoteDataSource {
           .get()
           .timeout(
             const Duration(seconds: 10),
-            onTimeout: () => throw TimeoutException('Failed to fetch public profiles'),
+            onTimeout: () =>
+                throw TimeoutException('Failed to fetch public profiles'),
           );
 
       return snapshot.docs.map(ProfileModel.fromFirestore).toList();
@@ -143,21 +149,52 @@ class ProfileRemoteDataSource {
     }
   }
 
+  Future<List<ProfileModel>> getProfilesByIds(List<String> uids) async {
+    if (uids.isEmpty) return [];
+
+    final chunks = <List<String>>[];
+    for (var index = 0; index < uids.length; index += 10) {
+      final end = (index + 10 < uids.length) ? index + 10 : uids.length;
+      chunks.add(uids.sublist(index, end));
+    }
+
+    final docs = <ProfileModel>[];
+    for (final chunk in chunks) {
+      final snapshot = await _profiles
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException('Failed to fetch profiles'),
+          );
+      docs.addAll(snapshot.docs.map(ProfileModel.fromFirestore));
+    }
+
+    final byUid = {for (final profile in docs) profile.uid: profile};
+    return uids.map((uid) => byUid[uid]).whereType<ProfileModel>().toList();
+  }
+
   Future<String> uploadAvatar({required String uid, required File file}) async {
     try {
       final ref = _storage.ref().child('avatars/$uid/profile.jpg');
 
-      await ref.putFile(
-        file,
-        SettableMetadata(contentType: 'image/jpeg', customMetadata: {'uid': uid}),
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () => throw TimeoutException('Failed to upload avatar'),
-      );
+      await ref
+          .putFile(
+            file,
+            SettableMetadata(
+              contentType: 'image/jpeg',
+              customMetadata: {'uid': uid},
+            ),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () => throw TimeoutException('Failed to upload avatar'),
+          );
 
       final downloadUrl = await ref.getDownloadURL().timeout(
         const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('Failed to get avatar download URL'),
+        onTimeout: () =>
+            throw TimeoutException('Failed to get avatar download URL'),
       );
 
       developer.log('Avatar uploaded successfully for UID: $uid');
@@ -186,17 +223,24 @@ class ProfileRemoteDataSource {
     }
   }
 
-  Future<List<ProfileModel>> searchProfiles(String query, {int limit = 20}) async {
+  Future<List<ProfileModel>> searchProfiles(
+    String query, {
+    int limit = 20,
+  }) async {
     try {
       if (query.isEmpty) {
         return [];
       }
 
       final queryLower = query.toLowerCase();
-      final snapshot = await _profiles.limit(limit + 50).get().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('Failed to search profiles'),
-      );
+      final snapshot = await _profiles
+          .limit(limit + 50)
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () =>
+                throw TimeoutException('Failed to search profiles'),
+          );
 
       final results = snapshot.docs
           .map(ProfileModel.fromFirestore)
@@ -206,8 +250,28 @@ class ProfileRemoteDataSource {
             final skillsMatch = profile.skills.any(
               (skill) => skill.toLowerCase().contains(queryLower),
             );
+            final toolsMatch = profile.tools.any(
+              (tool) => tool.toLowerCase().contains(queryLower),
+            );
+            final buildingMatch = profile.building.toLowerCase().contains(
+              queryLower,
+            );
+            final needMatch = profile.need.toLowerCase().contains(queryLower);
+            final meetMatch = profile.wantToMeet.toLowerCase().contains(
+              queryLower,
+            );
+            final lookingForMatch = profile.lookingFor.any(
+              (item) => item.toLowerCase().contains(queryLower),
+            );
 
-            return nameMatch || roleMatch || skillsMatch;
+            return nameMatch ||
+                roleMatch ||
+                skillsMatch ||
+                toolsMatch ||
+                buildingMatch ||
+                needMatch ||
+                meetMatch ||
+                lookingForMatch;
           })
           .take(limit)
           .toList();

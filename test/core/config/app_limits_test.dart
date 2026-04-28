@@ -9,7 +9,7 @@ void main() {
     expect(limits.imageMaxBytes, 5 * 1024 * 1024);
     expect(limits.videoMaxBytes, 200 * 1024 * 1024);
     expect(limits.videoMaxDurationSeconds, 30);
-    expect(limits.connectRequestsPerWeek, 50);
+    expect(limits.followsPerWeek, 50);
   });
 
   test('AppLimits.fromJson falls back for missing values', () {

@@ -5,7 +5,7 @@ class AppLimits {
     required this.imageMaxBytes,
     required this.videoMaxBytes,
     required this.videoMaxDurationSeconds,
-    required this.connectRequestsPerWeek,
+    required this.followsPerWeek,
   });
 
   factory AppLimits.defaults() => const AppLimits(
@@ -14,7 +14,7 @@ class AppLimits {
     imageMaxBytes: 5 * 1024 * 1024,
     videoMaxBytes: 200 * 1024 * 1024,
     videoMaxDurationSeconds: 30,
-    connectRequestsPerWeek: 50,
+    followsPerWeek: 50,
   );
 
   factory AppLimits.fromJson(Map<String, Object?> json) {
@@ -44,10 +44,14 @@ class AppLimits {
         'videoMaxDurationSeconds',
         AppLimits.defaults().videoMaxDurationSeconds,
       ),
-      connectRequestsPerWeek: _readInt(
+      followsPerWeek: _readInt(
         json,
-        'connectRequestsPerWeek',
-        AppLimits.defaults().connectRequestsPerWeek,
+        'followsPerWeek',
+        _readInt(
+          json,
+          'connectRequestsPerWeek',
+          AppLimits.defaults().followsPerWeek,
+        ),
       ),
     );
   }
@@ -57,7 +61,7 @@ class AppLimits {
   final int imageMaxBytes;
   final int videoMaxBytes;
   final int videoMaxDurationSeconds;
-  final int connectRequestsPerWeek;
+  final int followsPerWeek;
 
   Map<String, Object?> toJson() => {
     'postMaxChars': postMaxChars,
@@ -65,7 +69,7 @@ class AppLimits {
     'imageMaxBytes': imageMaxBytes,
     'videoMaxBytes': videoMaxBytes,
     'videoMaxDurationSeconds': videoMaxDurationSeconds,
-    'connectRequestsPerWeek': connectRequestsPerWeek,
+    'followsPerWeek': followsPerWeek,
   };
 
   static int _readInt(Map<String, Object?> json, String key, int fallback) {

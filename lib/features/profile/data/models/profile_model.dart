@@ -14,6 +14,9 @@ class ProfileModel {
   final String building;
   final String need;
   final String wantToMeet;
+  final String collaborationIntent;
+  final String projectStage;
+  final List<String> lookingFor;
   final Map<String, String> links;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -31,6 +34,9 @@ class ProfileModel {
     required this.building,
     required this.need,
     required this.wantToMeet,
+    required this.collaborationIntent,
+    required this.projectStage,
+    required this.lookingFor,
     required this.links,
     required this.createdAt,
     required this.updatedAt,
@@ -54,6 +60,9 @@ class ProfileModel {
       building: '',
       need: '',
       wantToMeet: '',
+      collaborationIntent: 'open_to_collaborate',
+      projectStage: 'mvp',
+      lookingFor: const [],
       links: const {'website': '', 'linkedin': '', 'github': '', 'x': ''},
       createdAt: null,
       updatedAt: null,
@@ -79,18 +88,20 @@ class ProfileModel {
         building: _safeString(data['building']),
         need: _safeString(data['need']),
         wantToMeet: _safeString(data['wantToMeet']),
+        collaborationIntent: _safeString(
+          data['collaborationIntent'],
+          fallback: 'open_to_collaborate',
+        ),
+        projectStage: _safeString(data['projectStage'], fallback: 'mvp'),
+        lookingFor: _safeStringList(data['lookingFor']),
         links: _safeStringMap(data['links']),
         createdAt: _safeTimestamp(data['createdAt']),
         updatedAt: _safeTimestamp(data['updatedAt']),
       );
     } catch (e) {
-     debugPrint('Error parsing ProfileModel from Firestore: $e');
+      debugPrint('Error parsing ProfileModel from Firestore: $e');
       // Return empty profile with valid uid
-      return ProfileModel.empty(
-        uid: doc.id,
-        email: '',
-        name: '',
-      );
+      return ProfileModel.empty(uid: doc.id, email: '', name: '');
     }
   }
 
@@ -151,7 +162,7 @@ class ProfileModel {
       }
       return [];
     } catch (e) {
-     debugPrint('Error parsing string list: $e');
+      debugPrint('Error parsing string list: $e');
       return [];
     }
   }
@@ -169,14 +180,14 @@ class ProfileModel {
               result[k] = v;
             }
           } catch (e) {
-           debugPrint('Error processing map entry: $e');
+            debugPrint('Error processing map entry: $e');
           }
         });
         return result;
       }
       return {};
     } catch (e) {
-     debugPrint('Error parsing string map: $e');
+      debugPrint('Error parsing string map: $e');
       return {};
     }
   }
@@ -188,7 +199,7 @@ class ProfileModel {
       if (value is DateTime) return value;
       return null;
     } catch (e) {
-     debugPrint('Error parsing timestamp: $e');
+      debugPrint('Error parsing timestamp: $e');
       return null;
     }
   }
@@ -207,6 +218,9 @@ class ProfileModel {
       'building': building,
       'need': need,
       'wantToMeet': wantToMeet,
+      'collaborationIntent': collaborationIntent,
+      'projectStage': projectStage,
+      'lookingFor': lookingFor,
       'links': links,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -225,6 +239,9 @@ class ProfileModel {
       'building': building,
       'need': need,
       'wantToMeet': wantToMeet,
+      'collaborationIntent': collaborationIntent,
+      'projectStage': projectStage,
+      'lookingFor': lookingFor,
       'links': links,
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -243,6 +260,9 @@ class ProfileModel {
     String? building,
     String? need,
     String? wantToMeet,
+    String? collaborationIntent,
+    String? projectStage,
+    List<String>? lookingFor,
     Map<String, String>? links,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -260,6 +280,9 @@ class ProfileModel {
       building: building ?? this.building,
       need: need ?? this.need,
       wantToMeet: wantToMeet ?? this.wantToMeet,
+      collaborationIntent: collaborationIntent ?? this.collaborationIntent,
+      projectStage: projectStage ?? this.projectStage,
+      lookingFor: lookingFor ?? this.lookingFor,
       links: links ?? this.links,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

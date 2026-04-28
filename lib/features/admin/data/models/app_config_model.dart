@@ -6,7 +6,7 @@ class AppConfigModel {
   final int maxImageSizeMb;
   final int maxVideoSizeMb;
   final int maxVideoDurationSeconds;
-  final int connectRequestsPerWeek;
+  final int followsPerWeek;
 
   final bool enableReposts;
   final bool enableComments;
@@ -25,7 +25,7 @@ class AppConfigModel {
     required this.maxImageSizeMb,
     required this.maxVideoSizeMb,
     required this.maxVideoDurationSeconds,
-    required this.connectRequestsPerWeek,
+    required this.followsPerWeek,
     required this.enableReposts,
     required this.enableComments,
     required this.enableProducts,
@@ -43,7 +43,7 @@ class AppConfigModel {
       maxImageSizeMb: 5,
       maxVideoSizeMb: 200,
       maxVideoDurationSeconds: 30,
-      connectRequestsPerWeek: 50,
+      followsPerWeek: 50,
       enableReposts: true,
       enableComments: true,
       enableProducts: true,
@@ -70,7 +70,10 @@ class AppConfigModel {
       maxImageSizeMb: data['maxImageSizeMb'] as int? ?? 5,
       maxVideoSizeMb: data['maxVideoSizeMb'] as int? ?? 200,
       maxVideoDurationSeconds: data['maxVideoDurationSeconds'] as int? ?? 30,
-      connectRequestsPerWeek: data['connectRequestsPerWeek'] as int? ?? 50,
+      followsPerWeek:
+          data['followsPerWeek'] as int? ??
+          data['connectRequestsPerWeek'] as int? ??
+          50,
       enableReposts: data['enableReposts'] as bool? ?? true,
       enableComments: data['enableComments'] as bool? ?? true,
       enableProducts: data['enableProducts'] as bool? ?? true,
@@ -89,7 +92,7 @@ class AppConfigModel {
       'maxImageSizeMb': maxImageSizeMb,
       'maxVideoSizeMb': maxVideoSizeMb,
       'maxVideoDurationSeconds': maxVideoDurationSeconds,
-      'connectRequestsPerWeek': connectRequestsPerWeek,
+      'followsPerWeek': followsPerWeek,
       'enableReposts': enableReposts,
       'enableComments': enableComments,
       'enableProducts': enableProducts,
@@ -107,7 +110,7 @@ class AppConfigModel {
     int? maxImageSizeMb,
     int? maxVideoSizeMb,
     int? maxVideoDurationSeconds,
-    int? connectRequestsPerWeek,
+    int? followsPerWeek,
     bool? enableReposts,
     bool? enableComments,
     bool? enableProducts,
@@ -124,8 +127,7 @@ class AppConfigModel {
       maxVideoSizeMb: maxVideoSizeMb ?? this.maxVideoSizeMb,
       maxVideoDurationSeconds:
           maxVideoDurationSeconds ?? this.maxVideoDurationSeconds,
-      connectRequestsPerWeek:
-          connectRequestsPerWeek ?? this.connectRequestsPerWeek,
+      followsPerWeek: followsPerWeek ?? this.followsPerWeek,
       enableReposts: enableReposts ?? this.enableReposts,
       enableComments: enableComments ?? this.enableComments,
       enableProducts: enableProducts ?? this.enableProducts,

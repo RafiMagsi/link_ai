@@ -37,6 +37,13 @@ class ProfilePage extends ConsumerWidget {
                       },
                     ),
                     ProfileSidebarAction(
+                      icon: Icons.people_outline,
+                      label: 'My network',
+                      onTap: () {
+                        if (context.mounted) context.push('/network');
+                      },
+                    ),
+                    ProfileSidebarAction(
                       icon: Icons.notifications_outlined,
                       label: 'Notifications',
                       onTap: () {
