@@ -32,32 +32,138 @@ class PostMoreMenuButton extends ConsumerWidget {
     final reason = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (context) {
         return SafeArea(
           top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const ListTile(
-                title: Text('Report post'),
-                subtitle: Text('Pick the best reason'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Report Post',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Help us understand why you\'re reporting this post',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ...[
+                    MapEntry('Spam', Icons.mail_outlined),
+                    MapEntry('Harassment', Icons.warning_outlined),
+                    MapEntry('Misinformation', Icons.info_outlined),
+                    MapEntry('NSFW', Icons.visibility_off_outlined),
+                    MapEntry('Other', Icons.flag_outlined),
+                  ].map((entry) {
+                    final label = entry.key;
+                    final icon = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => Navigator.of(context).pop(label),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Colors.grey[300]!,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  icon,
+                                  size: 20,
+                                  color: Colors.grey[700],
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Text(
+                                    label,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right,
+                                  color: Colors.grey[400],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 24),
+                ],
               ),
-              const Divider(height: 1),
-              ...['Spam', 'Harassment', 'Misinformation', 'NSFW', 'Other'].map(
-                (label) => ListTile(
-                  leading: const Icon(Icons.flag_outlined),
-                  title: Text(label),
-                  onTap: () => Navigator.of(context).pop(label),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
+            ),
           ),
         );
       },
     );
 
     if (reason == null || reason.isEmpty) return;
+
+    // Show confirmation before reporting
+    if (!context.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report this post?'),
+        content: const Text(
+          'Your report helps us keep the community safe. Reports are reviewed by our team.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Report'),
+          ),
+        ],
+      ),
+    );
+
+    if (!context.mounted) return;
+    if (confirmed != true) return;
 
     await ref
         .read(postControllerProvider.notifier)

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
@@ -38,13 +38,14 @@ class ConnectRequestsPage extends ConsumerWidget {
                 children: requests.map((request) {
                   final onAvatarTap = request.senderUid.isEmpty
                       ? null
-                      : () {
-                          if (currentUid != null &&
-                              request.senderUid == currentUid) {
-                            context.push('/profile');
-                            return;
-                          }
-                          context.push('/profiles/${request.senderUid}');
+                      : () async {
+                          final isSelfProfile = currentUid != null &&
+                              request.senderUid == currentUid;
+                          await navigateToProfile(
+                            context: context,
+                            uid: request.senderUid,
+                            isSelfProfile: isSelfProfile,
+                          );
                         };
                   return Card(
                     child: ListTile(
@@ -116,13 +117,14 @@ class ConnectRequestsPage extends ConsumerWidget {
                 children: requests.map((request) {
                   final onAvatarTap = request.receiverUid.isEmpty
                       ? null
-                      : () {
-                          if (currentUid != null &&
-                              request.receiverUid == currentUid) {
-                            context.push('/profile');
-                            return;
-                          }
-                          context.push('/profiles/${request.receiverUid}');
+                      : () async {
+                          final isSelfProfile = currentUid != null &&
+                              request.receiverUid == currentUid;
+                          await navigateToProfile(
+                            context: context,
+                            uid: request.receiverUid,
+                            isSelfProfile: isSelfProfile,
+                          );
                         };
                   return Card(
                     child: ListTile(

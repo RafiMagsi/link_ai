@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
@@ -33,13 +34,14 @@ class ProductDetailPage extends ConsumerWidget {
         final isSaved = saveState.asData?.value == true;
         final onOwnerTap = product.ownerUid.isEmpty
             ? null
-            : () {
-                if (currentUser != null &&
-                    product.ownerUid == currentUser.uid) {
-                  context.push('/profile');
-                  return;
-                }
-                context.push('/profiles/${product.ownerUid}');
+            : () async {
+                final isSelfProfile = currentUser != null &&
+                    product.ownerUid == currentUser.uid;
+                await navigateToProfile(
+                  context: context,
+                  uid: product.ownerUid,
+                  isSelfProfile: isSelfProfile,
+                );
               };
 
         return Scaffold(

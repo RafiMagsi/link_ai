@@ -51,6 +51,13 @@ class ProfilePage extends ConsumerWidget {
                       },
                     ),
                     ProfileSidebarAction(
+                      icon: Icons.support_agent_outlined,
+                      label: 'Support',
+                      onTap: () {
+                        if (context.mounted) context.push('/support');
+                      },
+                    ),
+                    ProfileSidebarAction(
                       icon: Icons.logout,
                       label: 'Logout',
                       onTap: () {

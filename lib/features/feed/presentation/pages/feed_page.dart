@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../../core/widgets/skeleton_post_card.dart';
 import '../../../../core/widgets/retry_error_widget.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../data/models/post_model.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../../connect/presentation/providers/connect_providers.dart';
 import '../providers/post_providers.dart';
@@ -272,6 +274,7 @@ class _FeedComposerEntry extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.appColors;
     final myProfile = ref.watch(myProfileProvider).asData?.value;
+    final currentUid = ref.watch(currentUserProvider)?.uid ?? '';
     final bg = Theme.of(context).scaffoldBackgroundColor;
     return Material(
       color: bg,
@@ -285,11 +288,13 @@ class _FeedComposerEntry extends ConsumerWidget {
             AppUserAvatar(
               avatarUrl: myProfile?.avatarUrl,
               radius: 24,
-              onTap: () {
+              onTap: () async {
                 try {
-                  if (context.mounted) {
-                    context.push('/profile');
-                  }
+                  await navigateToProfile(
+                    context: context,
+                    uid: currentUid,
+                    isSelfProfile: true,
+                  );
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(

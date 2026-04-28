@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
@@ -45,13 +46,14 @@ class NotificationsPage extends ConsumerWidget {
               final currentUid = ref.watch(currentUserProvider)?.uid;
               final onAvatarTap = notification.senderUid.isEmpty
                   ? null
-                  : () {
-                      if (currentUid != null &&
-                          notification.senderUid == currentUid) {
-                        context.push('/profile');
-                        return;
-                      }
-                      context.push('/profiles/${notification.senderUid}');
+                  : () async {
+                      final isSelfProfile = currentUid != null &&
+                          notification.senderUid == currentUid;
+                      await navigateToProfile(
+                        context: context,
+                        uid: notification.senderUid,
+                        isSelfProfile: isSelfProfile,
+                      );
                     };
 
               return ListTile(

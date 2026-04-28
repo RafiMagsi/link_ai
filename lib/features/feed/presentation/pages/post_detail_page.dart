@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
@@ -186,14 +187,13 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                                 ?.uid;
                             final onAvatarTap = comment.authorUid.isEmpty
                                 ? null
-                                : () {
-                                    if (currentUid != null &&
-                                        comment.authorUid == currentUid) {
-                                      context.push('/profile');
-                                      return;
-                                    }
-                                    context.push(
-                                      '/profiles/${comment.authorUid}',
+                                : () async {
+                                    final isSelfProfile = currentUid != null &&
+                                        comment.authorUid == currentUid;
+                                    await navigateToProfile(
+                                      context: context,
+                                      uid: comment.authorUid,
+                                      isSelfProfile: isSelfProfile,
                                     );
                                   };
 

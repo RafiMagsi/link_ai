@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/widgets/hashtag_text.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
@@ -43,12 +43,13 @@ class FeedPostCard extends ConsumerWidget {
 
     final onAvatarTap = post.authorUid.isEmpty
         ? null
-        : () {
-            if (currentUid != null && post.authorUid == currentUid) {
-              context.push('/profile');
-              return;
-            }
-            context.push('/profiles/${post.authorUid}');
+        : () async {
+            final isSelfProfile = currentUid != null && post.authorUid == currentUid;
+            await navigateToProfile(
+              context: context,
+              uid: post.authorUid,
+              isSelfProfile: isSelfProfile,
+            );
           };
 
     return Material(

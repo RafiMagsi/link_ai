@@ -613,3 +613,334 @@ export const onProductSaveCreated = onDocumentCreated(
     });
   }
 );
+
+/**
+ * Queues a decrement against a counter doc only if the doc still exists.
+ * @param {FirebaseFirestore.WriteBatch} batch write batch
+ * @param {FirebaseFirestore.DocumentReference} ref target doc ref
+ * @param {string} field counter field
+ * @return {Promise<number>} number of queued writes
+ */
+async function queueDecrementIfExists(
+  batch: FirebaseFirestore.WriteBatch,
+  ref: FirebaseFirestore.DocumentReference,
+  field: string
+): Promise<number> {
+  const snapshot = await ref.get();
+
+  if (!snapshot.exists) {
+    return 0;
+  }
+
+  batch.update(ref, {
+    [field]: admin.firestore.FieldValue.increment(-1),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return 1;
+}
+
+/**
+ * Deletes query results in batches and optionally runs extra batched work.
+ * @param {FirebaseFirestore.Query} query firestore query
+ * @param {Function} beforeDelete optional hook before each delete
+ * @return {Promise<void>}
+ */
+async function deleteDocsByQuery(
+  query: FirebaseFirestore.Query,
+  beforeDelete?: (
+    batch: FirebaseFirestore.WriteBatch,
+    doc: FirebaseFirestore.QueryDocumentSnapshot
+  ) => Promise<number>
+): Promise<void> {
+  const snapshot = await query.get();
+
+  if (snapshot.empty) {
+    return;
+  }
+
+  let batch = db.batch();
+  let operationCount = 0;
+
+  for (const doc of snapshot.docs) {
+    if (beforeDelete) {
+      operationCount += await beforeDelete(batch, doc);
+    }
+
+    batch.delete(doc.ref);
+    operationCount += 1;
+
+    if (operationCount >= 350) {
+      await batch.commit();
+      batch = db.batch();
+      operationCount = 0;
+    }
+  }
+
+  if (operationCount > 0) {
+    await batch.commit();
+  }
+}
+
+/**
+ * Deletes all FCM tokens stored for a user.
+ * @param {string} uid user id
+ * @return {Promise<void>}
+ */
+async function deleteUserTokens(uid: string): Promise<void> {
+  const tokensSnapshot = await db
+    .collection("users")
+    .doc(uid)
+    .collection("fcmTokens")
+    .get();
+
+  if (tokensSnapshot.empty) {
+    return;
+  }
+
+  const batch = db.batch();
+
+  for (const doc of tokensSnapshot.docs) {
+    batch.delete(doc.ref);
+  }
+
+  await batch.commit();
+}
+
+/**
+ * Deletes all posts created by a user, including subcollections and reactions.
+ * @param {string} uid user id
+ * @return {Promise<void>}
+ */
+async function deleteOwnedPosts(uid: string): Promise<void> {
+  const postsSnapshot = await db
+    .collection("posts")
+    .where("authorUid", "==", uid)
+    .get();
+
+  for (const postDoc of postsSnapshot.docs) {
+    const postId = postDoc.id;
+
+    await deleteDocsByQuery(
+      db.collection("postLikes").where("postId", "==", postId)
+    );
+    await deleteDocsByQuery(
+      db.collection("postReposts").where("postId", "==", postId)
+    );
+    await deleteDocsByQuery(
+      db.collection("postSaves").where("postId", "==", postId)
+    );
+    await deleteDocsByQuery(
+      db.collection("reports").where("postId", "==", postId)
+    );
+
+    await db.recursiveDelete(postDoc.ref);
+  }
+}
+
+/**
+ * Deletes all products owned by a user and their save records.
+ * @param {string} uid user id
+ * @return {Promise<void>}
+ */
+async function deleteOwnedProducts(uid: string): Promise<void> {
+  const productsSnapshot = await db
+    .collection("products")
+    .where("ownerUid", "==", uid)
+    .get();
+
+  for (const productDoc of productsSnapshot.docs) {
+    const productId = productDoc.id;
+
+    await deleteDocsByQuery(
+      db.collection("productSaves").where("productId", "==", productId)
+    );
+
+    await productDoc.ref.delete();
+  }
+}
+
+/**
+ * Deletes all user-authored comments that live on other users' posts.
+ * @param {string} uid user id
+ * @return {Promise<void>}
+ */
+async function deleteCommentsByAuthor(uid: string): Promise<void> {
+  await deleteDocsByQuery(
+    db.collectionGroup("comments").where("authorUid", "==", uid),
+    async (batch, doc) => {
+      const postRef = doc.ref.parent.parent;
+
+      if (!postRef) {
+        return 0;
+      }
+
+      return queueDecrementIfExists(batch, postRef, "commentsCount");
+    }
+  );
+}
+
+/**
+ * Deletes reaction and save records created by a user.
+ * @param {string} uid user id
+ * @return {Promise<void>}
+ */
+async function deleteUserEngagement(uid: string): Promise<void> {
+  await deleteDocsByQuery(
+    db.collection("postLikes").where("uid", "==", uid),
+    async (batch, doc) => {
+      const postId = doc.data().postId as string | undefined;
+
+      if (!postId) {
+        return 0;
+      }
+
+      return queueDecrementIfExists(
+        batch,
+        db.collection("posts").doc(postId),
+        "likesCount"
+      );
+    }
+  );
+
+  await deleteDocsByQuery(
+    db.collection("postReposts").where("uid", "==", uid),
+    async (batch, doc) => {
+      const postId = doc.data().postId as string | undefined;
+
+      if (!postId) {
+        return 0;
+      }
+
+      return queueDecrementIfExists(
+        batch,
+        db.collection("posts").doc(postId),
+        "repostsCount"
+      );
+    }
+  );
+
+  await deleteDocsByQuery(
+    db.collection("postSaves").where("uid", "==", uid),
+    async (batch, doc) => {
+      const postId = doc.data().postId as string | undefined;
+
+      if (!postId) {
+        return 0;
+      }
+
+      return queueDecrementIfExists(
+        batch,
+        db.collection("posts").doc(postId),
+        "savesCount"
+      );
+    }
+  );
+
+  await deleteDocsByQuery(
+    db.collection("productSaves").where("uid", "==", uid),
+    async (batch, doc) => {
+      const productId = doc.data().productId as string | undefined;
+
+      if (!productId) {
+        return 0;
+      }
+
+      return queueDecrementIfExists(
+        batch,
+        db.collection("products").doc(productId),
+        "savesCount"
+      );
+    }
+  );
+}
+
+/**
+ * Deletes simple user-scoped query results across top-level collections.
+ * @param {string} uid user id
+ * @return {Promise<void>}
+ */
+async function deleteSimpleUserData(uid: string): Promise<void> {
+  await deleteDocsByQuery(db.collection("reports").where(
+    "reporterUid",
+    "==",
+    uid
+  ));
+  await deleteDocsByQuery(db.collection("reports").where(
+    "targetUid",
+    "==",
+    uid
+  ));
+  await deleteDocsByQuery(db.collection("notifications").where(
+    "receiverUid",
+    "==",
+    uid
+  ));
+  await deleteDocsByQuery(db.collection("notifications").where(
+    "senderUid",
+    "==",
+    uid
+  ));
+  await deleteDocsByQuery(db.collection("connections").where(
+    "userUid",
+    "==",
+    uid
+  ));
+  await deleteDocsByQuery(db.collection("connections").where(
+    "connectedUid",
+    "==",
+    uid
+  ));
+  await deleteDocsByQuery(db.collection("connectRequests").where(
+    "senderUid",
+    "==",
+    uid
+  ));
+  await deleteDocsByQuery(db.collection("connectRequests").where(
+    "receiverUid",
+    "==",
+    uid
+  ));
+  await deleteDocsByQuery(db.collection("userBlocks").where(
+    "blockerUid",
+    "==",
+    uid
+  ));
+  await deleteDocsByQuery(db.collection("userBlocks").where(
+    "blockedUid",
+    "==",
+    uid
+  ));
+}
+
+/**
+ * Deletes all account data for the current user.
+ */
+export const deleteMyAccount = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Login required.");
+  }
+
+  const uid = request.auth.uid;
+
+  await deleteOwnedPosts(uid);
+  await deleteOwnedProducts(uid);
+  await deleteCommentsByAuthor(uid);
+  await deleteUserEngagement(uid);
+  await deleteSimpleUserData(uid);
+  await deleteUserTokens(uid);
+
+  await Promise.all([
+    db.collection("profiles").doc(uid).delete().catch(() => undefined),
+    db.collection("userSettings").doc(uid).delete().catch(() => undefined),
+    db
+      .collection("userConnectionStats")
+      .doc(uid)
+      .delete()
+      .catch(() => undefined),
+  ]);
+
+  await admin.auth().deleteUser(uid);
+
+  return {success: true};
+});

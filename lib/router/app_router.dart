@@ -12,7 +12,9 @@ import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/public_profile_page.dart';
 import '../features/profile/presentation/pages/saved_items_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
+import '../features/settings/presentation/pages/app_store_pages.dart';
 import '../features/admin/presentation/pages/admin_settings_page.dart';
+import '../features/admin/presentation/pages/admin_reports_page.dart';
 import '../features/admin/presentation/providers/admin_providers.dart';
 import '../features/feed/presentation/pages/create_post_page.dart';
 import '../features/feed/presentation/pages/post_detail_page.dart';
@@ -169,9 +171,34 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SettingsPage(),
       ),
       GoRoute(
+        path: '/support',
+        name: 'support',
+        builder: (context, state) => const SupportPage(),
+      ),
+      GoRoute(
+        path: '/legal/privacy',
+        name: 'privacy-policy',
+        builder: (context, state) => const PrivacyPolicyPage(),
+      ),
+      GoRoute(
+        path: '/legal/terms',
+        name: 'terms-of-use',
+        builder: (context, state) => const TermsOfUsePage(),
+      ),
+      GoRoute(
+        path: '/legal/guidelines',
+        name: 'community-guidelines',
+        builder: (context, state) => const CommunityGuidelinesPage(),
+      ),
+      GoRoute(
         path: '/admin/settings',
         name: 'admin-settings',
         builder: (context, state) => const AdminSettingsPage(),
+      ),
+      GoRoute(
+        path: '/admin/reports',
+        name: 'admin-reports',
+        builder: (context, state) => const AdminReportsPage(),
       ),
       GoRoute(
         path: '/posts/create',

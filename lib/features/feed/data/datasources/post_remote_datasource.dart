@@ -341,9 +341,13 @@ class PostRemoteDataSource {
           .add({
             'type': 'post',
             'postId': postId,
+            'targetUid': null,
             'reason': reason,
             'reporterUid': reporterUid,
+            'status': 'open',
             'createdAt': FieldValue.serverTimestamp(),
+            'resolvedAt': null,
+            'resolvedBy': null,
           })
           .timeout(
             const Duration(seconds: 15),

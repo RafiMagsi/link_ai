@@ -20,7 +20,7 @@ class SettingsPage extends ConsumerWidget {
         return AlertDialog(
           title: const Text('Delete account?'),
           content: const Text(
-            'This will delete your Firebase account. Profile cleanup will be improved with Cloud Functions later. This action cannot be undone.',
+            'This permanently deletes your account data, including your profile, settings, posts, comments, follows, saves, notification tokens, and related records. This action cannot be undone.',
           ),
           actions: [
             TextButton(
@@ -42,7 +42,14 @@ class SettingsPage extends ConsumerWidget {
     if (confirmed != true) return;
 
     try {
-      await FirebaseAuth.instance.currentUser?.delete();
+      await ref
+          .read(accountDeletionControllerProvider.notifier)
+          .deleteMyAccount();
+      final state = ref.read(accountDeletionControllerProvider);
+
+      if (state.hasError) {
+        throw state.error!;
+      }
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -155,6 +162,37 @@ class SettingsPage extends ConsumerWidget {
                         }
                       }
                     },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _SettingsSection(
+                title: 'Safety & Legal',
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.support_agent_outlined),
+                    title: const Text('Support'),
+                    subtitle: const Text('Contact, moderation, and help'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/support'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.privacy_tip_outlined),
+                    title: const Text('Privacy Policy'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/legal/privacy'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: const Text('Terms of Use'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/legal/terms'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.gavel_outlined),
+                    title: const Text('Community Guidelines'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/legal/guidelines'),
                   ),
                 ],
               ),

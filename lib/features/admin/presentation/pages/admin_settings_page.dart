@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/app_loader.dart';
 import '../../data/models/app_config_model.dart';
@@ -196,6 +197,13 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
               _Section(
                 title: 'Limits',
                 children: [
+                  ListTile(
+                    leading: const Icon(Icons.gpp_maybe_outlined),
+                    title: const Text('Moderation Queue'),
+                    subtitle: const Text('Review user and post reports'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/admin/reports'),
+                  ),
                   _NumberField(
                     controller: _postTextMaxLengthController,
                     label: 'Post text max length',

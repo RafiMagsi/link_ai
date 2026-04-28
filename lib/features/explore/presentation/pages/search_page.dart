@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../../core/errors/error_handler.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../feed/presentation/widgets/feed_post_card.dart';
 import '../../../products/presentation/pages/products_page.dart';
 import '../../../profile/data/models/profile_model.dart';
@@ -166,34 +168,40 @@ class _UserSearchResults extends ConsumerWidget {
   }
 }
 
-class _UserCard extends StatelessWidget {
+class _UserCard extends ConsumerWidget {
   final ProfileModel user;
 
   const _UserCard({required this.user});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.appColors;
+    final currentUid = ref.watch(currentUserProvider)?.uid;
+
+    Future<void> handleNavigation() async {
+      try {
+        final isSelfProfile = currentUid != null && user.uid == currentUid;
+        await navigateToProfile(
+          context: context,
+          uid: user.uid,
+          isSelfProfile: isSelfProfile,
+        );
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                ErrorHandler.getUserFriendlyMessage(e),
+              ),
+            ),
+          );
+        }
+      }
+    }
 
     return Card(
       child: InkWell(
-        onTap: () {
-          try {
-            if (context.mounted) {
-              context.push('/profiles/${user.uid}');
-            }
-          } catch (e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    ErrorHandler.getUserFriendlyMessage(e),
-                  ),
-                ),
-              );
-            }
-          }
-        },
+        onTap: handleNavigation,
         child: Padding(
           padding: const EdgeInsets.all(AppSizes.lg),
           child: Row(
@@ -201,23 +209,7 @@ class _UserCard extends StatelessWidget {
               AppUserAvatar(
                 avatarUrl: user.avatarUrl,
                 radius: 32,
-                onTap: () {
-                  try {
-                    if (context.mounted) {
-                      context.push('/profiles/${user.uid}');
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            ErrorHandler.getUserFriendlyMessage(e),
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                },
+                onTap: handleNavigation,
               ),
               const SizedBox(width: AppSizes.lg),
               Expanded(
