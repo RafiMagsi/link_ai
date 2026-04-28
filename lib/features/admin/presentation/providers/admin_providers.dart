@@ -24,7 +24,7 @@ final adminStatusProvider = FutureProvider<bool>((ref) async {
 
   if (user == null) return false;
 
-  final idTokenResult = await user.getIdTokenResult();
+  final idTokenResult = await user.getIdTokenResult(true);
 
   return idTokenResult.claims?['admin'] == true;
 });
@@ -155,3 +155,17 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     }
   }
 }
+
+final adminStatusRefreshProvider = FutureProvider<bool>((ref) async {
+  final user = ref.watch(currentUserProvider);
+
+  if (user == null) return false;
+
+  try {
+    final idTokenResult = await user.getIdTokenResult(true);
+    return idTokenResult.claims?['admin'] == true;
+  } catch (e) {
+    debugPrint('Error checking admin status: $e');
+    return false;
+  }
+});

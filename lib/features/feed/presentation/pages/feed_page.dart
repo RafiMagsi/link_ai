@@ -14,7 +14,7 @@ import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../../connect/presentation/providers/connect_providers.dart';
 import '../providers/post_providers.dart';
-import '../widgets/feed_post_card.dart';
+import '../widgets/post_design_switcher.dart';
 import '../../../notifications/presentation/providers/notification_providers.dart';
 
 class FeedPage extends ConsumerWidget {
@@ -212,7 +212,7 @@ class _FeedList extends ConsumerWidget {
 
               final post = visiblePosts[index - 1];
 
-              return FeedPostCard(
+              return PostDesignSwitcher(
                 post: post,
                 onCommentTap: () {
                   try {

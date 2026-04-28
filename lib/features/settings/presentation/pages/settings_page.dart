@@ -97,8 +97,7 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsState = ref.watch(userSettingsProvider);
     final controllerState = ref.watch(settingsControllerProvider);
-    final adminStatus = ref.watch(adminStatusProvider);
-    final isAdmin = adminStatus.asData?.value == true;
+    final adminStatus = ref.watch(adminStatusRefreshProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -107,36 +106,80 @@ class SettingsPage extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(AppSizes.lg),
             children: [
-              if (isAdmin)
-                _SettingsSection(
-                  title: 'Admin',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.admin_panel_settings),
-                      title: const Text('Global Settings'),
-                      subtitle: const Text('Limits, feature flags, throttles'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        try {
-                          if (context.mounted) {
-                            context.push('/admin/settings');
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  ErrorHandler.getUserFriendlyMessage(e),
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                  ],
+              adminStatus.when(
+                data: (isAdminValue) {
+                  if (isAdminValue) {
+                    return Column(
+                      children: [
+                        _SettingsSection(
+                          title: 'Admin',
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.admin_panel_settings),
+                              title: const Text('Global Settings'),
+                              subtitle: const Text('Limits, feature flags, throttles'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () {
+                                try {
+                                  if (context.mounted) {
+                                    context.push('/admin/settings');
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          ErrorHandler.getUserFriendlyMessage(e),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                      ],
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+                loading: () => const Padding(
+                  padding: EdgeInsets.only(bottom: 18),
+                  child: SizedBox(
+                    height: 20,
+                    child: AppLoader(),
+                  ),
                 ),
-              if (isAdmin) const SizedBox(height: 18),
+                error: (error, stack) => Padding(
+                  padding: const EdgeInsets.only(bottom: 18),
+                  child: Card(
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_rounded,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Failed to check admin status',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               _SettingsSection(
                 title: 'Account & Profile',
                 children: [

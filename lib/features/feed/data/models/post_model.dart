@@ -1,6 +1,72 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+enum PostType { thought, ship, ask }
+
+class ShipMeta {
+  final String projectName;
+  final String tagline;
+  final String? ctaUrl;
+  final String? demoUrl;
+
+  const ShipMeta({
+    required this.projectName,
+    required this.tagline,
+    this.ctaUrl,
+    this.demoUrl,
+  });
+
+  factory ShipMeta.fromMap(Map<String, dynamic> map) {
+    return ShipMeta(
+      projectName: (map['projectName'] as String?)?.trim() ?? '',
+      tagline: (map['tagline'] as String?)?.trim() ?? '',
+      ctaUrl: (map['ctaUrl'] as String?)?.trim(),
+      demoUrl: (map['demoUrl'] as String?)?.trim(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'projectName': projectName,
+      'tagline': tagline,
+      'ctaUrl': ctaUrl,
+      'demoUrl': demoUrl,
+    };
+  }
+}
+
+class AskMeta {
+  final String question;
+  final List<String> topics;
+  final int answerCount;
+
+  const AskMeta({
+    required this.question,
+    required this.topics,
+    required this.answerCount,
+  });
+
+  factory AskMeta.fromMap(Map<String, dynamic> map) {
+    final topicsList = (map['topics'] as List?)
+        ?.whereType<String>()
+        .map((t) => t.trim())
+        .toList() ?? [];
+    return AskMeta(
+      question: (map['question'] as String?)?.trim() ?? '',
+      topics: topicsList,
+      answerCount: (map['answerCount'] as int?) ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'question': question,
+      'topics': topics,
+      'answerCount': answerCount,
+    };
+  }
+}
+
 class PostMediaModel {
   final String url;
   final String type;
@@ -85,6 +151,9 @@ class PostModel {
   final int savesCount;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final PostType postType;
+  final ShipMeta? shipMeta;
+  final AskMeta? askMeta;
 
   const PostModel({
     required this.id,
@@ -101,11 +170,37 @@ class PostModel {
     required this.savesCount,
     required this.createdAt,
     required this.updatedAt,
+    this.postType = PostType.thought,
+    this.shipMeta,
+    this.askMeta,
   });
 
   factory PostModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     try {
       final data = doc.data() ?? {};
+
+      PostType postType = PostType.thought;
+      final typeStr = data['postType'] as String?;
+      if (typeStr != null) {
+        postType = PostType.values.firstWhere(
+          (e) => e.toString() == 'PostType.$typeStr',
+          orElse: () => PostType.thought,
+        );
+      }
+
+      ShipMeta? shipMeta;
+      if (postType == PostType.ship && data['shipMeta'] != null) {
+        shipMeta = ShipMeta.fromMap(
+          Map<String, dynamic>.from(data['shipMeta'] as Map),
+        );
+      }
+
+      AskMeta? askMeta;
+      if (postType == PostType.ask && data['askMeta'] != null) {
+        askMeta = AskMeta.fromMap(
+          Map<String, dynamic>.from(data['askMeta'] as Map),
+        );
+      }
 
       return PostModel(
         id: _safeString(data['id'], fallback: doc.id),
@@ -122,10 +217,12 @@ class PostModel {
         savesCount: _safeInt(data['savesCount']),
         createdAt: _safeTimestamp(data['createdAt']),
         updatedAt: _safeTimestamp(data['updatedAt']),
+        postType: postType,
+        shipMeta: shipMeta,
+        askMeta: askMeta,
       );
     } catch (e) {
       debugPrint('Error parsing PostModel from Firestore: $e');
-      // Return a minimal valid post on error
       return PostModel(
         id: doc.id,
         authorUid: '',
@@ -141,6 +238,7 @@ class PostModel {
         savesCount: 0,
         createdAt: null,
         updatedAt: null,
+        postType: PostType.thought,
       );
     }
   }
@@ -221,7 +319,7 @@ class PostModel {
   }
 
   Map<String, dynamic> toCreateMap() {
-    return {
+    final map = {
       'id': id,
       'authorUid': authorUid,
       'authorName': authorName,
@@ -234,8 +332,18 @@ class PostModel {
       'repostsCount': repostsCount,
       'commentsCount': commentsCount,
       'savesCount': savesCount,
+      'postType': postType.toString().split('.').last,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
+
+    if (shipMeta != null) {
+      map['shipMeta'] = shipMeta!.toMap();
+    }
+    if (askMeta != null) {
+      map['askMeta'] = askMeta!.toMap();
+    }
+
+    return map;
   }
 }

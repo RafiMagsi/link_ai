@@ -15,6 +15,7 @@ class AppConfigModel {
 
   final int postRateLimitPerHour;
   final int connectCooldownMinutes;
+  final String postDesignStyle;
 
   final String? updatedBy;
   final DateTime? updatedAt;
@@ -32,6 +33,7 @@ class AppConfigModel {
     required this.enableViralFeed,
     required this.postRateLimitPerHour,
     required this.connectCooldownMinutes,
+    required this.postDesignStyle,
     required this.updatedBy,
     required this.updatedAt,
   });
@@ -50,6 +52,7 @@ class AppConfigModel {
       enableViralFeed: true,
       postRateLimitPerHour: 10,
       connectCooldownMinutes: 5,
+      postDesignStyle: 'twitter',
       updatedBy: null,
       updatedAt: null,
     );
@@ -80,9 +83,31 @@ class AppConfigModel {
       enableViralFeed: data['enableViralFeed'] as bool? ?? true,
       postRateLimitPerHour: data['postRateLimitPerHour'] as int? ?? 10,
       connectCooldownMinutes: data['connectCooldownMinutes'] as int? ?? 5,
+      postDesignStyle: _safeString(data['postDesignStyle'], fallback: 'twitter'),
       updatedBy: data['updatedBy'] as String?,
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      updatedAt: _safeTimestamp(data['updatedAt']),
     );
+  }
+
+  static String _safeString(dynamic value, {String fallback = ''}) {
+    try {
+      if (value == null) return fallback;
+      if (value is String) return value;
+      return value.toString();
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  static DateTime? _safeTimestamp(dynamic value) {
+    try {
+      if (value == null) return null;
+      if (value is Timestamp) return value.toDate();
+      if (value is DateTime) return value;
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   Map<String, dynamic> toUpdateMap({required String updatedBy}) {
@@ -99,6 +124,7 @@ class AppConfigModel {
       'enableViralFeed': enableViralFeed,
       'postRateLimitPerHour': postRateLimitPerHour,
       'connectCooldownMinutes': connectCooldownMinutes,
+      'postDesignStyle': postDesignStyle,
       'updatedBy': updatedBy,
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -117,6 +143,7 @@ class AppConfigModel {
     bool? enableViralFeed,
     int? postRateLimitPerHour,
     int? connectCooldownMinutes,
+    String? postDesignStyle,
     String? updatedBy,
     DateTime? updatedAt,
   }) {
@@ -135,6 +162,7 @@ class AppConfigModel {
       postRateLimitPerHour: postRateLimitPerHour ?? this.postRateLimitPerHour,
       connectCooldownMinutes:
           connectCooldownMinutes ?? this.connectCooldownMinutes,
+      postDesignStyle: postDesignStyle ?? this.postDesignStyle,
       updatedBy: updatedBy ?? this.updatedBy,
       updatedAt: updatedAt ?? this.updatedAt,
     );

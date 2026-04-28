@@ -84,6 +84,7 @@ app.*.map.json
 .firebaserc
 .firebase/
 firebase-debug.log
+serviceAccountKey.json
 
 # FlutterFire generated options (contains project ids + api keys)
 lib/firebase_options.dart

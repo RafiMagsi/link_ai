@@ -138,8 +138,12 @@ service cloud.firestore {
     }
 
     match /postSaves/{saveId} {
-      allow read: if isSignedIn()
-        && resource.data.uid == request.auth.uid;
+      allow read: if isAdmin()
+        || (
+          isSignedIn()
+          && saveId.matches('^.*_' + request.auth.uid + '$')
+          && (resource == null || resource.data.uid == request.auth.uid)
+        );
 
       allow create: if isSignedIn()
         && isActiveUser(request.auth.uid)
@@ -302,8 +306,12 @@ service cloud.firestore {
     }
 
     match /productSaves/{saveId} {
-      allow read: if isSignedIn()
-        && resource.data.uid == request.auth.uid;
+      allow read: if isAdmin()
+        || (
+          isSignedIn()
+          && saveId.matches('^.*_' + request.auth.uid + '$')
+          && (resource == null || resource.data.uid == request.auth.uid)
+        );
 
       allow create: if isSignedIn()
         && isActiveUser(request.auth.uid)
