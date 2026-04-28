@@ -90,7 +90,7 @@ class _Section extends StatelessWidget {
   }
 }
 
-class _ProfilesList extends StatelessWidget {
+class _ProfilesList extends StatefulWidget {
   const _ProfilesList({
     required this.asyncProfiles,
     this.emptyTitle = 'Nothing here yet',
@@ -102,24 +102,48 @@ class _ProfilesList extends StatelessWidget {
   final String emptySubtitle;
 
   @override
-  Widget build(BuildContext context) {
-    return asyncProfiles.when(
-      data: (profiles) {
-        if (profiles.isEmpty) {
-          return AppEmptyState(
-            title: emptyTitle,
-            subtitle: emptySubtitle,
-            icon: Icons.people_outline,
-          );
-        }
+  State<_ProfilesList> createState() => _ProfilesListState();
+}
 
-        return Column(
-          children: profiles
-              .take(8)
-              .map((profile) => _ProfileTile(profile: profile))
-              .toList(growable: false),
+class _ProfilesListState extends State<_ProfilesList> {
+  List<ProfileModel>? _cachedProfiles;
+
+  @override
+  void didUpdateWidget(covariant _ProfilesList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final latest = widget.asyncProfiles.asData?.value;
+    if (latest != null) {
+      _cachedProfiles = latest;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = widget.asyncProfiles.asData?.value;
+    if (latest != null) {
+      _cachedProfiles = latest;
+    }
+
+    final cachedProfiles = _cachedProfiles;
+    if (cachedProfiles != null) {
+      if (cachedProfiles.isEmpty) {
+        return AppEmptyState(
+          title: widget.emptyTitle,
+          subtitle: widget.emptySubtitle,
+          icon: Icons.people_outline,
         );
-      },
+      }
+
+      return Column(
+        children: cachedProfiles
+            .take(8)
+            .map((profile) => _ProfileTile(profile: profile))
+            .toList(growable: false),
+      );
+    }
+
+    return widget.asyncProfiles.when(
+      data: (_) => const SizedBox.shrink(),
       loading: () => const Padding(
         padding: EdgeInsets.all(AppSizes.lg),
         child: Center(child: AppLoader()),

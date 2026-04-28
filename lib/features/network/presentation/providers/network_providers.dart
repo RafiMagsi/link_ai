@@ -5,87 +5,146 @@ import '../../../connect/presentation/providers/connect_providers.dart';
 import '../../../profile/data/models/profile_model.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 
-final followingProfilesProvider = FutureProvider<List<ProfileModel>>((
+final followingProfilesProvider = Provider<AsyncValue<List<ProfileModel>>>((
   ref,
-) async {
-  final connections = await ref.watch(myConnectionsProvider.future);
-  final uids = connections
+) {
+  final profilesState = ref.watch(publicProfilesProvider);
+  final followingState = ref.watch(myConnectionsProvider);
+
+  final profiles = profilesState.asData?.value;
+  final following = followingState.asData?.value;
+
+  if (profiles == null || following == null) {
+    final error = profilesState.asError?.error ?? followingState.asError?.error;
+    final stackTrace =
+        profilesState.asError?.stackTrace ?? followingState.asError?.stackTrace;
+
+    if (error != null && stackTrace != null) {
+      return AsyncError(error, stackTrace);
+    }
+
+    return const AsyncLoading();
+  }
+
+  final followingIds = following
       .map((connection) => connection.connectedUid)
       .where((uid) => uid.isNotEmpty)
       .toList(growable: false);
 
-  return ref.watch(profileRemoteDataSourceProvider).getProfilesByIds(uids);
+  if (followingIds.isEmpty) {
+    return const AsyncData(<ProfileModel>[]);
+  }
+
+  final profileByUid = {for (final profile in profiles) profile.uid: profile};
+  final orderedProfiles = followingIds
+      .map((uid) => profileByUid[uid])
+      .whereType<ProfileModel>()
+      .toList(growable: false);
+
+  return AsyncData(orderedProfiles);
 });
 
-final collaborationMatchesProvider = FutureProvider<List<ProfileModel>>((
+final collaborationMatchesProvider = Provider<AsyncValue<List<ProfileModel>>>((
   ref,
-) async {
-  final me = await ref.watch(myProfileProvider.future);
-  final allProfiles = await ref.watch(publicProfilesProvider.future);
+) {
+  final profilesState = ref.watch(publicProfilesProvider);
+  final followingState = ref.watch(myConnectionsProvider);
+  final meState = ref.watch(myProfileProvider);
+
+  final profiles = profilesState.asData?.value;
+  final following = followingState.asData?.value;
+  final me = meState.asData?.value;
+
+  if (profiles == null || following == null) {
+    final error =
+        profilesState.asError?.error ??
+        followingState.asError?.error ??
+        meState.asError?.error;
+    final stackTrace =
+        profilesState.asError?.stackTrace ??
+        followingState.asError?.stackTrace ??
+        meState.asError?.stackTrace;
+
+    if (error != null && stackTrace != null) {
+      return AsyncError(error, stackTrace);
+    }
+
+    return const AsyncLoading();
+  }
+
   final currentUid = ref.watch(currentUserProvider)?.uid;
-  final following = await ref.watch(myConnectionsProvider.future);
   final followingIds = following.map((item) => item.connectedUid).toSet();
 
-  final candidates = allProfiles.where((profile) {
+  final candidates = profiles.where((profile) {
     if (profile.uid == currentUid) return false;
     if (followingIds.contains(profile.uid)) return false;
     if (profile.collaborationIntent == 'not_looking') return false;
     return true;
   }).toList();
 
-  int score(ProfileModel profile) {
-    var total = 0;
-    final mySkills = <String>{
-      ...?me?.skills,
-      ...?me?.tools,
-    }.map((item) => item.toLowerCase()).toSet();
-    final theirSkills = {
-      ...profile.skills,
-      ...profile.tools,
-      ...profile.lookingFor,
-    }.map((item) => item.toLowerCase()).toSet();
+  candidates.sort(
+    (a, b) => _scoreProfile(b, me).compareTo(_scoreProfile(a, me)),
+  );
+  return AsyncData(candidates.take(20).toList(growable: false));
+});
 
-    total += theirSkills.where(mySkills.contains).length * 3;
+final openToCollaborateProfilesProvider =
+    Provider<AsyncValue<List<ProfileModel>>>((ref) {
+      final profilesState = ref.watch(publicProfilesProvider);
+      final profiles = profilesState.asData?.value;
 
-    if (me != null && me.need.trim().isNotEmpty) {
-      final need = me.need.toLowerCase();
-      if (profile.building.toLowerCase().contains(need)) total += 4;
-      if (profile.bio.toLowerCase().contains(need)) total += 2;
-    }
+      if (profiles == null) {
+        final error = profilesState.asError?.error;
+        final stackTrace = profilesState.asError?.stackTrace;
+        if (error != null && stackTrace != null) {
+          return AsyncError(error, stackTrace);
+        }
+        return const AsyncLoading();
+      }
 
-    if (me != null && me.building.trim().isNotEmpty) {
-      final building = me.building.toLowerCase();
-      if (profile.need.toLowerCase().contains(building)) total += 4;
-    }
+      final currentUid = ref.watch(currentUserProvider)?.uid;
+      final filtered = profiles.where((profile) {
+        if (profile.uid == currentUid) return false;
+        return profile.collaborationIntent != 'not_looking';
+      }).toList();
 
-    if (profile.collaborationIntent == 'hiring') total += 2;
-    if (profile.collaborationIntent == 'looking_for_cofounder') total += 2;
-    if (profile.projectStage == 'launched' ||
-        profile.projectStage == 'growing') {
-      total += 1;
-    }
+      filtered.sort(
+        (a, b) =>
+            (b.updatedAt ?? DateTime(0)).compareTo(a.updatedAt ?? DateTime(0)),
+      );
+      return AsyncData(filtered.take(20).toList(growable: false));
+    });
 
-    return total;
+int _scoreProfile(ProfileModel profile, ProfileModel? me) {
+  var total = 0;
+  final mySkills = <String>{
+    ...?me?.skills,
+    ...?me?.tools,
+  }.map((item) => item.toLowerCase()).toSet();
+  final theirSkills = {
+    ...profile.skills,
+    ...profile.tools,
+    ...profile.lookingFor,
+  }.map((item) => item.toLowerCase()).toSet();
+
+  total += theirSkills.where(mySkills.contains).length * 3;
+
+  if (me != null && me.need.trim().isNotEmpty) {
+    final need = me.need.toLowerCase();
+    if (profile.building.toLowerCase().contains(need)) total += 4;
+    if (profile.bio.toLowerCase().contains(need)) total += 2;
   }
 
-  candidates.sort((a, b) => score(b).compareTo(score(a)));
-  return candidates.take(20).toList(growable: false);
-});
+  if (me != null && me.building.trim().isNotEmpty) {
+    final building = me.building.toLowerCase();
+    if (profile.need.toLowerCase().contains(building)) total += 4;
+  }
 
-final openToCollaborateProfilesProvider = FutureProvider<List<ProfileModel>>((
-  ref,
-) async {
-  final currentUid = ref.watch(currentUserProvider)?.uid;
-  final profiles = await ref.watch(publicProfilesProvider.future);
+  if (profile.collaborationIntent == 'hiring') total += 2;
+  if (profile.collaborationIntent == 'looking_for_cofounder') total += 2;
+  if (profile.projectStage == 'launched' || profile.projectStage == 'growing') {
+    total += 1;
+  }
 
-  final filtered = profiles.where((profile) {
-    if (profile.uid == currentUid) return false;
-    return profile.collaborationIntent != 'not_looking';
-  }).toList();
-
-  filtered.sort(
-    (a, b) =>
-        (b.updatedAt ?? DateTime(0)).compareTo(a.updatedAt ?? DateTime(0)),
-  );
-  return filtered.take(20).toList(growable: false);
-});
+  return total;
+}
