@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../moderation/presentation/providers/moderation_providers.dart';
 import '../widgets/profile_options_sidebar.dart';
 import '../widgets/profile_view.dart';
@@ -14,107 +15,11 @@ class PublicProfilePage extends ConsumerWidget {
   Future<void> _reportUser(BuildContext context, WidgetRef ref) async {
     final reason = await showModalBottomSheet<String>(
       context: context,
-      showDragHandle: true,
       isScrollControlled: true,
       builder: (context) {
-        return SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Report User',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "Help us understand why you're reporting this user",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ...[
-                    MapEntry('Spam', Icons.mail_outlined),
-                    MapEntry('Harassment', Icons.warning_outlined),
-                    MapEntry('Impersonation', Icons.person_off_outlined),
-                    MapEntry('Scam', Icons.block_outlined),
-                    MapEntry('Other', Icons.flag_outlined),
-                  ].map((entry) {
-                    final label = entry.key;
-                    final icon = entry.value;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => Navigator.of(context).pop(label),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Colors.grey[300]!,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  icon,
-                                  size: 20,
-                                  color: Colors.grey[700],
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Text(
-                                    label,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.chevron_right,
-                                  color: Colors.grey[400],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
+        return AppBottomSheet(
+          child: _ProfileReasonSheet(
+            onSelected: (value) => Navigator.of(context).pop(value),
           ),
         );
       },
@@ -179,9 +84,7 @@ class PublicProfilePage extends ConsumerWidget {
                   final confirmed = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: Text(
-                        isBlocked ? 'Unblock user?' : 'Block user?',
-                      ),
+                      title: Text(isBlocked ? 'Unblock user?' : 'Block user?'),
                       content: Text(
                         isBlocked
                             ? 'You will be able to see this user\'s content again.'
@@ -194,9 +97,7 @@ class PublicProfilePage extends ConsumerWidget {
                         ),
                         FilledButton(
                           onPressed: () => Navigator.pop(context, true),
-                          child: Text(
-                            isBlocked ? 'Unblock' : 'Block',
-                          ),
+                          child: Text(isBlocked ? 'Unblock' : 'Block'),
                         ),
                       ],
                     ),
@@ -230,6 +131,56 @@ class PublicProfilePage extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _ProfileReasonSheet extends StatelessWidget {
+  const _ProfileReasonSheet({required this.onSelected});
+
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    const options = [
+      (label: 'Spam', icon: Icons.mail_outlined),
+      (label: 'Harassment', icon: Icons.warning_outlined),
+      (label: 'Impersonation', icon: Icons.person_off_outlined),
+      (label: 'Scam', icon: Icons.block_outlined),
+      (label: 'Other', icon: Icons.flag_outlined),
+    ];
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 4),
+        Text(
+          'Report user',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "Choose a reason for this report.",
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+        for (final option in options) ...[
+          AppBottomSheetActionTile(
+            icon: option.icon,
+            title: option.label,
+            onTap: () => onSelected(option.label),
+          ),
+          if (option != options.last) const SizedBox(height: 8),
+        ],
+      ],
     );
   }
 }

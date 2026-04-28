@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../data/models/post_model.dart';
 import '../../providers/post_providers.dart';
 
@@ -31,107 +32,20 @@ class PostMoreMenuButton extends ConsumerWidget {
   Future<void> _report(BuildContext context, WidgetRef ref) async {
     final reason = await showModalBottomSheet<String>(
       context: context,
-      showDragHandle: true,
       isScrollControlled: true,
       builder: (context) {
-        return SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Report Post',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Help us understand why you\'re reporting this post',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ...[
-                    MapEntry('Spam', Icons.mail_outlined),
-                    MapEntry('Harassment', Icons.warning_outlined),
-                    MapEntry('Misinformation', Icons.info_outlined),
-                    MapEntry('NSFW', Icons.visibility_off_outlined),
-                    MapEntry('Other', Icons.flag_outlined),
-                  ].map((entry) {
-                    final label = entry.key;
-                    final icon = entry.value;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => Navigator.of(context).pop(label),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Colors.grey[300]!,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  icon,
-                                  size: 20,
-                                  color: Colors.grey[700],
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Text(
-                                    label,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.chevron_right,
-                                  color: Colors.grey[400],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
+        return AppBottomSheet(
+          child: _ReasonSheet(
+            title: 'Report post',
+            subtitle: 'Choose a reason for this report.',
+            options: const [
+              (label: 'Spam', icon: Icons.mail_outlined),
+              (label: 'Harassment', icon: Icons.warning_outlined),
+              (label: 'Misinformation', icon: Icons.info_outlined),
+              (label: 'NSFW', icon: Icons.visibility_off_outlined),
+              (label: 'Other', icon: Icons.flag_outlined),
+            ],
+            onSelected: (value) => Navigator.of(context).pop(value),
           ),
         );
       },
@@ -197,47 +111,11 @@ class PostMoreMenuButton extends ConsumerWidget {
       onPressed: () async {
         final action = await showModalBottomSheet<_PostMenuAction>(
           context: context,
-          showDragHandle: true,
+          isScrollControlled: true,
           builder: (context) {
-            return SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Post actions'),
-                    subtitle: Text(
-                      post.authorName.isEmpty ? 'Post' : post.authorName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.share_outlined),
-                    title: const Text('Share'),
-                    onTap: () =>
-                        Navigator.of(context).pop(_PostMenuAction.share),
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.link),
-                    title: const Text('Copy link'),
-                    onTap: () =>
-                        Navigator.of(context).pop(_PostMenuAction.copyLink),
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.flag_outlined),
-                    title: const Text('Report'),
-                    onTap: () =>
-                        Navigator.of(context).pop(_PostMenuAction.report),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
+            return _PostActionsSheet(
+              post: post,
+              onSelected: (value) => Navigator.of(context).pop(value),
             );
           },
         );
@@ -262,3 +140,166 @@ class PostMoreMenuButton extends ConsumerWidget {
 }
 
 enum _PostMenuAction { share, copyLink, report }
+
+class _PostActionsSheet extends StatelessWidget {
+  const _PostActionsSheet({required this.post, required this.onSelected});
+
+  final PostModel post;
+  final ValueChanged<_PostMenuAction> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final authorLabel = post.authorName.trim().isEmpty
+        ? 'Post'
+        : post.authorName;
+    final authorInitial = authorLabel.substring(0, 1).toUpperCase();
+    final previewText = post.text.trim().isEmpty
+        ? 'No text content'
+        : post.text.trim();
+
+    return SafeArea(
+      top: false,
+      child: AppBottomSheet(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              'Post actions',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.8),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: scheme.primaryContainer,
+                    child: Text(
+                      authorInitial,
+                      style: TextStyle(
+                        color: scheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          authorLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          previewText,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            AppBottomSheetActionTile(
+              icon: Icons.share_outlined,
+              title: 'Share post',
+              onTap: () => onSelected(_PostMenuAction.share),
+            ),
+            const SizedBox(height: 8),
+            AppBottomSheetActionTile(
+              icon: Icons.link_rounded,
+              title: 'Copy link',
+              onTap: () => onSelected(_PostMenuAction.copyLink),
+            ),
+            const SizedBox(height: 8),
+            AppBottomSheetActionTile(
+              icon: Icons.flag_outlined,
+              title: 'Report post',
+              isDestructive: true,
+              onTap: () => onSelected(_PostMenuAction.report),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+typedef _ReasonOption = ({String label, IconData icon});
+
+class _ReasonSheet extends StatelessWidget {
+  const _ReasonSheet({
+    required this.title,
+    required this.subtitle,
+    required this.options,
+    required this.onSelected,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<_ReasonOption> options;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+        for (final option in options) ...[
+          AppBottomSheetActionTile(
+            icon: option.icon,
+            title: option.label,
+            onTap: () => onSelected(option.label),
+          ),
+          if (option != options.last) const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+}
