@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:link_ai/features/explore/presentation/widgets/shadow_style.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/app_empty_state.dart';
@@ -237,39 +238,6 @@ class ExplorePage extends ConsumerWidget {
   }
 }
 
-class _ExploreStyle {
-  const _ExploreStyle._();
-
-  static const Color borderColor = Color(0xFFA78BFA);
-  static const Color blueGlow = Color(0xFF60A5FA);
-  static const Color violetGlow = Color(0xFFA78BFA);
-  static const Color pinkGlow = Color(0xFFF9A8D4);
-
-  static List<BoxShadow> lightShadow({Color? color}) {
-    final glowColor = color ?? violetGlow;
-
-    return [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.020),
-        blurRadius: 12,
-        offset: const Offset(0, 5),
-      ),
-      BoxShadow(
-        color: glowColor.withValues(alpha: 0.026),
-        blurRadius: 20,
-        offset: const Offset(0, 8),
-      ),
-    ];
-  }
-
-  static Border subtleBorder({Color? color}) {
-    return Border.all(
-      color: (color ?? borderColor).withValues(alpha: 0.075),
-      width: 0.7,
-    );
-  }
-}
-
 class _ExploreHero extends StatelessWidget {
   const _ExploreHero();
 
@@ -285,7 +253,7 @@ class _ExploreHero extends StatelessWidget {
           color: const Color(0xFFA78BFA).withValues(alpha: 0.10),
           width: 0.7,
         ),
-        boxShadow: _ExploreStyle.lightShadow(),
+        boxShadow: ShadowStyle.lightShadow(),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
@@ -490,7 +458,7 @@ class _TrendingTile extends StatelessWidget {
             border: Border.all(
               color: const Color(0xFFA78BFA).withValues(alpha: 0.075),
             ),
-            boxShadow: _ExploreStyle.lightShadow(),
+            boxShadow: ShadowStyle.lightShadow(),
           ),
           child: Row(
             children: [
@@ -559,7 +527,7 @@ class _BuilderCard extends StatelessWidget {
             color: builder.color.withValues(alpha: 0.10),
             width: 0.7,
           ),
-          boxShadow: _ExploreStyle.lightShadow(color: builder.color),
+          boxShadow: ShadowStyle.lightShadow(color: builder.color),
         ),
         child: Padding(
           padding: const EdgeInsets.all(AppSizes.md),
@@ -644,7 +612,7 @@ class _ProductCard extends StatelessWidget {
             color: product.color.withValues(alpha: 0.10),
             width: 0.7,
           ),
-          boxShadow: _ExploreStyle.lightShadow(color: product.color),
+          boxShadow: ShadowStyle.lightShadow(color: product.color),
         ),
         child: Padding(
           padding: const EdgeInsets.all(AppSizes.md),
@@ -724,7 +692,7 @@ class _TopicCard extends StatelessWidget {
           border: Border.all(
             color: const Color(0xFFA78BFA).withValues(alpha: 0.075),
           ),
-          boxShadow: _ExploreStyle.lightShadow(),
+          boxShadow: ShadowStyle.lightShadow(),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
@@ -882,7 +850,7 @@ class _LinkCard extends StatelessWidget {
             border: Border.all(
               color: const Color(0xFFA78BFA).withValues(alpha: 0.075),
             ),
-            boxShadow: _ExploreStyle.lightShadow(),
+            boxShadow: ShadowStyle.lightShadow(),
           ),
           child: Row(
             children: [
