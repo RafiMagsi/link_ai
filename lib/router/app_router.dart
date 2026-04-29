@@ -16,11 +16,14 @@ import '../features/settings/presentation/pages/app_store_pages.dart';
 import '../features/admin/presentation/pages/admin_settings_page.dart';
 import '../features/admin/presentation/pages/admin_reports_page.dart';
 import '../features/admin/presentation/providers/admin_providers.dart';
+import '../features/feed/presentation/pages/feed_page.dart';
 import '../features/feed/presentation/pages/create_post_page.dart';
 import '../features/feed/presentation/pages/post_detail_page.dart';
 import '../features/main/presentation/pages/main_shell_page.dart';
 import '../features/notifications/presentation/pages/notifications_page.dart';
 import '../features/messaging/presentation/pages/inbox_page.dart';
+import '../features/explore/presentation/pages/explore_page.dart';
+import '../features/products/presentation/pages/products_page.dart';
 import '../features/messaging/presentation/pages/conversation_page.dart';
 import '../features/messaging/data/models/conversation_model.dart';
 import '../features/feed/data/models/post_model.dart';
@@ -128,15 +131,47 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'onboarding',
         builder: (context, state) => const OnboardingPage(),
       ),
-      GoRoute(
-        path: '/feed',
-        name: 'feed',
-        builder: (context, state) => const MainShellPage(),
-      ),
-      GoRoute(
-        path: '/profile',
-        name: 'profile',
-        builder: (context, state) => const ProfilePage(showBackButton: true),
+      ShellRoute(
+        builder: (context, state, child) {
+          return MainShellPage(child: child);
+        },
+        routes: [
+          GoRoute(
+            path: '/feed',
+            name: 'feed',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: const FeedPage(),
+            ),
+          ),
+          GoRoute(
+            path: '/explore',
+            name: 'explore',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: const ExplorePage(),
+            ),
+          ),
+          GoRoute(
+            path: '/messages',
+            name: 'messages',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: const InboxPage(),
+            ),
+          ),
+          GoRoute(
+            path: '/products',
+            name: 'products',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: const ProductsPage(),
+            ),
+          ),
+          GoRoute(
+            path: '/profile',
+            name: 'profile',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: const ProfilePage(),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: '/profile/edit',
@@ -318,11 +353,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/notifications',
         name: 'notifications',
         builder: (context, state) => const NotificationsPage(),
-      ),
-      GoRoute(
-        path: '/messages',
-        name: 'messages',
-        builder: (context, state) => const InboxPage(),
       ),
       GoRoute(
         path: '/messages/:conversationId',

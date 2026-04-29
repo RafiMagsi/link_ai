@@ -12,6 +12,7 @@ import '../providers/post_providers.dart';
 import '../widgets/comments/comment_composer_bar.dart';
 import '../widgets/feed_post_card.dart';
 import '../../data/models/post_model.dart';
+import '../../data/models/post_comment_model.dart';
 
 class PostDetailPage extends ConsumerStatefulWidget {
   const PostDetailPage({super.key, required this.postId, this.initialPost});
@@ -176,43 +177,18 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                           );
                         }
 
-                        return SliverList.separated(
-                          itemCount: comments.length,
-                          separatorBuilder: (context, index) =>
-                              const Divider(height: 1),
-                          itemBuilder: (context, index) {
-                            final comment = comments[index];
-                            final currentUid = ref
-                                .watch(currentUserProvider)
-                                ?.uid;
-                            final onAvatarTap = comment.authorUid.isEmpty
-                                ? null
-                                : () async {
-                                    final isSelfProfile = currentUid != null &&
-                                        comment.authorUid == currentUid;
-                                    await navigateToProfile(
-                                      context: context,
-                                      uid: comment.authorUid,
-                                      isSelfProfile: isSelfProfile,
-                                    );
-                                  };
-
-                            return ListTile(
-                              leading: AppUserAvatar(
-                                avatarUrl: comment.authorAvatarUrl,
-                                onTap: onAvatarTap,
-                              ),
-                              title: Text(
-                                comment.authorName.isEmpty
-                                    ? 'Unknown Builder'
-                                    : comment.authorName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              subtitle: Text(comment.text),
-                            );
-                          },
+                        return SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final comment = comments[index];
+                              return _CommentTree(
+                                comment: comment,
+                                postId: widget.postId,
+                                ref: ref,
+                              );
+                            },
+                            childCount: comments.length,
+                          ),
                         );
                       },
                       loading: () => const SliverToBoxAdapter(
@@ -245,6 +221,72 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
             onSend: _addComment,
             isSending: _isSending,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommentTree extends ConsumerWidget {
+  const _CommentTree({
+    required this.comment,
+    required this.postId,
+    required this.ref,
+  });
+
+  final PostCommentModel comment;
+  final String postId;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentUid = ref.watch(currentUserProvider)?.uid;
+    final onAvatarTap = comment.authorUid.isEmpty
+        ? null
+        : () async {
+            final isSelfProfile =
+                currentUid != null && comment.authorUid == currentUid;
+            await navigateToProfile(
+              context: context,
+              uid: comment.authorUid,
+              isSelfProfile: isSelfProfile,
+            );
+          };
+
+    return Padding(
+      padding: EdgeInsets.only(left: comment.parentCommentId != null ? 40 : 0),
+      child: Column(
+        children: [
+          ListTile(
+            leading: AppUserAvatar(
+              avatarUrl: comment.authorAvatarUrl,
+              onTap: onAvatarTap,
+            ),
+            title: Text(
+              comment.authorName.isEmpty ? 'Unknown Builder' : comment.authorName,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(comment.text),
+            trailing: Text(
+              'Reply',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            onTap: () {
+              // TODO: Open reply composer for this comment
+            },
+          ),
+          const Divider(height: 1),
+          if (comment.replies.isNotEmpty)
+            ...comment.replies.map(
+              (reply) => _CommentTree(
+                comment: reply,
+                postId: postId,
+                ref: ref,
+              ),
+            ),
         ],
       ),
     );

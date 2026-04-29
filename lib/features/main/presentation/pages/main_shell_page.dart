@@ -1,63 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../explore/presentation/pages/explore_page.dart';
-import '../../../feed/presentation/pages/feed_page.dart';
-import '../../../messaging/presentation/pages/inbox_page.dart';
-import '../../../products/presentation/pages/products_page.dart';
-import '../../../profile/presentation/pages/profile_page.dart';
 import '../widgets/main_bottom_nav_bar.dart';
 
-class MainShellPage extends StatefulWidget {
-  const MainShellPage({super.key});
+class MainShellPage extends StatelessWidget {
+  const MainShellPage({super.key, required this.child});
 
-  @override
-  State<MainShellPage> createState() => _MainShellPageState();
-}
+  final Widget child;
 
-class _MainShellPageState extends State<MainShellPage> {
-  int _currentIndex = 0;
-
-  late final PageController _pageController;
-
-  final _pages = const [
-    FeedPage(),
-    ExplorePage(),
-    InboxPage(),
-    ProductsPage(),
-    ProfilePage(),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController(initialPage: _currentIndex);
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+  int _getTabIndex(BuildContext context) {
+    final location = GoRouterState.of(context).matchedLocation;
+    switch (location) {
+      case '/feed':
+        return 0;
+      case '/explore':
+        return 1;
+      case '/messages':
+        return 2;
+      case '/products':
+        return 3;
+      case '/profile':
+        return 4;
+      default:
+        return 0;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentIndex = _getTabIndex(context);
+
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() => _currentIndex = index);
-        },
-        children: _pages,
-      ),
+      body: child,
       bottomNavigationBar: MainBottomNavBar(
-        currentIndex: _currentIndex,
+        currentIndex: currentIndex,
         onDestinationSelected: (index) {
-          setState(() => _currentIndex = index);
-          _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-          );
+          final routes = ['/feed', '/explore', '/messages', '/products', '/profile'];
+          if (index < routes.length) {
+            context.replace(routes[index]);
+          }
         },
       ),
     );

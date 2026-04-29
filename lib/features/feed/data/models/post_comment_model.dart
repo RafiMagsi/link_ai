@@ -9,6 +9,8 @@ class PostCommentModel {
   final String text;
   final DateTime? createdAt;
   final DateTime? createdAtClient;
+  final String? parentCommentId;
+  final List<PostCommentModel> replies;
 
   const PostCommentModel({
     required this.id,
@@ -19,6 +21,8 @@ class PostCommentModel {
     required this.text,
     required this.createdAt,
     required this.createdAtClient,
+    this.parentCommentId,
+    this.replies = const [],
   });
 
   factory PostCommentModel.fromFirestore(
@@ -35,6 +39,7 @@ class PostCommentModel {
       text: data['text'] as String? ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       createdAtClient: (data['createdAtClient'] as Timestamp?)?.toDate(),
+      parentCommentId: data['parentCommentId'] as String?,
     );
   }
 
@@ -46,9 +51,49 @@ class PostCommentModel {
       'authorName': authorName,
       'authorAvatarUrl': authorAvatarUrl,
       'text': text,
+      if (parentCommentId != null) 'parentCommentId': parentCommentId,
       // Used for immediate ordering on clients (serverTimestamp can be null locally).
       'createdAtClient': Timestamp.now(),
       'createdAt': FieldValue.serverTimestamp(),
     };
+  }
+
+  static List<PostCommentModel> buildCommentTree(
+    List<PostCommentModel> flatComments,
+  ) {
+    final rootComments = <PostCommentModel>[];
+    final commentReplies = <String, List<PostCommentModel>>{};
+
+    // Separate root comments and build replies map
+    for (final comment in flatComments) {
+      if (comment.parentCommentId == null) {
+        rootComments.add(comment);
+      } else {
+        final parentId = comment.parentCommentId!;
+        if (commentReplies[parentId] == null) {
+          commentReplies[parentId] = [];
+        }
+        commentReplies[parentId]!.add(comment);
+      }
+    }
+
+    // Build the tree recursively
+    PostCommentModel buildNode(PostCommentModel comment) {
+      final replies = commentReplies[comment.id] ?? [];
+      return PostCommentModel(
+        id: comment.id,
+        postId: comment.postId,
+        authorUid: comment.authorUid,
+        authorName: comment.authorName,
+        authorAvatarUrl: comment.authorAvatarUrl,
+        text: comment.text,
+        createdAt: comment.createdAt,
+        createdAtClient: comment.createdAtClient,
+        parentCommentId: comment.parentCommentId,
+        replies: replies.map(buildNode).toList(),
+      );
+    }
+
+    return rootComments.map(buildNode).toList();
   }
 }

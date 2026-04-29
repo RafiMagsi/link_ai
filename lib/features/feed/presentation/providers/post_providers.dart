@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
+import '../../../connect/presentation/providers/connect_providers.dart';
 import '../../data/datasources/post_remote_datasource.dart';
 import '../../data/models/post_comment_model.dart';
 import '../../data/models/post_model.dart';
@@ -22,6 +23,50 @@ final postRemoteDataSourceProvider = Provider<PostRemoteDataSource>((ref) {
 final latestPostsProvider = StreamProvider<List<PostModel>>((ref) {
   return ref.watch(postRemoteDataSourceProvider).watchLatestPosts();
 });
+
+final connectedPostsProvider = StreamProvider<List<PostModel>>((ref) async* {
+  final connectionsAsync = ref.watch(myConnectionsProvider);
+  final postsAsync = ref.watch(latestPostsProvider);
+
+  await for (final connections in connectionsAsync.when(
+    data: (c) => Stream.value(c),
+    loading: () => Stream.error(StateError('Loading connections')),
+    error: (e, _) => Stream.error(e),
+  )) {
+    final followingUids = connections
+        .map((c) => c.connectedUid)
+        .where((uid) => uid.isNotEmpty)
+        .toSet();
+
+    final posts = postsAsync.asData?.value ?? [];
+    final connectedPosts = posts
+        .where((p) => followingUids.contains(p.authorUid))
+        .toList();
+
+    yield connectedPosts;
+  }
+});
+
+final viralPostsProvider = StreamProvider<List<PostModel>>((ref) {
+  return ref.watch(latestPostsProvider).when(
+    data: (posts) => Stream.value(
+      posts.toList()
+        ..sort(
+          (a, b) =>
+              _calculateViralScore(b).compareTo(_calculateViralScore(a)),
+        ),
+    ),
+    loading: () => Stream.error(StateError('Loading posts')),
+    error: (e, _) => Stream.error(e),
+  );
+});
+
+int _calculateViralScore(PostModel post) {
+  return (post.likesCount * 2) +
+      (post.repostsCount * 3) +
+      post.commentsCount +
+      post.savesCount;
+}
 
 final postsByHashtagProvider = StreamProvider.family<List<PostModel>, String>((
   ref,
@@ -153,7 +198,9 @@ final postByIdProvider = StreamProvider.family<PostModel?, String>((
 
 final postCommentsProvider =
     StreamProvider.family<List<PostCommentModel>, String>((ref, postId) {
-      return ref.watch(postRemoteDataSourceProvider).watchComments(postId);
+      return ref.watch(postRemoteDataSourceProvider).watchComments(postId).map(
+            (flatComments) => PostCommentModel.buildCommentTree(flatComments),
+          );
     });
 
 class _OptimisticInteractionNotifier extends StateNotifier<PostInteractionState?> {

@@ -205,6 +205,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           _scrollToBottom(animated: true);
+          _messageFocusNode.requestFocus();
         });
       } finally {
         if (mounted) {
@@ -233,6 +234,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           _scrollToBottom(animated: true);
+          _messageFocusNode.requestFocus();
         });
       } finally {
         if (mounted) {

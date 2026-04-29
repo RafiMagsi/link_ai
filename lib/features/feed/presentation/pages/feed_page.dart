@@ -23,7 +23,6 @@ class FeedPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final latestPosts = ref.watch(latestPostsProvider);
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -114,26 +113,33 @@ class FeedPage extends ConsumerWidget {
             }
           },
         ),
-        body: TabBarView(
-          children: [
-            _FeedList(kind: _FeedKind.latest, posts: latestPosts),
-            _FeedList(
-              kind: _FeedKind.connected,
-              posts: latestPosts,
-              emptyStateText: 'Follow people to see their posts here.',
-            ),
-            _FeedList(kind: _FeedKind.viral, posts: latestPosts),
-          ],
-        ),
+        body: _FeedTabView(),
       ),
     );
   }
 
-  static int _viralScore(PostModel post) {
-    return (post.likesCount * 2) +
-        (post.repostsCount * 3) +
-        post.commentsCount +
-        post.savesCount;
+}
+
+class _FeedTabView extends ConsumerWidget {
+  const _FeedTabView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final latestPosts = ref.watch(latestPostsProvider);
+    final connectedPosts = ref.watch(connectedPostsProvider);
+    final viralPosts = ref.watch(viralPostsProvider);
+
+    return TabBarView(
+      children: [
+        _FeedList(kind: _FeedKind.latest, posts: latestPosts),
+        _FeedList(
+          kind: _FeedKind.connected,
+          posts: connectedPosts,
+          emptyStateText: 'Follow people to see their posts here.',
+        ),
+        _FeedList(kind: _FeedKind.viral, posts: viralPosts),
+      ],
+    );
   }
 }
 
@@ -197,13 +203,16 @@ class _CreatePostBottomSheetShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.sizeOf(context).height;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final sheetHeight = (screenHeight * 0.64).clamp(430.0, 590.0);
 
     return Material(
       color: Colors.transparent,
-      child: SizedBox(
-        height: sheetHeight,
-        width: double.infinity,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: keyboardHeight),
+        child: SizedBox(
+          height: sheetHeight,
+          width: double.infinity,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(
             top: Radius.circular(28),
@@ -363,6 +372,7 @@ class _CreatePostBottomSheetShell extends StatelessWidget {
             ),
           ),
         ),
+        ),
       ),
     );
   }
@@ -381,39 +391,18 @@ class _FeedList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final followingState = kind == _FeedKind.connected
-        ? ref.watch(myConnectionsProvider)
-        : null;
-    final followingUids = followingState?.asData?.value
-        .map((c) => c.connectedUid)
-        .where((uid) => uid.isNotEmpty)
-        .toSet();
-
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(latestPostsProvider);
+        ref.invalidate(connectedPostsProvider);
+        ref.invalidate(viralPostsProvider);
         if (kind == _FeedKind.connected) {
           ref.invalidate(myConnectionsProvider);
         }
         await Future<void>.delayed(const Duration(milliseconds: 200));
       },
       child: posts.when(
-        data: (items) {
-          final visiblePosts = switch (kind) {
-            _FeedKind.latest => items,
-            _FeedKind.connected =>
-              followingUids == null
-                  ? items
-                  : items
-                        .where((p) => followingUids.contains(p.authorUid))
-                        .toList(),
-            _FeedKind.viral =>
-              (items.toList()..sort(
-                (a, b) =>
-                    FeedPage._viralScore(b).compareTo(FeedPage._viralScore(a)),
-              )),
-          };
-
+        data: (visiblePosts) {
           return ListView.separated(
             itemCount: visiblePosts.isEmpty ? 2 : visiblePosts.length + 1,
             separatorBuilder: (context, index) {
