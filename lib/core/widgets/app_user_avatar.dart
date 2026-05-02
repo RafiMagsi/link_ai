@@ -38,7 +38,19 @@ class AppUserAvatar extends StatelessWidget {
       );
     }
 
-    final avatar = buildAvatar();
+    final avatar = Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: buildAvatar(),
+    );
 
     if (onTap == null) return avatar;
 

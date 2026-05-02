@@ -10,6 +10,7 @@ class CommentActionRow extends ConsumerWidget {
     required this.postId,
     required this.commentId,
     required this.commentText,
+    required this.commentAuthorUid,
     required this.commentAuthorName,
     required this.commentAuthorAvatarUrl,
     required this.likesCount,
@@ -20,6 +21,7 @@ class CommentActionRow extends ConsumerWidget {
   final String postId;
   final String commentId;
   final String commentText;
+  final String commentAuthorUid;
   final String commentAuthorName;
   final String? commentAuthorAvatarUrl;
   final int likesCount;
@@ -69,13 +71,14 @@ class CommentActionRow extends ConsumerWidget {
           PostActionButton(
             icon: Icons.repeat_outlined,
             activeIcon: Icons.repeat,
-            active: isReposted,
+            active: false,
             count: repostsCount,
             onTap: () {
               ref.read(postControllerProvider.notifier).toggleCommentRepost(
                 postId: postId,
                 commentId: commentId,
                 commentText: commentText,
+                commentAuthorUid: commentAuthorUid,
                 commentAuthorName: commentAuthorName,
                 commentAuthorAvatarUrl: commentAuthorAvatarUrl,
               );

@@ -158,6 +158,7 @@ class PostModel {
   final String? quotedCommentText;
   final String? quotedCommentAuthorName;
   final String? quotedCommentAuthorAvatarUrl;
+  final String? quotedCommentAuthorUid;
   final String? quotedPostId;
   final String colorCode;
 
@@ -184,6 +185,7 @@ class PostModel {
     this.quotedCommentText,
     this.quotedCommentAuthorName,
     this.quotedCommentAuthorAvatarUrl,
+    this.quotedCommentAuthorUid,
     this.quotedPostId,
   });
 
@@ -236,6 +238,7 @@ class PostModel {
         quotedCommentText: data['quotedCommentText'] as String?,
         quotedCommentAuthorName: data['quotedCommentAuthorName'] as String?,
         quotedCommentAuthorAvatarUrl: data['quotedCommentAuthorAvatarUrl'] as String?,
+        quotedCommentAuthorUid: data['quotedCommentAuthorUid'] as String?,
         quotedPostId: data['quotedPostId'] as String?,
         colorCode: _safeString(data['colorCode'], fallback: '0xFF60A5FA'),
       );

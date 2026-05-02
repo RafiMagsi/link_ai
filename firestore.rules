@@ -79,7 +79,7 @@ service cloud.firestore {
         && isActiveUser(request.auth.uid)
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.text is string
-        && request.resource.data.text.size() <= 280
+        && (request.resource.data.postType == 'commentRepost' || request.resource.data.text.size() <= 280)
         && request.resource.data.hashtags is list
         && request.resource.data.hashtags.size() <= 20
         && request.resource.data.media is list

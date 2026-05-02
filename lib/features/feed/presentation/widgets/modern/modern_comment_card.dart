@@ -123,6 +123,7 @@ class ModernCommentCard extends ConsumerWidget {
                     postId: postId,
                     commentId: comment.id,
                     commentText: comment.text,
+                    commentAuthorUid: comment.authorUid,
                     commentAuthorName: comment.authorName,
                     commentAuthorAvatarUrl: comment.authorAvatarUrl,
                     likesCount: comment.likesCount,

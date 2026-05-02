@@ -557,6 +557,57 @@ class PostRemoteDataSource {
     }
   }
 
+  Future<String> createRepostOfPost({
+    required PostModel originalPost,
+    required String repostingUserUid,
+    required String repostingUserName,
+    required String repostingUserRole,
+    required String? repostingUserAvatarUrl,
+  }) async {
+    try {
+      final newPostId = _uuid.v4();
+      final originalPostRef = _posts.doc(originalPost.id);
+
+      await _firestore.runTransaction((transaction) async {
+        // Create the repost post
+        transaction.set(_posts.doc(newPostId), {
+          'id': newPostId,
+          'postType': 'commentRepost',
+          'authorUid': repostingUserUid,
+          'authorName': repostingUserName,
+          'authorRole': repostingUserRole,
+          'authorAvatarUrl': repostingUserAvatarUrl,
+          'text': '',
+          'hashtags': [],
+          'media': [],
+          'likesCount': 0,
+          'repostsCount': 0,
+          'commentsCount': 0,
+          'savesCount': 0,
+          'quotedPostId': originalPost.id,
+          'quotedCommentText': originalPost.text,
+          'quotedCommentAuthorName': originalPost.authorName,
+          'quotedCommentAuthorAvatarUrl': originalPost.authorAvatarUrl,
+          'quotedCommentAuthorUid': originalPost.authorUid,
+          'colorCode': PostColors.getRandomColor(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        // Increment the original post's repost count
+        transaction.update(originalPostRef, {
+          'repostsCount': FieldValue.increment(1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }).timeout(const Duration(seconds: 10));
+
+      return newPostId;
+    } catch (error, stackTrace) {
+      debugPrint('Error creating repost: $error\n$stackTrace');
+      rethrow;
+    }
+  }
+
   Future<void> addComment({
     required ProfileModel profile,
     required String postId,
@@ -787,6 +838,7 @@ class PostRemoteDataSource {
     required String senderName,
     required String? senderAvatarUrl,
     required String commentText,
+    required String commentAuthorUid,
     required String commentAuthorName,
     required String? commentAuthorAvatarUrl,
   }) async {
@@ -835,7 +887,9 @@ class PostRemoteDataSource {
                 'quotedCommentText': commentText,
                 'quotedCommentAuthorName': commentAuthorName,
                 'quotedCommentAuthorAvatarUrl': commentAuthorAvatarUrl,
+                'quotedCommentAuthorUid': commentAuthorUid,
                 'quotedPostId': postId,
+                'colorCode': PostColors.getRandomColor(),
                 'createdAt': FieldValue.serverTimestamp(),
                 'updatedAt': FieldValue.serverTimestamp(),
               });

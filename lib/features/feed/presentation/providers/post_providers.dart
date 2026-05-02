@@ -514,6 +514,42 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
+  Future<void> createRepostOfPost(String postId) async {
+    state = const AsyncLoading();
+
+    try {
+      final user = _ref.read(currentUserProvider);
+      if (user == null) {
+        throw Exception('You must be logged in to repost.');
+      }
+
+      final myProfile = await _ref.read(myProfileProvider.future);
+      if (myProfile == null) {
+        throw Exception('Profile not found. Please log in again.');
+      }
+
+      final originalPost = _ref.read(postByIdProvider(postId)).asData?.value;
+      if (originalPost == null) {
+        throw Exception('Post not found.');
+      }
+
+      await _postRemoteDataSource
+          .createRepostOfPost(
+            originalPost: originalPost,
+            repostingUserUid: user.uid,
+            repostingUserName: myProfile.name,
+            repostingUserRole: myProfile.role,
+            repostingUserAvatarUrl: myProfile.avatarUrl,
+          )
+          .timeout(const Duration(seconds: 15));
+
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      debugPrint('Error creating repost: $error\n$stackTrace');
+      state = AsyncError(error, stackTrace);
+    }
+  }
+
   Future<void> toggleSave(String postId) async {
     final user = _ref.read(currentUserProvider);
     if (user == null) {
@@ -711,24 +747,17 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     required String postId,
     required String commentId,
     required String commentText,
+    required String commentAuthorUid,
     required String commentAuthorName,
     required String? commentAuthorAvatarUrl,
   }) async {
-    final user = _ref.read(currentUserProvider);
-    if (user == null) {
-      state = AsyncError(
-        Exception('You must be logged in to perform this action.'),
-        StackTrace.current,
-      );
-      return;
-    }
+    state = const AsyncLoading();
 
     try {
-      final currentInteractionState = await _ref.read(commentInteractionStateProvider(commentId).future);
-      final newReposted = !currentInteractionState.reposted;
-
-      final optimisticInteractionState = currentInteractionState.copyWith(reposted: newReposted);
-      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).setOptimistic(optimisticInteractionState);
+      final user = _ref.read(currentUserProvider);
+      if (user == null) {
+        throw Exception('You must be logged in to perform this action.');
+      }
 
       final profile = await _ref.read(myProfileProvider.future);
       if (profile == null) {
@@ -743,6 +772,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
             senderName: profile.name,
             senderAvatarUrl: profile.avatarUrl,
             commentText: commentText,
+            commentAuthorUid: commentAuthorUid,
             commentAuthorName: commentAuthorName,
             commentAuthorAvatarUrl: commentAuthorAvatarUrl,
           )
@@ -751,7 +781,6 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling comment repost: $error\n$stackTrace');
-      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).resetOptimistic();
       state = AsyncError(error, stackTrace);
     }
   }
