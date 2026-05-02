@@ -103,7 +103,10 @@ service cloud.firestore {
             get(/databases/$(database)/documents/posts/$(postId)).data.authorUid
           );
 
-        allow update: if false;
+        allow update: if isSignedIn()
+          && request.resource.data.diff(resource.data).changedKeys()
+            .hasOnly(['likesCount', 'repostsCount', 'savesCount']);
+
         allow delete: if isAdmin() ||
           resource.data.authorUid == request.auth.uid;
       }
@@ -154,6 +157,51 @@ service cloud.firestore {
           request.auth.uid,
           get(/databases/$(database)/documents/posts/$(request.resource.data.postId)).data.authorUid
         );
+
+      allow delete: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
+
+      allow update: if false;
+    }
+
+    match /commentLikes/{likeId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.commentId is string
+        && request.resource.data.postId is string;
+      allow delete: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /commentReposts/{repostId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.commentId is string
+        && request.resource.data.postId is string;
+      allow delete: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /commentSaves/{saveId} {
+      allow read: if isAdmin()
+        || (
+          isSignedIn()
+          && saveId.matches('^.*_' + request.auth.uid + '$')
+          && (resource == null || resource.data.uid == request.auth.uid)
+        );
+
+      allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.commentId is string
+        && request.resource.data.postId is string
+        && request.resource.data.id == saveId;
 
       allow delete: if isSignedIn()
         && resource.data.uid == request.auth.uid;
@@ -345,6 +393,13 @@ service cloud.firestore {
 
       allow delete: if isSignedIn()
         && resource.data.receiverUid == request.auth.uid;
+    }
+
+    match /users/{uid}/subscription/{docId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
+      allow delete: if false;
     }
   }
 }

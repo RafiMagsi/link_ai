@@ -29,6 +29,7 @@ class SnowPostCard extends ConsumerWidget {
       PostType.thought => const Color(0xFF8B877E),
       PostType.ship => const Color(0xFF5FA51F),
       PostType.ask => const Color(0xFF2B8FE8),
+      PostType.commentRepost => const Color(0xFF8B877E),
     };
   }
 
@@ -37,6 +38,7 @@ class SnowPostCard extends ConsumerWidget {
       PostType.thought => const Color(0xFFF1EFE8),
       PostType.ship => const Color(0xFFEAF6DD),
       PostType.ask => const Color(0xFFE7F2FF),
+      PostType.commentRepost => const Color(0xFFF1EFE8),
     };
   }
 
@@ -155,6 +157,9 @@ class SnowPostCard extends ConsumerWidget {
                                       post: post,
                                     ),
                                   PostType.ask => SnowPostAskBody(
+                                      post: post,
+                                    ),
+                                  PostType.commentRepost => SnowPostThoughtBody(
                                       post: post,
                                     ),
                                 },

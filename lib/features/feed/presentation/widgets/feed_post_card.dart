@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/post_colors.dart';
 import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/widgets/hashtag_text.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
@@ -54,6 +55,8 @@ class FeedPostCard extends ConsumerWidget {
           };
 
     final colorScheme = Theme.of(context).colorScheme;
+    final postColor = PostColors.colorFromHex(post.colorCode);
+    final complementaryColor = _getComplementaryColor(postColor);
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -63,9 +66,9 @@ class FeedPostCard extends ConsumerWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          color: colorScheme.surface,
+          color: postColor.withValues(alpha: 0.05),
           border: Border.all(
-            color: const Color(0xFFA78BFA).withValues(alpha: 0.10),
+            color: postColor.withValues(alpha: 0.90),
             width: 0.7,
           ),
           boxShadow: [
@@ -75,7 +78,7 @@ class FeedPostCard extends ConsumerWidget {
               offset: const Offset(0, 6),
             ),
             BoxShadow(
-              color: const Color(0xFFA78BFA).withValues(alpha: 0.025),
+              color: postColor.withValues(alpha: 0.025),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -95,8 +98,8 @@ class FeedPostCard extends ConsumerWidget {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        const Color(0xFF60A5FA).withValues(alpha: 0.055),
-                        const Color(0xFF60A5FA).withValues(alpha: 0.00),
+                        postColor.withValues(alpha: 0.055),
+                        postColor.withValues(alpha: 0.00),
                       ],
                     ),
                   ),
@@ -112,8 +115,8 @@ class FeedPostCard extends ConsumerWidget {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        const Color(0xFFF9A8D4).withValues(alpha: 0.055),
-                        const Color(0xFFF9A8D4).withValues(alpha: 0.00),
+                        complementaryColor.withValues(alpha: 0.055),
+                        complementaryColor.withValues(alpha: 0.00),
                       ],
                     ),
                   ),
@@ -140,6 +143,39 @@ class FeedPostCard extends ConsumerWidget {
                                 authorRoleOverride: resolvedRole,
                               ),
                               const SizedBox(height: 5),
+                              if (post.postType == PostType.commentRepost &&
+                                  post.quotedCommentText != null) ...[
+                                Container(
+                                  margin: const EdgeInsets.only(right: 4),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: colorScheme.outline.withValues(alpha: 0.2),
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        post.quotedCommentAuthorName ?? 'Unknown',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        post.quotedCommentText ?? '',
+                                        style: const TextStyle(fontSize: 14),
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                              ],
                               if (post.text.trim().isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.only(right: 4),
@@ -243,5 +279,11 @@ class FeedPostCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Color _getComplementaryColor(Color color) {
+    final hslColor = HSLColor.fromColor(color);
+    final complementary = hslColor.withHue((hslColor.hue + 180) % 360);
+    return complementary.toColor();
   }
 }

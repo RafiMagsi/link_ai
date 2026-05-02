@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/constants/post_colors.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../../../core/utils/hashtag_utils.dart';
 import '../../../profile/data/models/profile_model.dart';
@@ -34,6 +35,18 @@ class PostRemoteDataSource {
 
   CollectionReference<Map<String, dynamic>> get _postSaves {
     return _firestore.collection('postSaves');
+  }
+
+  CollectionReference<Map<String, dynamic>> get _commentLikes {
+    return _firestore.collection('commentLikes');
+  }
+
+  CollectionReference<Map<String, dynamic>> get _commentReposts {
+    return _firestore.collection('commentReposts');
+  }
+
+  CollectionReference<Map<String, dynamic>> get _commentSaves {
+    return _firestore.collection('commentSaves');
   }
 
   Stream<List<PostModel>> watchLatestPosts({int limit = 50}) {
@@ -169,6 +182,7 @@ class PostRemoteDataSource {
         savesCount: 0,
         createdAt: null,
         updatedAt: null,
+        colorCode: PostColors.getRandomColor(),
       );
 
       await _posts
@@ -622,6 +636,217 @@ class PostRemoteDataSource {
     } catch (error, stackTrace) {
       debugPrint('Error searching posts: $error\n$stackTrace');
       return [];
+    }
+  }
+
+  // Comment Engagement Methods
+
+  Future<bool> hasLikedComment({
+    required String postId,
+    required String commentId,
+    required String uid,
+  }) async {
+    try {
+      final doc = await _commentLikes
+          .doc('${commentId}_$uid')
+          .get()
+          .timeout(const Duration(seconds: 10));
+      return doc.exists;
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Error checking if comment $commentId liked by $uid: $error\n$stackTrace',
+      );
+      return false;
+    }
+  }
+
+  Future<bool> hasSavedComment({
+    required String postId,
+    required String commentId,
+    required String uid,
+  }) async {
+    try {
+      final doc = await _commentSaves
+          .doc('${commentId}_$uid')
+          .get()
+          .timeout(const Duration(seconds: 10));
+      return doc.exists;
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Error checking if comment $commentId saved by $uid: $error\n$stackTrace',
+      );
+      return false;
+    }
+  }
+
+  Future<bool> hasRepostedComment({
+    required String postId,
+    required String commentId,
+    required String uid,
+  }) async {
+    try {
+      final doc = await _commentReposts
+          .doc('${commentId}_$uid')
+          .get()
+          .timeout(const Duration(seconds: 10));
+      return doc.exists;
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Error checking if comment $commentId reposted by $uid: $error\n$stackTrace',
+      );
+      return false;
+    }
+  }
+
+  Future<void> toggleCommentLike({
+    required String postId,
+    required String commentId,
+    required String uid,
+  }) async {
+    try {
+      final likeId = '${commentId}_$uid';
+      final likeRef = _commentLikes.doc(likeId);
+      final commentRef = _posts.doc(postId).collection('comments').doc(commentId);
+
+      await _firestore
+          .runTransaction((transaction) async {
+            final likeSnapshot = await transaction.get(likeRef);
+
+            if (likeSnapshot.exists) {
+              transaction.delete(likeRef);
+              transaction.update(commentRef, {
+                'likesCount': FieldValue.increment(-1),
+              });
+            } else {
+              transaction.set(likeRef, {
+                'id': likeId,
+                'commentId': commentId,
+                'postId': postId,
+                'uid': uid,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
+              transaction.update(commentRef, {
+                'likesCount': FieldValue.increment(1),
+              });
+            }
+          })
+          .timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Error toggling like on comment $commentId by user $uid: $error\n$stackTrace',
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> toggleCommentSave({
+    required String postId,
+    required String commentId,
+    required String uid,
+  }) async {
+    try {
+      final saveId = '${commentId}_$uid';
+      final saveRef = _commentSaves.doc(saveId);
+      final commentRef = _posts.doc(postId).collection('comments').doc(commentId);
+
+      await _firestore
+          .runTransaction((transaction) async {
+            final saveSnapshot = await transaction.get(saveRef);
+
+            if (saveSnapshot.exists) {
+              transaction.delete(saveRef);
+              transaction.update(commentRef, {
+                'savesCount': FieldValue.increment(-1),
+              });
+            } else {
+              transaction.set(saveRef, {
+                'id': saveId,
+                'commentId': commentId,
+                'postId': postId,
+                'uid': uid,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
+              transaction.update(commentRef, {
+                'savesCount': FieldValue.increment(1),
+              });
+            }
+          })
+          .timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Error toggling save on comment $commentId by user $uid: $error\n$stackTrace',
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> toggleCommentRepost({
+    required String postId,
+    required String commentId,
+    required String uid,
+    required String senderName,
+    required String? senderAvatarUrl,
+    required String commentText,
+    required String commentAuthorName,
+    required String? commentAuthorAvatarUrl,
+  }) async {
+    try {
+      final repostId = '${commentId}_$uid';
+      final repostRef = _commentReposts.doc(repostId);
+      final commentRef = _posts.doc(postId).collection('comments').doc(commentId);
+
+      await _firestore
+          .runTransaction((transaction) async {
+            final repostSnapshot = await transaction.get(repostRef);
+
+            if (repostSnapshot.exists) {
+              transaction.delete(repostRef);
+              transaction.update(commentRef, {
+                'repostsCount': FieldValue.increment(-1),
+              });
+            } else {
+              transaction.set(repostRef, {
+                'id': repostId,
+                'commentId': commentId,
+                'postId': postId,
+                'uid': uid,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
+              transaction.update(commentRef, {
+                'repostsCount': FieldValue.increment(1),
+              });
+
+              final newPostId = _uuid.v4();
+              transaction.set(_posts.doc(newPostId), {
+                'id': newPostId,
+                'postType': 'commentRepost',
+                'authorUid': uid,
+                'authorName': senderName,
+                'authorRole': '',
+                'authorAvatarUrl': senderAvatarUrl,
+                'text': commentText,
+                'hashtags': [],
+                'media': [],
+                'likesCount': 0,
+                'repostsCount': 0,
+                'commentsCount': 0,
+                'savesCount': 0,
+                'quotedCommentId': commentId,
+                'quotedCommentText': commentText,
+                'quotedCommentAuthorName': commentAuthorName,
+                'quotedCommentAuthorAvatarUrl': commentAuthorAvatarUrl,
+                'quotedPostId': postId,
+                'createdAt': FieldValue.serverTimestamp(),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
+            }
+          })
+          .timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Error toggling repost on comment $commentId by user $uid: $error\n$stackTrace',
+      );
+      rethrow;
     }
   }
 }

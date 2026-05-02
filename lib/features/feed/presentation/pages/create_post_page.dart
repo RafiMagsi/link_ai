@@ -224,6 +224,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
       context: context,
       removeTop: true,
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         appBar: widget.showAppBar
             ? AppBar(
               actionsPadding: EdgeInsets.only(top: 6),
@@ -240,39 +241,41 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
               )
             : null,
         body: SafeArea(
-        child: Column(
-          children: [
-            if (_isUploading) ...[
-              LinearProgressIndicator(value: _uploadProgress),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSizes.lg,
-                  AppSizes.sm,
-                  AppSizes.lg,
-                  0,
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.cloud_upload_outlined, color: colors.mutedText),
-                    const SizedBox(width: AppSizes.sm),
-                    Expanded(
-                      child: Text(
-                        'Uploading… ${(_uploadProgress * 100).round()}%',
-                        style: Theme.of(context).textTheme.bodySmall,
+          bottom: false,
+          child: Column(
+            children: [
+              if (_isUploading) ...[
+                LinearProgressIndicator(value: _uploadProgress),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSizes.lg,
+                    AppSizes.sm,
+                    AppSizes.lg,
+                    0,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.cloud_upload_outlined, color: colors.mutedText),
+                      const SizedBox(width: AppSizes.sm),
+                      Expanded(
+                        child: Text(
+                          'Uploading… ${(_uploadProgress * 100).round()}%',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(
-                  widget.compact ? AppSizes.md : AppSizes.lg,
-                  widget.compact ? AppSizes.sm : AppSizes.lg,
-                  widget.compact ? AppSizes.md : AppSizes.lg,
-                  AppSizes.lg,
-                ),
+              ],
+              Expanded(
+                child: ListView(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    widget.compact ? AppSizes.md : AppSizes.lg,
+                    widget.compact ? AppSizes.sm : AppSizes.lg,
+                    widget.compact ? AppSizes.md : AppSizes.lg,
+                    AppSizes.lg,
+                  ),
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,

@@ -107,6 +107,21 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   Future<void> _save(ProfileModel profile) async {
     if (_isSaving) return;
 
+    // Validate reserved names
+    final reservedNames = ['snow', 'admin', 'moderator'];
+    final nameLower = _nameController.text.trim().toLowerCase();
+
+    if (reservedNames.contains(nameLower)) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('The name "$nameLower" is reserved and cannot be used.'),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });

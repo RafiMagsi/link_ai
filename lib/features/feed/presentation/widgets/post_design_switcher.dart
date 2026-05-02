@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/post_model.dart';
 import '../../../admin/presentation/providers/admin_providers.dart';
 import 'feed_post_card.dart';
+import 'modern/modern_post_card.dart';
 import 'snow_post/snow_post_card.dart';
 
 class PostDesignSwitcher extends ConsumerWidget {
@@ -23,18 +24,22 @@ class PostDesignSwitcher extends ConsumerWidget {
     final appConfig = ref.watch(appConfigProvider).asData?.value;
     final designStyle = appConfig?.postDesignStyle ?? 'twitter';
 
-    if (designStyle == 'snow') {
-      return SnowPostCard(
+    return switch (designStyle) {
+      'snow' => SnowPostCard(
         post: post,
         onCommentTap: onCommentTap,
         onTap: onTap,
-      );
-    }
-
-    return FeedPostCard(
-      post: post,
-      onCommentTap: onCommentTap,
-      onTap: onTap,
-    );
+      ),
+      'modern' => ModernPostCard(
+        post: post,
+        onCommentTap: onCommentTap,
+        onTap: onTap,
+      ),
+      _ => FeedPostCard(
+        post: post,
+        onCommentTap: onCommentTap,
+        onTap: onTap,
+      ),
+    };
   }
 }

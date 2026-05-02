@@ -275,6 +275,10 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
                               value: 'snow',
                               label: Text('Snow'),
                             ),
+                            ButtonSegment<String>(
+                              value: 'modern',
+                              label: Text('Modern'),
+                            ),
                           ],
                           selected: <String>{_postDesignStyle},
                           onSelectionChanged: (Set<String> newSelection) {

@@ -59,6 +59,21 @@ class SnowPostActionRow extends StatelessWidget {
             label: 'Save',
           ),
         ],
+      PostType.commentRepost => const [
+          _SnowActionData(
+            icon: Icons.auto_awesome_outlined,
+            label: 'React',
+            isPrimary: true,
+          ),
+          _SnowActionData(
+            icon: Icons.mode_comment_outlined,
+            label: 'Reply',
+          ),
+          _SnowActionData(
+            icon: Icons.bookmark_border_rounded,
+            label: 'Save',
+          ),
+        ],
     };
   }
 
@@ -67,6 +82,7 @@ class SnowPostActionRow extends StatelessWidget {
       PostType.thought => const Color(0xFF7A756D),
       PostType.ship => const Color(0xFF4F8A12),
       PostType.ask => const Color(0xFF1D74C8),
+      PostType.commentRepost => const Color(0xFF7A756D),
     };
   }
 

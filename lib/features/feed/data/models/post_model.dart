@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-enum PostType { thought, ship, ask }
+enum PostType { thought, ship, ask, commentRepost }
 
 class ShipMeta {
   final String projectName;
@@ -154,6 +154,12 @@ class PostModel {
   final PostType postType;
   final ShipMeta? shipMeta;
   final AskMeta? askMeta;
+  final String? quotedCommentId;
+  final String? quotedCommentText;
+  final String? quotedCommentAuthorName;
+  final String? quotedCommentAuthorAvatarUrl;
+  final String? quotedPostId;
+  final String colorCode;
 
   const PostModel({
     required this.id,
@@ -170,9 +176,15 @@ class PostModel {
     required this.savesCount,
     required this.createdAt,
     required this.updatedAt,
+    required this.colorCode,
     this.postType = PostType.thought,
     this.shipMeta,
     this.askMeta,
+    this.quotedCommentId,
+    this.quotedCommentText,
+    this.quotedCommentAuthorName,
+    this.quotedCommentAuthorAvatarUrl,
+    this.quotedPostId,
   });
 
   factory PostModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -220,6 +232,12 @@ class PostModel {
         postType: postType,
         shipMeta: shipMeta,
         askMeta: askMeta,
+        quotedCommentId: data['quotedCommentId'] as String?,
+        quotedCommentText: data['quotedCommentText'] as String?,
+        quotedCommentAuthorName: data['quotedCommentAuthorName'] as String?,
+        quotedCommentAuthorAvatarUrl: data['quotedCommentAuthorAvatarUrl'] as String?,
+        quotedPostId: data['quotedPostId'] as String?,
+        colorCode: _safeString(data['colorCode'], fallback: '0xFF60A5FA'),
       );
     } catch (e) {
       debugPrint('Error parsing PostModel from Firestore: $e');
@@ -239,6 +257,7 @@ class PostModel {
         createdAt: null,
         updatedAt: null,
         postType: PostType.thought,
+        colorCode: '0xFF60A5FA',
       );
     }
   }
@@ -333,6 +352,7 @@ class PostModel {
       'commentsCount': commentsCount,
       'savesCount': savesCount,
       'postType': postType.toString().split('.').last,
+      'colorCode': colorCode,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };

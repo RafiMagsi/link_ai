@@ -11,6 +11,9 @@ class PostCommentModel {
   final DateTime? createdAtClient;
   final String? parentCommentId;
   final List<PostCommentModel> replies;
+  final int likesCount;
+  final int repostsCount;
+  final int savesCount;
 
   const PostCommentModel({
     required this.id,
@@ -23,6 +26,9 @@ class PostCommentModel {
     required this.createdAtClient,
     this.parentCommentId,
     this.replies = const [],
+    this.likesCount = 0,
+    this.repostsCount = 0,
+    this.savesCount = 0,
   });
 
   factory PostCommentModel.fromFirestore(
@@ -40,6 +46,9 @@ class PostCommentModel {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       createdAtClient: (data['createdAtClient'] as Timestamp?)?.toDate(),
       parentCommentId: data['parentCommentId'] as String?,
+      likesCount: data['likesCount'] as int? ?? 0,
+      repostsCount: data['repostsCount'] as int? ?? 0,
+      savesCount: data['savesCount'] as int? ?? 0,
     );
   }
 
@@ -91,6 +100,9 @@ class PostCommentModel {
         createdAtClient: comment.createdAtClient,
         parentCommentId: comment.parentCommentId,
         replies: replies.map(buildNode).toList(),
+        likesCount: comment.likesCount,
+        repostsCount: comment.repostsCount,
+        savesCount: comment.savesCount,
       );
     }
 

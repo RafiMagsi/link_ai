@@ -1,4 +1,4 @@
-import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {onCall, HttpsError, onRequest} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import {
   onDocumentCreated,
@@ -632,4 +632,162 @@ export const deleteMyAccount = onCall(async (request) => {
   await admin.auth().deleteUser(uid);
 
   return {success: true};
+});
+
+/**
+ * Handles RevenueCat webhook for subscription updates.
+ * Called by RevenueCat when a user makes a purchase.
+ */
+export const subscriptionWebhook = onRequest(async (request, response) => {
+  try {
+    // Verify webhook signature (implement RevenueCat signature verification)
+    const event = request.body.event;
+
+    if (!event || !event.app_user_id) {
+      response.status(400).send({error: "Missing required fields"});
+      return;
+    }
+
+    const uid = event.app_user_id;
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    const expiresDateMs = event.expiration_date_ms || Date.now() + thirtyDaysMs;
+
+    // Create or update subscription document
+    const subscriptionRef = db
+      .collection("users")
+      .doc(uid)
+      .collection("subscription")
+      .doc("data");
+
+    await subscriptionRef.set({
+      uid,
+      isGoldSubscriber: true,
+      purchaseId: event.transaction_id,
+      subscribedAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: new Date(expiresDateMs),
+      subscriptionStatus: "active",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+
+    response.json({success: true});
+  } catch (error) {
+    console.error("Subscription webhook error:", error);
+    response.status(500).json({error: "Internal server error"});
+  }
+});
+
+/**
+ * Generates AI response from @snow chatbot using Gemini API.
+ * Called by client to get AI responses.
+ */
+export const snowAiResponse = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Login required.");
+  }
+
+  const uid = request.auth.uid;
+  const userMessage = request.data.message as string;
+
+  if (!userMessage || userMessage.trim().length === 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Message cannot be empty.",
+    );
+  }
+
+  // Check if user is a gold subscriber
+  const subRef = db
+    .collection("users")
+    .doc(uid)
+    .collection("subscription")
+    .doc("data");
+  const subSnapshot = await subRef.get();
+
+  if (!subSnapshot.exists) {
+    throw new HttpsError(
+      "permission-denied",
+      "Gold subscription required.",
+    );
+  }
+
+  const subscription = subSnapshot.data();
+  const expiresAt = subscription?.expiresAt?.toDate?.() || new Date(0);
+
+  if (!subscription?.isGoldSubscriber || new Date() > expiresAt) {
+    throw new HttpsError(
+      "permission-denied",
+      "Gold subscription required.",
+    );
+  }
+
+  try {
+    // TODO: Integrate with Gemini API
+    // For now, return a placeholder response
+    const msg = userMessage.substring(0, 50);
+    const response = "Thanks for the message! " +
+        "This is a simulated response from @snow. " +
+        "Gemini API integration coming soon. " +
+        `Your message: "${msg}..."`;
+
+    return {
+      success: true,
+      response,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("Snow AI error:", error);
+    throw new HttpsError("internal", "Failed to generate response.");
+  }
+});
+
+/**
+ * Validates if a user has access to gold-only features.
+ * Called by client for feature authorization checks.
+ */
+export const validateGoldFeatures = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError(
+      "unauthenticated",
+      "Login required.",
+    );
+  }
+
+  const uid = request.auth.uid;
+  const featureName = request.data.feature as string;
+
+  if (!featureName) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Feature name required.",
+    );
+  }
+
+  // List of gold-only features
+  const goldFeatures = ["snow_chat", "ai_responses"];
+
+  if (!goldFeatures.includes(featureName)) {
+    return {allowed: true}; // Feature is not restricted
+  }
+
+  // Check subscription status
+  const subRef = db
+    .collection("users")
+    .doc(uid)
+    .collection("subscription")
+    .doc("data");
+  const subSnapshot = await subRef.get();
+
+  if (!subSnapshot.exists) {
+    return {allowed: false, reason: "No active subscription"};
+  }
+
+  const subscription = subSnapshot.data();
+  const expiresAt = subscription?.expiresAt?.toDate?.() || new Date(0);
+  const isActive = subscription?.isGoldSubscriber && new Date() <= expiresAt;
+
+  return {
+    allowed: isActive,
+    reason: isActive ? undefined : "Subscription expired or invalid",
+  };
 });

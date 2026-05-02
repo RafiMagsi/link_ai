@@ -36,6 +36,8 @@ import '../features/products/presentation/pages/edit_product_page.dart';
 import '../features/products/presentation/pages/product_detail_page.dart';
 import '../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../features/onboarding/presentation/providers/onboarding_providers.dart';
+import '../features/subscription/presentation/pages/subscription_page.dart';
+import '../features/messaging/presentation/pages/snow_chat_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -365,6 +367,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             initialConversation: extra,
           );
         },
+      ),
+      GoRoute(
+        path: '/subscription',
+        name: 'subscription',
+        builder: (context, state) => const SubscriptionPage(),
+      ),
+      GoRoute(
+        path: '/snow-chat',
+        name: 'snow-chat',
+        builder: (context, state) => const SnowChatPage(),
       ),
     ],
   );

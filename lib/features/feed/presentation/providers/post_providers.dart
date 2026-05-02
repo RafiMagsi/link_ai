@@ -24,27 +24,30 @@ final latestPostsProvider = StreamProvider<List<PostModel>>((ref) {
   return ref.watch(postRemoteDataSourceProvider).watchLatestPosts();
 });
 
-final connectedPostsProvider = StreamProvider<List<PostModel>>((ref) async* {
-  final connectionsAsync = ref.watch(myConnectionsProvider);
-  final postsAsync = ref.watch(latestPostsProvider);
+final connectedPostsProvider = StreamProvider<List<PostModel>>((ref) {
+  return ref.watch(latestPostsProvider).when(
+    data: (posts) {
+      final connectionsAsync = ref.watch(myConnectionsProvider);
+      return connectionsAsync.when(
+        data: (connections) {
+          final followingUids = connections
+              .map((c) => c.connectedUid)
+              .where((uid) => uid.isNotEmpty)
+              .toSet();
 
-  await for (final connections in connectionsAsync.when(
-    data: (c) => Stream.value(c),
-    loading: () => Stream.error(StateError('Loading connections')),
+          final connectedPosts = posts
+              .where((p) => followingUids.contains(p.authorUid))
+              .toList();
+
+          return Stream.value(connectedPosts);
+        },
+        loading: () => Stream.value(<PostModel>[]),
+        error: (e, _) => Stream.error(e),
+      );
+    },
+    loading: () => Stream.value(<PostModel>[]),
     error: (e, _) => Stream.error(e),
-  )) {
-    final followingUids = connections
-        .map((c) => c.connectedUid)
-        .where((uid) => uid.isNotEmpty)
-        .toSet();
-
-    final posts = postsAsync.asData?.value ?? [];
-    final connectedPosts = posts
-        .where((p) => followingUids.contains(p.authorUid))
-        .toList();
-
-    yield connectedPosts;
-  }
+  );
 });
 
 final viralPostsProvider = StreamProvider<List<PostModel>>((ref) {
@@ -121,6 +124,7 @@ class _OptimisticPostCountNotifier extends StateNotifier<Map<String, PostModel>>
       savesCount: post.savesCount,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
+      colorCode: post.colorCode,
     );
     state = {...state, postId: updated};
   }
@@ -142,6 +146,7 @@ class _OptimisticPostCountNotifier extends StateNotifier<Map<String, PostModel>>
       savesCount: post.savesCount,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
+      colorCode: post.colorCode,
     );
     state = {...state, postId: updated};
   }
@@ -163,6 +168,7 @@ class _OptimisticPostCountNotifier extends StateNotifier<Map<String, PostModel>>
       savesCount: newSavesCount,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
+      colorCode: post.colorCode,
     );
     state = {...state, postId: updated};
   }
@@ -289,6 +295,76 @@ class PostInteractionState {
     );
   }
 }
+
+class CommentInteractionState {
+  final bool liked;
+  final bool reposted;
+  final bool saved;
+
+  const CommentInteractionState({
+    required this.liked,
+    required this.reposted,
+    required this.saved,
+  });
+
+  factory CommentInteractionState.initial() {
+    return const CommentInteractionState(
+      liked: false,
+      reposted: false,
+      saved: false,
+    );
+  }
+
+  CommentInteractionState copyWith({
+    bool? liked,
+    bool? reposted,
+    bool? saved,
+  }) {
+    return CommentInteractionState(
+      liked: liked ?? this.liked,
+      reposted: reposted ?? this.reposted,
+      saved: saved ?? this.saved,
+    );
+  }
+}
+
+class _OptimisticCommentInteractionNotifier extends StateNotifier<CommentInteractionState?> {
+  _OptimisticCommentInteractionNotifier() : super(null);
+
+  void setOptimistic(CommentInteractionState state) {
+    this.state = state;
+  }
+
+  void resetOptimistic() {
+    state = null;
+  }
+}
+
+final optimisticCommentInteractionProvider =
+    StateNotifierProvider.family<_OptimisticCommentInteractionNotifier, CommentInteractionState?, String>((ref, commentId) {
+      return _OptimisticCommentInteractionNotifier();
+    });
+
+final commentInteractionStateProvider =
+    FutureProvider.family<CommentInteractionState, String>((ref, commentId) async {
+      final user = ref.watch(currentUserProvider);
+
+      if (user == null) {
+        return const CommentInteractionState(
+          liked: false,
+          reposted: false,
+          saved: false,
+        );
+      }
+
+      // Check for optimistic state first (scoped to this comment)
+      final optimisticState = ref.watch(optimisticCommentInteractionProvider(commentId));
+      if (optimisticState != null) {
+        return optimisticState;
+      }
+
+      return CommentInteractionState.initial();
+    });
 
 class PostController extends StateNotifier<AsyncValue<void>> {
   PostController(this._ref, this._postRemoteDataSource)
@@ -563,6 +639,119 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       );
     } catch (error, stackTrace) {
       debugPrint('Error reporting post: $error\n$stackTrace');
+      state = AsyncError(error, stackTrace);
+    }
+  }
+
+  Future<void> toggleCommentLike({
+    required String postId,
+    required String commentId,
+  }) async {
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      state = AsyncError(
+        Exception('You must be logged in to perform this action.'),
+        StackTrace.current,
+      );
+      return;
+    }
+
+    try {
+      final currentInteractionState = await _ref.read(commentInteractionStateProvider(commentId).future);
+      final newLiked = !currentInteractionState.liked;
+
+      final optimisticInteractionState = currentInteractionState.copyWith(liked: newLiked);
+      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).setOptimistic(optimisticInteractionState);
+
+      await _postRemoteDataSource
+          .toggleCommentLike(postId: postId, commentId: commentId, uid: user.uid)
+          .timeout(const Duration(seconds: 10));
+
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      debugPrint('Error toggling comment like: $error\n$stackTrace');
+      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).resetOptimistic();
+      state = AsyncError(error, stackTrace);
+    }
+  }
+
+  Future<void> toggleCommentSave({
+    required String postId,
+    required String commentId,
+  }) async {
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      state = AsyncError(
+        Exception('You must be logged in to perform this action.'),
+        StackTrace.current,
+      );
+      return;
+    }
+
+    try {
+      final currentInteractionState = await _ref.read(commentInteractionStateProvider(commentId).future);
+      final newSaved = !currentInteractionState.saved;
+
+      final optimisticInteractionState = currentInteractionState.copyWith(saved: newSaved);
+      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).setOptimistic(optimisticInteractionState);
+
+      await _postRemoteDataSource
+          .toggleCommentSave(postId: postId, commentId: commentId, uid: user.uid)
+          .timeout(const Duration(seconds: 10));
+
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      debugPrint('Error toggling comment save: $error\n$stackTrace');
+      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).resetOptimistic();
+      state = AsyncError(error, stackTrace);
+    }
+  }
+
+  Future<void> toggleCommentRepost({
+    required String postId,
+    required String commentId,
+    required String commentText,
+    required String commentAuthorName,
+    required String? commentAuthorAvatarUrl,
+  }) async {
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      state = AsyncError(
+        Exception('You must be logged in to perform this action.'),
+        StackTrace.current,
+      );
+      return;
+    }
+
+    try {
+      final currentInteractionState = await _ref.read(commentInteractionStateProvider(commentId).future);
+      final newReposted = !currentInteractionState.reposted;
+
+      final optimisticInteractionState = currentInteractionState.copyWith(reposted: newReposted);
+      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).setOptimistic(optimisticInteractionState);
+
+      final profile = await _ref.read(myProfileProvider.future);
+      if (profile == null) {
+        throw Exception('Profile not found. Please log in again.');
+      }
+
+      await _postRemoteDataSource
+          .toggleCommentRepost(
+            postId: postId,
+            commentId: commentId,
+            uid: user.uid,
+            senderName: profile.name,
+            senderAvatarUrl: profile.avatarUrl,
+            commentText: commentText,
+            commentAuthorName: commentAuthorName,
+            commentAuthorAvatarUrl: commentAuthorAvatarUrl,
+          )
+          .timeout(const Duration(seconds: 10));
+
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      debugPrint('Error toggling comment repost: $error\n$stackTrace');
+      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).resetOptimistic();
       state = AsyncError(error, stackTrace);
     }
   }

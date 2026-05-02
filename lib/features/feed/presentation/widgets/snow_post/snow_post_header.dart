@@ -24,6 +24,7 @@ class SnowPostHeader extends StatelessWidget {
       PostType.thought => const Color(0xFF7A756D),
       PostType.ship => const Color(0xFF4F8A12),
       PostType.ask => const Color(0xFF1D74C8),
+      PostType.commentRepost => const Color(0xFF7A756D),
     };
   }
 
@@ -32,6 +33,7 @@ class SnowPostHeader extends StatelessWidget {
       PostType.thought => const Color(0xFFF1EFE8),
       PostType.ship => const Color(0xFFEAF6DD),
       PostType.ask => const Color(0xFFE7F2FF),
+      PostType.commentRepost => const Color(0xFFF1EFE8),
     };
   }
 
@@ -40,6 +42,7 @@ class SnowPostHeader extends StatelessWidget {
       PostType.thought => null,
       PostType.ship => 'Shipped',
       PostType.ask => 'Asking',
+      PostType.commentRepost => null,
     };
   }
 
@@ -48,6 +51,7 @@ class SnowPostHeader extends StatelessWidget {
       PostType.thought => Icons.auto_awesome_outlined,
       PostType.ship => Icons.rocket_launch_outlined,
       PostType.ask => Icons.help_outline_rounded,
+      PostType.commentRepost => Icons.auto_awesome_outlined,
     };
   }
 

@@ -204,12 +204,18 @@ class _CreatePostBottomSheetShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.sizeOf(context).height;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final statusBarHeight = MediaQuery.of(context).viewPadding.top;
+    final appBarHeight = 56.0; // Material AppBar default height
+    final topInset = statusBarHeight + appBarHeight;
     final sheetHeight = (screenHeight * 0.64).clamp(430.0, 590.0);
 
     return Material(
       color: Colors.transparent,
       child: Padding(
-        padding: EdgeInsets.only(bottom: keyboardHeight),
+        padding: EdgeInsets.only(
+          top: topInset,
+          bottom: keyboardHeight,
+        ),
         child: SizedBox(
           height: sheetHeight,
           width: double.infinity,
