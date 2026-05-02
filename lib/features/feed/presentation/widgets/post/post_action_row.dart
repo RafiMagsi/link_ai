@@ -22,6 +22,7 @@ class PostActionRow extends ConsumerWidget {
 
     final liked = interactionState.asData?.value.liked ?? false;
     final saved = interactionState.asData?.value.saved ?? false;
+    final reposted = interactionState.asData?.value.reposted ?? false;
 
     return Padding(
       padding: const EdgeInsetsDirectional.only(end: AppSizes.lg),
@@ -38,10 +39,10 @@ class PostActionRow extends ConsumerWidget {
           PostActionButton(
             icon: Icons.repeat,
             activeIcon: Icons.repeat,
-            active: false,
+            active: reposted,
             count: post.repostsCount,
             onTap: () =>
-                ref.read(postControllerProvider.notifier).createRepostOfPost(post.id),
+                ref.read(postControllerProvider.notifier).toggleRepostOfPost(post.id),
           ),
           PostActionButton(
             icon: Icons.favorite_border,

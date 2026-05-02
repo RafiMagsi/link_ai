@@ -514,7 +514,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  Future<void> createRepostOfPost(String postId) async {
+  Future<void> toggleRepostOfPost(String postId) async {
     state = const AsyncLoading();
 
     try {
@@ -534,7 +534,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       }
 
       await _postRemoteDataSource
-          .createRepostOfPost(
+          .toggleRepostOfPost(
             originalPost: originalPost,
             repostingUserUid: user.uid,
             repostingUserName: myProfile.name,
@@ -545,7 +545,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
       state = const AsyncData(null);
     } catch (error, stackTrace) {
-      debugPrint('Error creating repost: $error\n$stackTrace');
+      debugPrint('Error toggling repost: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }

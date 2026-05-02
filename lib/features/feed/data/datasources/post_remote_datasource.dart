@@ -412,11 +412,14 @@ class PostRemoteDataSource {
     required String uid,
   }) async {
     try {
-      final doc = await _postReposts
-          .doc('${postId}_$uid')
+      final result = await _posts
+          .where('postType', isEqualTo: 'commentRepost')
+          .where('quotedPostId', isEqualTo: postId)
+          .where('authorUid', isEqualTo: uid)
+          .limit(1)
           .get()
           .timeout(const Duration(seconds: 10));
-      return doc.exists;
+      return result.docs.isNotEmpty;
     } catch (error, stackTrace) {
       debugPrint(
         'Error checking if post $postId reposted by $uid: $error\n$stackTrace',
@@ -557,7 +560,7 @@ class PostRemoteDataSource {
     }
   }
 
-  Future<String> createRepostOfPost({
+  Future<void> toggleRepostOfPost({
     required PostModel originalPost,
     required String repostingUserUid,
     required String repostingUserName,
@@ -565,45 +568,63 @@ class PostRemoteDataSource {
     required String? repostingUserAvatarUrl,
   }) async {
     try {
-      final newPostId = _uuid.v4();
       final originalPostRef = _posts.doc(originalPost.id);
 
+      // Check if user has already reposted this post
+      final existingRepost = await _posts
+          .where('postType', isEqualTo: 'commentRepost')
+          .where('quotedPostId', isEqualTo: originalPost.id)
+          .where('authorUid', isEqualTo: repostingUserUid)
+          .get()
+          .timeout(const Duration(seconds: 10));
+
       await _firestore.runTransaction((transaction) async {
-        // Create the repost post
-        transaction.set(_posts.doc(newPostId), {
-          'id': newPostId,
-          'postType': 'commentRepost',
-          'authorUid': repostingUserUid,
-          'authorName': repostingUserName,
-          'authorRole': repostingUserRole,
-          'authorAvatarUrl': repostingUserAvatarUrl,
-          'text': '',
-          'hashtags': [],
-          'media': [],
-          'likesCount': 0,
-          'repostsCount': 0,
-          'commentsCount': 0,
-          'savesCount': 0,
-          'quotedPostId': originalPost.id,
-          'quotedCommentText': originalPost.text,
-          'quotedCommentAuthorName': originalPost.authorName,
-          'quotedCommentAuthorAvatarUrl': originalPost.authorAvatarUrl,
-          'quotedCommentAuthorUid': originalPost.authorUid,
-          'colorCode': PostColors.getRandomColor(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        if (existingRepost.docs.isNotEmpty) {
+          // User has already reposted - undo the repost
+          final repostDocId = existingRepost.docs.first.id;
+          transaction.delete(_posts.doc(repostDocId));
 
-        // Increment the original post's repost count
-        transaction.update(originalPostRef, {
-          'repostsCount': FieldValue.increment(1),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+          // Decrement the original post's repost count
+          transaction.update(originalPostRef, {
+            'repostsCount': FieldValue.increment(-1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          // User hasn't reposted yet - create new repost
+          final newPostId = _uuid.v4();
+          transaction.set(_posts.doc(newPostId), {
+            'id': newPostId,
+            'postType': 'commentRepost',
+            'authorUid': repostingUserUid,
+            'authorName': repostingUserName,
+            'authorRole': repostingUserRole,
+            'authorAvatarUrl': repostingUserAvatarUrl,
+            'text': '',
+            'hashtags': [],
+            'media': [],
+            'likesCount': 0,
+            'repostsCount': 0,
+            'commentsCount': 0,
+            'savesCount': 0,
+            'quotedPostId': originalPost.id,
+            'quotedCommentText': originalPost.text,
+            'quotedCommentAuthorName': originalPost.authorName,
+            'quotedCommentAuthorAvatarUrl': originalPost.authorAvatarUrl,
+            'quotedCommentAuthorUid': originalPost.authorUid,
+            'colorCode': PostColors.getRandomColor(),
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
+          // Increment the original post's repost count
+          transaction.update(originalPostRef, {
+            'repostsCount': FieldValue.increment(1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
       }).timeout(const Duration(seconds: 10));
-
-      return newPostId;
     } catch (error, stackTrace) {
-      debugPrint('Error creating repost: $error\n$stackTrace');
+      debugPrint('Error toggling repost: $error\n$stackTrace');
       rethrow;
     }
   }

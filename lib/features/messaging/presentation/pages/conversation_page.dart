@@ -202,15 +202,17 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
         );
 
         _messageController.clear();
+        if (!mounted) return;
+        setState(() => _isSending = false);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           _scrollToBottom(animated: true);
-          _messageFocusNode.requestFocus();
         });
-      } finally {
+      } catch (e) {
         if (mounted) {
           setState(() => _isSending = false);
         }
+        rethrow;
       }
     } else {
       final otherUid = conversation.getOtherUid(currentUser.uid);
@@ -231,15 +233,17 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
         );
 
         _messageController.clear();
+        if (!mounted) return;
+        setState(() => _isSending = false);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           _scrollToBottom(animated: true);
-          _messageFocusNode.requestFocus();
         });
-      } finally {
+      } catch (e) {
         if (mounted) {
           setState(() => _isSending = false);
         }
+        rethrow;
       }
     }
   }
@@ -532,7 +536,6 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
                           minLines: 1,
                           maxLines: 5,
                           maxLength: _maxMessageChars,
-                          enabled: !_isSending,
                           keyboardType: TextInputType.multiline,
                           textInputAction: TextInputAction.newline,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
