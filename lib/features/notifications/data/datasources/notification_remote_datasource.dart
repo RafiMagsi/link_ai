@@ -110,10 +110,6 @@ class NotificationRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(50)
         .snapshots()
-        .timeout(
-          const Duration(seconds: 10),
-          onTimeout: (sink) => sink.close(),
-        )
         .map((snapshot) {
           try {
             return snapshot.docs.map(AppNotificationModel.fromFirestore).toList();
@@ -129,10 +125,6 @@ class NotificationRemoteDataSource {
         .where('receiverUid', isEqualTo: uid)
         .where('isRead', isEqualTo: false)
         .snapshots()
-        .timeout(
-          const Duration(seconds: 10),
-          onTimeout: (sink) => sink.close(),
-        )
         .map((snapshot) {
           try {
             return snapshot.docs.length;
