@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/app_loader.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../data/models/post_comment_model.dart';
 import '../providers/post_providers.dart';
 import '../widgets/comments/comment_composer_bar.dart';
 import '../widgets/feed_post_card.dart';
@@ -29,6 +31,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
 
   bool _isSending = false;
   bool _shouldAutoScrollAfterSend = true;
+  String? _updatingBestAnswerCommentId;
 
   @override
   void dispose() {
@@ -93,10 +96,61 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
     }
   }
 
+  bool _supportsBestAnswer(PostIntent intent) {
+    return intent == PostIntent.question || intent == PostIntent.feedback;
+  }
+
+  List<PostCommentModel> _applyBestAnswerFlag(
+    List<PostCommentModel> comments,
+    String? bestAnswerCommentId,
+  ) {
+    PostCommentModel mapComment(PostCommentModel comment) {
+      final replies = comment.replies.map(mapComment).toList();
+      return comment.copyWith(
+        replies: replies,
+        isBestAnswer: comment.id == bestAnswerCommentId,
+      );
+    }
+
+    final mapped = comments.map(mapComment).toList();
+    if (bestAnswerCommentId == null) return mapped;
+
+    mapped.sort((a, b) {
+      if (a.isBestAnswer == b.isBestAnswer) return 0;
+      return a.isBestAnswer ? -1 : 1;
+    });
+    return mapped;
+  }
+
+  Future<void> _setBestAnswer({
+    required PostModel post,
+    required String? commentId,
+  }) async {
+    setState(() => _updatingBestAnswerCommentId = commentId ?? '__clear__');
+
+    final controller = ref.read(postControllerProvider.notifier);
+    await controller.setBestAnswer(
+      postId: widget.postId,
+      postIntent: post.postIntent,
+      commentId: commentId,
+    );
+
+    if (!mounted) return;
+    setState(() => _updatingBestAnswerCommentId = null);
+
+    final state = ref.read(postControllerProvider);
+    if (state.hasError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to update best answer.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final postState = ref.watch(postByIdProvider(widget.postId));
     final commentsState = ref.watch(postCommentsProvider(widget.postId));
+    final currentUser = ref.watch(currentUserProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Post')),
@@ -114,6 +168,13 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                     icon: Icons.forum_outlined,
                   );
                 }
+
+                final supportsBestAnswer = _supportsBestAnswer(
+                  resolvedPost.postIntent,
+                );
+                final canManageBestAnswer =
+                    supportsBestAnswer &&
+                    currentUser?.uid == resolvedPost.authorUid;
 
                 return CustomScrollView(
                   controller: _scrollController,
@@ -149,6 +210,47 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                           ),
                         ),
                       ),
+                    if (supportsBestAnswer)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSizes.lg,
+                          0,
+                          AppSizes.lg,
+                          AppSizes.sm,
+                        ),
+                        sliver: SliverToBoxAdapter(
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.workspace_premium_outlined,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  resolvedPost.bestAnswerCommentId == null
+                                      ? 'Mark one helpful comment as the best answer.'
+                                      : 'Best answer selected for this discussion.',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                              if (canManageBestAnswer &&
+                                  resolvedPost.bestAnswerCommentId != null)
+                                TextButton(
+                                  onPressed:
+                                      _updatingBestAnswerCommentId != null
+                                      ? null
+                                      : () => _setBestAnswer(
+                                          post: resolvedPost,
+                                          commentId: null,
+                                        ),
+                                  child: const Text('Clear'),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
                     const SliverToBoxAdapter(child: Divider(height: 1)),
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(
@@ -165,7 +267,12 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                     ),
                     commentsState.when(
                       data: (comments) {
-                        if (comments.isEmpty) {
+                        final decoratedComments = _applyBestAnswerFlag(
+                          comments,
+                          resolvedPost.bestAnswerCommentId,
+                        );
+
+                        if (decoratedComments.isEmpty) {
                           return const SliverToBoxAdapter(
                             child: Padding(
                               padding: EdgeInsets.all(AppSizes.xl),
@@ -175,19 +282,32 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                         }
 
                         return SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final comment = comments[index];
-                              return ModernCommentCard(
-                                comment: comment,
-                                postId: widget.postId,
-                                onReplyTap: () {
-                                  // TODO: Open reply composer for this comment
-                                },
-                              );
-                            },
-                            childCount: comments.length,
-                          ),
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final comment = decoratedComments[index];
+                            return ModernCommentCard(
+                              comment: comment,
+                              postId: widget.postId,
+                              isBestAnswer: comment.isBestAnswer,
+                              showBestAnswerAction: canManageBestAnswer,
+                              isBestAnswerUpdating:
+                                  _updatingBestAnswerCommentId ==
+                                  (comment.isBestAnswer
+                                      ? '__clear__'
+                                      : comment.id),
+                              onBestAnswerToggle: () => _setBestAnswer(
+                                post: resolvedPost,
+                                commentId: comment.isBestAnswer
+                                    ? null
+                                    : comment.id,
+                              ),
+                              onReplyTap: () {
+                                // TODO: Open reply composer for this comment
+                              },
+                            );
+                          }, childCount: decoratedComments.length),
                         );
                       },
                       loading: () => const SliverToBoxAdapter(
@@ -225,4 +345,3 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
     );
   }
 }
-

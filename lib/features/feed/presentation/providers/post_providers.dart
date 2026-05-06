@@ -25,43 +25,46 @@ final latestPostsProvider = StreamProvider<List<PostModel>>((ref) {
 });
 
 final connectedPostsProvider = StreamProvider<List<PostModel>>((ref) {
-  return ref.watch(latestPostsProvider).when(
-    data: (posts) {
-      final connectionsAsync = ref.watch(myConnectionsProvider);
-      return connectionsAsync.when(
-        data: (connections) {
-          final followingUids = connections
-              .map((c) => c.connectedUid)
-              .where((uid) => uid.isNotEmpty)
-              .toSet();
+  return ref
+      .watch(latestPostsProvider)
+      .when(
+        data: (posts) {
+          final connectionsAsync = ref.watch(myConnectionsProvider);
+          return connectionsAsync.when(
+            data: (connections) {
+              final followingUids = connections
+                  .map((c) => c.connectedUid)
+                  .where((uid) => uid.isNotEmpty)
+                  .toSet();
 
-          final connectedPosts = posts
-              .where((p) => followingUids.contains(p.authorUid))
-              .toList();
+              final connectedPosts = posts
+                  .where((p) => followingUids.contains(p.authorUid))
+                  .toList();
 
-          return Stream.value(connectedPosts);
+              return Stream.value(connectedPosts);
+            },
+            loading: () => Stream.value(<PostModel>[]),
+            error: (e, _) => Stream.error(e),
+          );
         },
         loading: () => Stream.value(<PostModel>[]),
         error: (e, _) => Stream.error(e),
       );
-    },
-    loading: () => Stream.value(<PostModel>[]),
-    error: (e, _) => Stream.error(e),
-  );
 });
 
 final viralPostsProvider = StreamProvider<List<PostModel>>((ref) {
-  return ref.watch(latestPostsProvider).when(
-    data: (posts) => Stream.value(
-      posts.toList()
-        ..sort(
-          (a, b) =>
-              _calculateViralScore(b).compareTo(_calculateViralScore(a)),
+  return ref
+      .watch(latestPostsProvider)
+      .when(
+        data: (posts) => Stream.value(
+          posts.toList()..sort(
+            (a, b) =>
+                _calculateViralScore(b).compareTo(_calculateViralScore(a)),
+          ),
         ),
-    ),
-    loading: () => Stream.error(StateError('Loading posts')),
-    error: (e, _) => Stream.error(e),
-  );
+        loading: () => Stream.error(StateError('Loading posts')),
+        error: (e, _) => Stream.error(e),
+      );
 });
 
 int _calculateViralScore(PostModel post) {
@@ -104,11 +107,14 @@ final commentsByAuthorProvider =
       return ref.watch(postRemoteDataSourceProvider).watchCommentsByAuthor(uid);
     });
 
-class _OptimisticPostCountNotifier extends StateNotifier<Map<String, PostModel>> {
+class _OptimisticPostCountNotifier
+    extends StateNotifier<Map<String, PostModel>> {
   _OptimisticPostCountNotifier() : super({});
 
   void updateLikeCount(String postId, PostModel post, bool isLiking) {
-    final newLikesCount = isLiking ? post.likesCount + 1 : (post.likesCount - 1).clamp(0, double.infinity).toInt();
+    final newLikesCount = isLiking
+        ? post.likesCount + 1
+        : (post.likesCount - 1).clamp(0, double.infinity).toInt();
     final updated = PostModel(
       id: post.id,
       authorUid: post.authorUid,
@@ -130,7 +136,9 @@ class _OptimisticPostCountNotifier extends StateNotifier<Map<String, PostModel>>
   }
 
   void updateRepostCount(String postId, PostModel post, bool isReposting) {
-    final newRepostsCount = isReposting ? post.repostsCount + 1 : (post.repostsCount - 1).clamp(0, double.infinity).toInt();
+    final newRepostsCount = isReposting
+        ? post.repostsCount + 1
+        : (post.repostsCount - 1).clamp(0, double.infinity).toInt();
     final updated = PostModel(
       id: post.id,
       authorUid: post.authorUid,
@@ -152,7 +160,9 @@ class _OptimisticPostCountNotifier extends StateNotifier<Map<String, PostModel>>
   }
 
   void updateSaveCount(String postId, PostModel post, bool isSaving) {
-    final newSavesCount = isSaving ? post.savesCount + 1 : (post.savesCount - 1).clamp(0, double.infinity).toInt();
+    final newSavesCount = isSaving
+        ? post.savesCount + 1
+        : (post.savesCount - 1).clamp(0, double.infinity).toInt();
     final updated = PostModel(
       id: post.id,
       authorUid: post.authorUid,
@@ -181,9 +191,11 @@ class _OptimisticPostCountNotifier extends StateNotifier<Map<String, PostModel>>
 }
 
 final optimisticPostCountProvider =
-    StateNotifierProvider<_OptimisticPostCountNotifier, Map<String, PostModel>>((ref) {
-      return _OptimisticPostCountNotifier();
-    });
+    StateNotifierProvider<_OptimisticPostCountNotifier, Map<String, PostModel>>(
+      (ref) {
+        return _OptimisticPostCountNotifier();
+      },
+    );
 
 final postByIdProvider = StreamProvider.family<PostModel?, String>((
   ref,
@@ -204,12 +216,16 @@ final postByIdProvider = StreamProvider.family<PostModel?, String>((
 
 final postCommentsProvider =
     StreamProvider.family<List<PostCommentModel>, String>((ref, postId) {
-      return ref.watch(postRemoteDataSourceProvider).watchComments(postId).map(
+      return ref
+          .watch(postRemoteDataSourceProvider)
+          .watchComments(postId)
+          .map(
             (flatComments) => PostCommentModel.buildCommentTree(flatComments),
           );
     });
 
-class _OptimisticInteractionNotifier extends StateNotifier<PostInteractionState?> {
+class _OptimisticInteractionNotifier
+    extends StateNotifier<PostInteractionState?> {
   _OptimisticInteractionNotifier() : super(null);
 
   void setOptimistic(PostInteractionState state) {
@@ -222,7 +238,11 @@ class _OptimisticInteractionNotifier extends StateNotifier<PostInteractionState?
 }
 
 final optimisticInteractionProvider =
-    StateNotifierProvider.family<_OptimisticInteractionNotifier, PostInteractionState?, String>((ref, postId) {
+    StateNotifierProvider.family<
+      _OptimisticInteractionNotifier,
+      PostInteractionState?,
+      String
+    >((ref, postId) {
       return _OptimisticInteractionNotifier();
     });
 
@@ -283,11 +303,7 @@ class PostInteractionState {
     );
   }
 
-  PostInteractionState copyWith({
-    bool? liked,
-    bool? reposted,
-    bool? saved,
-  }) {
+  PostInteractionState copyWith({bool? liked, bool? reposted, bool? saved}) {
     return PostInteractionState(
       liked: liked ?? this.liked,
       reposted: reposted ?? this.reposted,
@@ -315,11 +331,7 @@ class CommentInteractionState {
     );
   }
 
-  CommentInteractionState copyWith({
-    bool? liked,
-    bool? reposted,
-    bool? saved,
-  }) {
+  CommentInteractionState copyWith({bool? liked, bool? reposted, bool? saved}) {
     return CommentInteractionState(
       liked: liked ?? this.liked,
       reposted: reposted ?? this.reposted,
@@ -328,7 +340,8 @@ class CommentInteractionState {
   }
 }
 
-class _OptimisticCommentInteractionNotifier extends StateNotifier<CommentInteractionState?> {
+class _OptimisticCommentInteractionNotifier
+    extends StateNotifier<CommentInteractionState?> {
   _OptimisticCommentInteractionNotifier() : super(null);
 
   void setOptimistic(CommentInteractionState state) {
@@ -341,12 +354,19 @@ class _OptimisticCommentInteractionNotifier extends StateNotifier<CommentInterac
 }
 
 final optimisticCommentInteractionProvider =
-    StateNotifierProvider.family<_OptimisticCommentInteractionNotifier, CommentInteractionState?, String>((ref, commentId) {
+    StateNotifierProvider.family<
+      _OptimisticCommentInteractionNotifier,
+      CommentInteractionState?,
+      String
+    >((ref, commentId) {
       return _OptimisticCommentInteractionNotifier();
     });
 
 final commentInteractionStateProvider =
-    FutureProvider.family<CommentInteractionState, String>((ref, commentId) async {
+    FutureProvider.family<CommentInteractionState, String>((
+      ref,
+      commentId,
+    ) async {
       final user = ref.watch(currentUserProvider);
 
       if (user == null) {
@@ -358,7 +378,9 @@ final commentInteractionStateProvider =
       }
 
       // Check for optimistic state first (scoped to this comment)
-      final optimisticState = ref.watch(optimisticCommentInteractionProvider(commentId));
+      final optimisticState = ref.watch(
+        optimisticCommentInteractionProvider(commentId),
+      );
       if (optimisticState != null) {
         return optimisticState;
       }
@@ -454,17 +476,25 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
     try {
       // Get current states to toggle
-      final currentInteractionState = await _ref.read(postInteractionStateProvider(postId).future);
+      final currentInteractionState = await _ref.read(
+        postInteractionStateProvider(postId).future,
+      );
       final currentPost = _ref.read(postByIdProvider(postId)).asData?.value;
       final newLiked = !currentInteractionState.liked;
 
       // Optimistic update - immediately update UI (scoped to this post)
-      final optimisticInteractionState = currentInteractionState.copyWith(liked: newLiked);
-      _ref.read(optimisticInteractionProvider(postId).notifier).setOptimistic(optimisticInteractionState);
+      final optimisticInteractionState = currentInteractionState.copyWith(
+        liked: newLiked,
+      );
+      _ref
+          .read(optimisticInteractionProvider(postId).notifier)
+          .setOptimistic(optimisticInteractionState);
 
       // Also update post count optimistically
       if (currentPost != null) {
-        _ref.read(optimisticPostCountProvider.notifier).updateLikeCount(postId, currentPost, newLiked);
+        _ref
+            .read(optimisticPostCountProvider.notifier)
+            .updateLikeCount(postId, currentPost, newLiked);
       }
 
       // Make API call in background
@@ -478,7 +508,9 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     } catch (error, stackTrace) {
       debugPrint('Error toggling like: $error\n$stackTrace');
       // Only revert optimistic updates on error
-      _ref.read(optimisticInteractionProvider(postId).notifier).resetOptimistic();
+      _ref
+          .read(optimisticInteractionProvider(postId).notifier)
+          .resetOptimistic();
       _ref.read(optimisticPostCountProvider.notifier).reset(postId);
       state = AsyncError(error, stackTrace);
     }
@@ -495,15 +527,23 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
 
     try {
-      final currentInteractionState = await _ref.read(postInteractionStateProvider(postId).future);
+      final currentInteractionState = await _ref.read(
+        postInteractionStateProvider(postId).future,
+      );
       final currentPost = _ref.read(postByIdProvider(postId)).asData?.value;
       final newReposted = !currentInteractionState.reposted;
 
-      final optimisticInteractionState = currentInteractionState.copyWith(reposted: newReposted);
-      _ref.read(optimisticInteractionProvider(postId).notifier).setOptimistic(optimisticInteractionState);
+      final optimisticInteractionState = currentInteractionState.copyWith(
+        reposted: newReposted,
+      );
+      _ref
+          .read(optimisticInteractionProvider(postId).notifier)
+          .setOptimistic(optimisticInteractionState);
 
       if (currentPost != null) {
-        _ref.read(optimisticPostCountProvider.notifier).updateRepostCount(postId, currentPost, newReposted);
+        _ref
+            .read(optimisticPostCountProvider.notifier)
+            .updateRepostCount(postId, currentPost, newReposted);
       }
 
       await _postRemoteDataSource
@@ -514,7 +554,9 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling repost: $error\n$stackTrace');
-      _ref.read(optimisticInteractionProvider(postId).notifier).resetOptimistic();
+      _ref
+          .read(optimisticInteractionProvider(postId).notifier)
+          .resetOptimistic();
       _ref.read(optimisticPostCountProvider.notifier).reset(postId);
       state = AsyncError(error, stackTrace);
     }
@@ -567,15 +609,23 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
 
     try {
-      final currentInteractionState = await _ref.read(postInteractionStateProvider(postId).future);
+      final currentInteractionState = await _ref.read(
+        postInteractionStateProvider(postId).future,
+      );
       final currentPost = _ref.read(postByIdProvider(postId)).asData?.value;
       final newSaved = !currentInteractionState.saved;
 
-      final optimisticInteractionState = currentInteractionState.copyWith(saved: newSaved);
-      _ref.read(optimisticInteractionProvider(postId).notifier).setOptimistic(optimisticInteractionState);
+      final optimisticInteractionState = currentInteractionState.copyWith(
+        saved: newSaved,
+      );
+      _ref
+          .read(optimisticInteractionProvider(postId).notifier)
+          .setOptimistic(optimisticInteractionState);
 
       if (currentPost != null) {
-        _ref.read(optimisticPostCountProvider.notifier).updateSaveCount(postId, currentPost, newSaved);
+        _ref
+            .read(optimisticPostCountProvider.notifier)
+            .updateSaveCount(postId, currentPost, newSaved);
       }
 
       await _postRemoteDataSource
@@ -586,7 +636,9 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling save: $error\n$stackTrace');
-      _ref.read(optimisticInteractionProvider(postId).notifier).resetOptimistic();
+      _ref
+          .read(optimisticInteractionProvider(postId).notifier)
+          .resetOptimistic();
       _ref.read(optimisticPostCountProvider.notifier).reset(postId);
       state = AsyncError(error, stackTrace);
     }
@@ -633,6 +685,45 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       );
     } catch (error, stackTrace) {
       debugPrint('Error adding comment: $error\n$stackTrace');
+      state = AsyncError(error, stackTrace);
+    }
+  }
+
+  Future<void> setBestAnswer({
+    required String postId,
+    required PostIntent postIntent,
+    required String? commentId,
+  }) async {
+    state = const AsyncLoading();
+
+    try {
+      final user = _ref.read(currentUserProvider);
+      if (user == null) {
+        throw Exception('You must be logged in to update best answer.');
+      }
+
+      await _postRemoteDataSource
+          .setBestAnswer(
+            postId: postId,
+            authorUid: user.uid,
+            postIntent: postIntent,
+            commentId: commentId,
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () =>
+                throw TimeoutException('Updating best answer timed out'),
+          );
+
+      state = const AsyncData(null);
+    } on TimeoutException catch (error, stackTrace) {
+      debugPrint('Timeout updating best answer: $error');
+      state = AsyncError(
+        Exception('Best answer update took too long. Please try again.'),
+        stackTrace,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Error updating best answer: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
   }
@@ -699,20 +790,32 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
 
     try {
-      final currentInteractionState = await _ref.read(commentInteractionStateProvider(commentId).future);
+      final currentInteractionState = await _ref.read(
+        commentInteractionStateProvider(commentId).future,
+      );
       final newLiked = !currentInteractionState.liked;
 
-      final optimisticInteractionState = currentInteractionState.copyWith(liked: newLiked);
-      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).setOptimistic(optimisticInteractionState);
+      final optimisticInteractionState = currentInteractionState.copyWith(
+        liked: newLiked,
+      );
+      _ref
+          .read(optimisticCommentInteractionProvider(commentId).notifier)
+          .setOptimistic(optimisticInteractionState);
 
       await _postRemoteDataSource
-          .toggleCommentLike(postId: postId, commentId: commentId, uid: user.uid)
+          .toggleCommentLike(
+            postId: postId,
+            commentId: commentId,
+            uid: user.uid,
+          )
           .timeout(const Duration(seconds: 10));
 
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling comment like: $error\n$stackTrace');
-      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).resetOptimistic();
+      _ref
+          .read(optimisticCommentInteractionProvider(commentId).notifier)
+          .resetOptimistic();
       state = AsyncError(error, stackTrace);
     }
   }
@@ -731,20 +834,32 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
 
     try {
-      final currentInteractionState = await _ref.read(commentInteractionStateProvider(commentId).future);
+      final currentInteractionState = await _ref.read(
+        commentInteractionStateProvider(commentId).future,
+      );
       final newSaved = !currentInteractionState.saved;
 
-      final optimisticInteractionState = currentInteractionState.copyWith(saved: newSaved);
-      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).setOptimistic(optimisticInteractionState);
+      final optimisticInteractionState = currentInteractionState.copyWith(
+        saved: newSaved,
+      );
+      _ref
+          .read(optimisticCommentInteractionProvider(commentId).notifier)
+          .setOptimistic(optimisticInteractionState);
 
       await _postRemoteDataSource
-          .toggleCommentSave(postId: postId, commentId: commentId, uid: user.uid)
+          .toggleCommentSave(
+            postId: postId,
+            commentId: commentId,
+            uid: user.uid,
+          )
           .timeout(const Duration(seconds: 10));
 
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling comment save: $error\n$stackTrace');
-      _ref.read(optimisticCommentInteractionProvider(commentId).notifier).resetOptimistic();
+      _ref
+          .read(optimisticCommentInteractionProvider(commentId).notifier)
+          .resetOptimistic();
       state = AsyncError(error, stackTrace);
     }
   }
@@ -790,5 +905,4 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       state = AsyncError(error, stackTrace);
     }
   }
-
 }

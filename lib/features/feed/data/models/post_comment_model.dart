@@ -14,6 +14,7 @@ class PostCommentModel {
   final int likesCount;
   final int repostsCount;
   final int savesCount;
+  final bool isBestAnswer;
 
   const PostCommentModel({
     required this.id,
@@ -29,6 +30,7 @@ class PostCommentModel {
     this.likesCount = 0,
     this.repostsCount = 0,
     this.savesCount = 0,
+    this.isBestAnswer = false,
   });
 
   factory PostCommentModel.fromFirestore(
@@ -49,6 +51,7 @@ class PostCommentModel {
       likesCount: data['likesCount'] as int? ?? 0,
       repostsCount: data['repostsCount'] as int? ?? 0,
       savesCount: data['savesCount'] as int? ?? 0,
+      isBestAnswer: data['isBestAnswer'] as bool? ?? false,
     );
   }
 
@@ -103,9 +106,32 @@ class PostCommentModel {
         likesCount: comment.likesCount,
         repostsCount: comment.repostsCount,
         savesCount: comment.savesCount,
+        isBestAnswer: comment.isBestAnswer,
       );
     }
 
     return rootComments.map(buildNode).toList();
+  }
+
+  PostCommentModel copyWith({
+    List<PostCommentModel>? replies,
+    bool? isBestAnswer,
+  }) {
+    return PostCommentModel(
+      id: id,
+      postId: postId,
+      authorUid: authorUid,
+      authorName: authorName,
+      authorAvatarUrl: authorAvatarUrl,
+      text: text,
+      createdAt: createdAt,
+      createdAtClient: createdAtClient,
+      parentCommentId: parentCommentId,
+      replies: replies ?? this.replies,
+      likesCount: likesCount,
+      repostsCount: repostsCount,
+      savesCount: savesCount,
+      isBestAnswer: isBestAnswer ?? this.isBestAnswer,
+    );
   }
 }

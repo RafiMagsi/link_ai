@@ -9,6 +9,66 @@ admin.initializeApp();
 const db = admin.firestore();
 
 /**
+ * Returns OpenAI runtime config.
+ * @return {{apiKey: string, model: string}} OpenAI config
+ */
+function getOpenAiConfig(): {apiKey: string; model: string} {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new HttpsError(
+      "failed-precondition",
+      "AI assistance is not configured on the server."
+    );
+  }
+
+  return {
+    apiKey,
+    model: process.env.OPENAI_MODEL || "gpt-4.1",
+  };
+}
+
+/**
+ * Calls the OpenAI Responses API and returns plain text output.
+ * @param {object} params request payload
+ * @param {string} params.instructions system instructions
+ * @param {string} params.input user input
+ * @return {Promise<string>} generated text
+ */
+async function generateOpenAiText(params: {
+  instructions: string;
+  input: string;
+}): Promise<string> {
+  const config = getOpenAiConfig();
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: config.model,
+      instructions: params.instructions,
+      input: params.input,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("OpenAI API error:", errorText);
+    throw new HttpsError("internal", "AI generation failed.");
+  }
+
+  const data = await response.json() as {output_text?: string};
+  const output = data.output_text?.trim();
+
+  if (!output) {
+    throw new HttpsError("internal", "AI returned an empty response.");
+  }
+
+  return output;
+}
+
+/**
  * Loads all FCM tokens for a user.
  * @param {string} uid user id
  * @return {Promise<string[]>} FCM tokens
@@ -739,6 +799,123 @@ export const snowAiResponse = onCall(async (request) => {
     console.error("Snow AI error:", error);
     throw new HttpsError("internal", "Failed to generate response.");
   }
+});
+
+/**
+ * Improves a profile bio or building summary using AI.
+ */
+export const improveProfileText = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Login required.");
+  }
+
+  const field = (request.data.field as string | undefined)?.trim();
+  const name = (request.data.name as string | undefined)?.trim() || "";
+  const role = (request.data.role as string | undefined)?.trim() || "";
+  const skills = Array.isArray(request.data.skills) ?
+    request.data.skills.filter((item: unknown) => typeof item === "string") :
+    [];
+  const tools = Array.isArray(request.data.tools) ?
+    request.data.tools.filter((item: unknown) => typeof item === "string") :
+    [];
+  const building = (request.data.building as string | undefined)?.trim() || "";
+  const need = (request.data.need as string | undefined)?.trim() || "";
+  const currentText =
+    (request.data.currentText as string | undefined)?.trim() || "";
+
+  if (field !== "bio" && field !== "building") {
+    throw new HttpsError("invalid-argument", "Unsupported profile field.");
+  }
+
+  const instructions = field === "bio" ?
+    "Rewrite the user's profile bio for an AI networking app. " +
+      "Keep it professional, clear, and compact. " +
+      "Return only the final bio text in 2 short sentences, max 220 chars." :
+    "Rewrite the user's 'what are you building' text for an AI networking " +
+      "app. Keep it concise, concrete, and useful for collaborators. " +
+      "Return only the final text in 1-2 short sentences, max 220 chars.";
+
+  const input =
+    `Name: ${name}\n` +
+    `Role: ${role}\n` +
+    `Skills: ${skills.join(", ")}\n` +
+    `Tools: ${tools.join(", ")}\n` +
+    `Building: ${building}\n` +
+    `Need: ${need}\n` +
+    `Current ${field}: ${currentText}`;
+
+  const text = await generateOpenAiText({
+    instructions,
+    input,
+  });
+
+  return {text};
+});
+
+/**
+ * Improves a post draft using AI.
+ */
+export const improvePostDraft = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Login required.");
+  }
+
+  const intent =
+    (request.data.intent as string | undefined)?.trim() || "general";
+  const text = (request.data.text as string | undefined)?.trim() || "";
+
+  if (!text) {
+    throw new HttpsError("invalid-argument", "Post text is required.");
+  }
+
+  const improvedText = await generateOpenAiText({
+    instructions:
+      "Rewrite the user's social post for an AI networking app. " +
+      "Preserve the meaning, improve clarity, and keep the tone natural. " +
+      "Do not add emojis unless the user already used them. " +
+      "Keep it under 280 characters. Return only the final post text.",
+    input:
+      `Post intent: ${intent}\n` +
+      `Draft post:\n${text}`,
+  });
+
+  return {text: improvedText};
+});
+
+/**
+ * Suggests a few hashtags for a post draft.
+ */
+export const suggestPostTags = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Login required.");
+  }
+
+  const intent =
+    (request.data.intent as string | undefined)?.trim() || "general";
+  const text = (request.data.text as string | undefined)?.trim() || "";
+
+  if (!text) {
+    throw new HttpsError("invalid-argument", "Post text is required.");
+  }
+
+  const rawTags = await generateOpenAiText({
+    instructions:
+      "Suggest 3 to 5 short hashtags for the user's AI social post. " +
+      "Return only hashtags separated by commas. " +
+      "No explanation. Do not repeat tags already present in the text.",
+    input:
+      `Post intent: ${intent}\n` +
+      `Draft post:\n${text}`,
+  });
+
+  const tags = rawTags
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.startsWith("#"))
+    .filter((tag) => tag.length > 1)
+    .slice(0, 5);
+
+  return {tags};
 });
 
 /**

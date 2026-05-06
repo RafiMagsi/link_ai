@@ -11,6 +11,7 @@ import '../../../../core/config/app_limits_provider.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../../core/errors/error_handler.dart';
+import '../../../ai_assist/presentation/providers/ai_assist_providers.dart';
 import '../../data/models/post_model.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/post_providers.dart';
@@ -38,6 +39,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
 
   bool _isUploading = false;
   double _uploadProgress = 0;
+  bool _isImprovingDraft = false;
+  bool _isSuggestingTags = false;
 
   bool get _hasAnyContent {
     return _textController.text.trim().isNotEmpty || _selectedMedia.isNotEmpty;
@@ -97,7 +100,9 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
           selected.add(file);
         } catch (e) {
           if (mounted) {
-            _showMessage('Failed to process image: ${ErrorHandler.getUserFriendlyMessage(e)}');
+            _showMessage(
+              'Failed to process image: ${ErrorHandler.getUserFriendlyMessage(e)}',
+            );
           }
         }
       }
@@ -119,6 +124,93 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     setState(() {
       _selectedMedia.removeAt(index);
     });
+  }
+
+  Future<void> _improveDraft() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty) {
+      _showMessage('Write a draft first.');
+      return;
+    }
+
+    setState(() => _isImprovingDraft = true);
+
+    try {
+      final improved = await ref
+          .read(aiAssistRemoteDataSourceProvider)
+          .improvePostDraft(intent: _selectedIntent, text: text);
+
+      if (!mounted) return;
+      if (improved.isEmpty) {
+        _showMessage('AI did not return any text.');
+        return;
+      }
+
+      setState(() {
+        _textController.text = improved;
+        _textController.selection = TextSelection.collapsed(
+          offset: improved.length,
+        );
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(
+        'AI assist failed: ${ErrorHandler.getUserFriendlyMessage(e)}',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isImprovingDraft = false);
+      }
+    }
+  }
+
+  Future<void> _suggestTags() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty) {
+      _showMessage('Write a draft first.');
+      return;
+    }
+
+    setState(() => _isSuggestingTags = true);
+
+    try {
+      final tags = await ref
+          .read(aiAssistRemoteDataSourceProvider)
+          .suggestPostTags(intent: _selectedIntent, text: text);
+
+      if (!mounted) return;
+      if (tags.isEmpty) {
+        _showMessage('No tag suggestions returned.');
+        return;
+      }
+
+      final existingLower = text.toLowerCase();
+      final missingTags = tags
+          .where((tag) => !existingLower.contains(tag.toLowerCase()))
+          .toList();
+
+      if (missingTags.isEmpty) {
+        _showMessage('Your draft already has those tags.');
+        return;
+      }
+
+      final appended = '$text ${missingTags.join(' ')}'.trim();
+      setState(() {
+        _textController.text = appended;
+        _textController.selection = TextSelection.collapsed(
+          offset: appended.length,
+        );
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(
+        'AI tag suggestion failed: ${ErrorHandler.getUserFriendlyMessage(e)}',
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSuggestingTags = false);
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -149,7 +241,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     // Until we have per-file progress, provide a simple "alive" indicator.
     late final StreamSubscription<int> progressTimer;
     try {
-      progressTimer = Stream.periodic(
+      progressTimer =
+          Stream.periodic(
             const Duration(milliseconds: 220),
             (tick) => tick,
           ).listen((_) {
@@ -241,7 +334,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
         resizeToAvoidBottomInset: false,
         appBar: widget.showAppBar
             ? AppBar(
-              actionsPadding: EdgeInsets.only(top: 6),
+                actionsPadding: EdgeInsets.only(top: 6),
                 title: const Text('Create Post'),
                 actions: [
                   Padding(
@@ -269,7 +362,10 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.cloud_upload_outlined, color: colors.mutedText),
+                      Icon(
+                        Icons.cloud_upload_outlined,
+                        color: colors.mutedText,
+                      ),
                       const SizedBox(width: AppSizes.sm),
                       Expanded(
                         child: Text(
@@ -283,7 +379,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
               ],
               Expanded(
                 child: ListView(
-                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                   padding: EdgeInsets.fromLTRB(
                     widget.compact ? AppSizes.md : AppSizes.lg,
                     widget.compact ? AppSizes.sm : AppSizes.lg,
@@ -291,93 +388,132 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
                     AppSizes.lg,
                   ),
                   children: [
-                  _IntentSelector(
-                    selectedIntent: _selectedIntent,
-                    onChanged: (intent) {
-                      setState(() {
-                        _selectedIntent = intent;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: AppSizes.md),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AppUserAvatar(
-                        avatarUrl: myProfile?.avatarUrl,
-                        radius: 22,
-                      ),
-                      const SizedBox(width: AppSizes.md),
-                      Expanded(
-                        child: TextField(
-                          controller: _textController,
-                          maxLines: null,
-                          minLines: 5,
-                          maxLength: limits.postMaxChars,
-                          onChanged: (_) => setState(() {}),
-                          decoration: InputDecoration(
-                            hintText: hintText,
-                            border: InputBorder.none,
-                            counterText: '',
-                          ),
-                          style: const TextStyle(fontSize: 18, height: 1.35),
+                    _IntentSelector(
+                      selectedIntent: _selectedIntent,
+                      onChanged: (intent) {
+                        setState(() {
+                          _selectedIntent = intent;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: AppSizes.md),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _isUploading || _isImprovingDraft
+                              ? null
+                              : _improveDraft,
+                          icon: _isImprovingDraft
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.auto_fix_high_outlined,
+                                  size: 16,
+                                ),
+                          label: const Text('Improve'),
                         ),
+                        const SizedBox(width: AppSizes.sm),
+                        OutlinedButton.icon(
+                          onPressed: _isUploading || _isSuggestingTags
+                              ? null
+                              : _suggestTags,
+                          icon: _isSuggestingTags
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.tag_outlined, size: 16),
+                          label: const Text('Suggest tags'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.md),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppUserAvatar(
+                          avatarUrl: myProfile?.avatarUrl,
+                          radius: 22,
+                        ),
+                        const SizedBox(width: AppSizes.md),
+                        Expanded(
+                          child: TextField(
+                            controller: _textController,
+                            maxLines: null,
+                            minLines: 5,
+                            maxLength: limits.postMaxChars,
+                            onChanged: (_) => setState(() {}),
+                            decoration: InputDecoration(
+                              hintText: hintText,
+                              border: InputBorder.none,
+                              counterText: '',
+                            ),
+                            style: const TextStyle(fontSize: 18, height: 1.35),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_selectedMedia.isNotEmpty) ...[
+                      const SizedBox(height: AppSizes.lg),
+                      _SelectedMediaGrid(
+                        files: _selectedMedia,
+                        onRemove: _removeMedia,
                       ),
                     ],
-                  ),
-                  if (_selectedMedia.isNotEmpty) ...[
-                    const SizedBox(height: AppSizes.lg),
-                    _SelectedMediaGrid(
-                      files: _selectedMedia,
-                      onRemove: _removeMedia,
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSizes.lg,
+                  10,
+                  AppSizes.lg,
+                  14,
+                ),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: colors.border)),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: _isUploading ? null : _pickImages,
+                      icon: const Icon(Icons.image_outlined),
+                    ),
+                    Tooltip(
+                      message: 'Video posts coming soon',
+                      child: IconButton(
+                        onPressed: _isUploading
+                            ? null
+                            : () {
+                                _showMessage('Video posts coming soon.');
+                              },
+                        icon: const Icon(Icons.videocam_outlined),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '$remaining',
+                      style: TextStyle(
+                        color: isOverLimit
+                            ? Theme.of(context).colorScheme.error
+                            : colors.mutedText,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(
-                AppSizes.lg,
-                10,
-                AppSizes.lg,
-                14,
-              ),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: colors.border)),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: _isUploading ? null : _pickImages,
-                    icon: const Icon(Icons.image_outlined),
-                  ),
-                  Tooltip(
-                    message: 'Video posts coming soon',
-                    child: IconButton(
-                      onPressed: _isUploading
-                          ? null
-                          : () {
-                              _showMessage('Video posts coming soon.');
-                            },
-                      icon: const Icon(Icons.videocam_outlined),
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '$remaining',
-                    style: TextStyle(
-                      color: isOverLimit
-                          ? Theme.of(context).colorScheme.error
-                          : colors.mutedText,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

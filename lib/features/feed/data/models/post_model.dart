@@ -49,10 +49,12 @@ class AskMeta {
   });
 
   factory AskMeta.fromMap(Map<String, dynamic> map) {
-    final topicsList = (map['topics'] as List?)
-        ?.whereType<String>()
-        .map((t) => t.trim())
-        .toList() ?? [];
+    final topicsList =
+        (map['topics'] as List?)
+            ?.whereType<String>()
+            .map((t) => t.trim())
+            .toList() ??
+        [];
     return AskMeta(
       question: (map['question'] as String?)?.trim() ?? '',
       topics: topicsList,
@@ -61,11 +63,7 @@ class AskMeta {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'question': question,
-      'topics': topics,
-      'answerCount': answerCount,
-    };
+    return {'question': question, 'topics': topics, 'answerCount': answerCount};
   }
 }
 
@@ -92,11 +90,7 @@ class PostMediaModel {
         debugPrint('Invalid URL in PostMediaModel: $url');
       }
 
-      return PostMediaModel(
-        url: url,
-        type: type,
-        order: order,
-      );
+      return PostMediaModel(url: url, type: type, order: order);
     } catch (e) {
       debugPrint('Error parsing PostMediaModel from map: $e');
       return PostMediaModel(
@@ -162,6 +156,7 @@ class PostModel {
   final String? quotedCommentAuthorAvatarUrl;
   final String? quotedCommentAuthorUid;
   final String? quotedPostId;
+  final String? bestAnswerCommentId;
   final String colorCode;
   final PostIntent postIntent;
 
@@ -191,6 +186,7 @@ class PostModel {
     this.quotedCommentAuthorAvatarUrl,
     this.quotedCommentAuthorUid,
     this.quotedPostId,
+    this.bestAnswerCommentId,
   });
 
   factory PostModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -251,9 +247,11 @@ class PostModel {
         quotedCommentId: data['quotedCommentId'] as String?,
         quotedCommentText: data['quotedCommentText'] as String?,
         quotedCommentAuthorName: data['quotedCommentAuthorName'] as String?,
-        quotedCommentAuthorAvatarUrl: data['quotedCommentAuthorAvatarUrl'] as String?,
+        quotedCommentAuthorAvatarUrl:
+            data['quotedCommentAuthorAvatarUrl'] as String?,
         quotedCommentAuthorUid: data['quotedCommentAuthorUid'] as String?,
         quotedPostId: data['quotedPostId'] as String?,
+        bestAnswerCommentId: data['bestAnswerCommentId'] as String?,
         colorCode: _safeString(data['colorCode'], fallback: '0xFF60A5FA'),
       );
     } catch (e) {
@@ -275,6 +273,7 @@ class PostModel {
         updatedAt: null,
         postIntent: PostIntent.general,
         postType: PostType.thought,
+        bestAnswerCommentId: null,
         colorCode: '0xFF60A5FA',
       );
     }
@@ -374,6 +373,7 @@ class PostModel {
       'colorCode': colorCode,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
+      'bestAnswerCommentId': bestAnswerCommentId,
     };
 
     if (shipMeta != null) {

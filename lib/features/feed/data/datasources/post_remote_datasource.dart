@@ -569,51 +569,53 @@ class PostRemoteDataSource {
           .get()
           .timeout(const Duration(seconds: 10));
 
-      await _firestore.runTransaction((transaction) async {
-        if (existingRepost.docs.isNotEmpty) {
-          // User has already reposted - undo the repost
-          final repostDocId = existingRepost.docs.first.id;
-          transaction.delete(_posts.doc(repostDocId));
+      await _firestore
+          .runTransaction((transaction) async {
+            if (existingRepost.docs.isNotEmpty) {
+              // User has already reposted - undo the repost
+              final repostDocId = existingRepost.docs.first.id;
+              transaction.delete(_posts.doc(repostDocId));
 
-          // Decrement the original post's repost count
-          transaction.update(originalPostRef, {
-            'repostsCount': FieldValue.increment(-1),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        } else {
-          // User hasn't reposted yet - create new repost
-          final newPostId = _uuid.v4();
-          transaction.set(_posts.doc(newPostId), {
-            'id': newPostId,
-            'postType': 'commentRepost',
-            'authorUid': repostingUserUid,
-            'authorName': repostingUserName,
-            'authorRole': repostingUserRole,
-            'authorAvatarUrl': repostingUserAvatarUrl,
-            'text': '',
-            'hashtags': [],
-            'media': [],
-            'likesCount': 0,
-            'repostsCount': 0,
-            'commentsCount': 0,
-            'savesCount': 0,
-            'quotedPostId': originalPost.id,
-            'quotedCommentText': originalPost.text,
-            'quotedCommentAuthorName': originalPost.authorName,
-            'quotedCommentAuthorAvatarUrl': originalPost.authorAvatarUrl,
-            'quotedCommentAuthorUid': originalPost.authorUid,
-            'colorCode': PostColors.getRandomColor(),
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+              // Decrement the original post's repost count
+              transaction.update(originalPostRef, {
+                'repostsCount': FieldValue.increment(-1),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
+            } else {
+              // User hasn't reposted yet - create new repost
+              final newPostId = _uuid.v4();
+              transaction.set(_posts.doc(newPostId), {
+                'id': newPostId,
+                'postType': 'commentRepost',
+                'authorUid': repostingUserUid,
+                'authorName': repostingUserName,
+                'authorRole': repostingUserRole,
+                'authorAvatarUrl': repostingUserAvatarUrl,
+                'text': '',
+                'hashtags': [],
+                'media': [],
+                'likesCount': 0,
+                'repostsCount': 0,
+                'commentsCount': 0,
+                'savesCount': 0,
+                'quotedPostId': originalPost.id,
+                'quotedCommentText': originalPost.text,
+                'quotedCommentAuthorName': originalPost.authorName,
+                'quotedCommentAuthorAvatarUrl': originalPost.authorAvatarUrl,
+                'quotedCommentAuthorUid': originalPost.authorUid,
+                'colorCode': PostColors.getRandomColor(),
+                'createdAt': FieldValue.serverTimestamp(),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
 
-          // Increment the original post's repost count
-          transaction.update(originalPostRef, {
-            'repostsCount': FieldValue.increment(1),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        }
-      }).timeout(const Duration(seconds: 10));
+              // Increment the original post's repost count
+              transaction.update(originalPostRef, {
+                'repostsCount': FieldValue.increment(1),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
+            }
+          })
+          .timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
       debugPrint('Error toggling repost: $error\n$stackTrace');
       rethrow;
@@ -652,6 +654,56 @@ class PostRemoteDataSource {
           .timeout(const Duration(seconds: 10));
     } catch (error, stackTrace) {
       debugPrint('Error adding comment to post $postId: $error\n$stackTrace');
+      rethrow;
+    }
+  }
+
+  Future<void> setBestAnswer({
+    required String postId,
+    required String authorUid,
+    required PostIntent postIntent,
+    required String? commentId,
+  }) async {
+    if (postIntent != PostIntent.question &&
+        postIntent != PostIntent.feedback) {
+      throw Exception(
+        'Best answer is only available for question or feedback posts.',
+      );
+    }
+
+    try {
+      final postRef = _posts.doc(postId);
+
+      await _firestore
+          .runTransaction((transaction) async {
+            final postSnapshot = await transaction.get(postRef);
+            if (!postSnapshot.exists) {
+              throw Exception('Post not found.');
+            }
+
+            final postData = postSnapshot.data() ?? <String, dynamic>{};
+            if (postData['authorUid'] != authorUid) {
+              throw Exception('Only the post author can mark a best answer.');
+            }
+
+            if (commentId != null) {
+              final commentRef = postRef.collection('comments').doc(commentId);
+              final commentSnapshot = await transaction.get(commentRef);
+              if (!commentSnapshot.exists) {
+                throw Exception('Comment not found.');
+              }
+            }
+
+            transaction.update(postRef, {
+              'bestAnswerCommentId': commentId,
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+          })
+          .timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Error setting best answer for post $postId: $error\n$stackTrace',
+      );
       rethrow;
     }
   }
@@ -769,7 +821,10 @@ class PostRemoteDataSource {
     try {
       final likeId = '${commentId}_$uid';
       final likeRef = _commentLikes.doc(likeId);
-      final commentRef = _posts.doc(postId).collection('comments').doc(commentId);
+      final commentRef = _posts
+          .doc(postId)
+          .collection('comments')
+          .doc(commentId);
 
       await _firestore
           .runTransaction((transaction) async {
@@ -810,7 +865,10 @@ class PostRemoteDataSource {
     try {
       final saveId = '${commentId}_$uid';
       final saveRef = _commentSaves.doc(saveId);
-      final commentRef = _posts.doc(postId).collection('comments').doc(commentId);
+      final commentRef = _posts
+          .doc(postId)
+          .collection('comments')
+          .doc(commentId);
 
       await _firestore
           .runTransaction((transaction) async {
@@ -857,7 +915,10 @@ class PostRemoteDataSource {
     try {
       final repostId = '${commentId}_$uid';
       final repostRef = _commentReposts.doc(repostId);
-      final commentRef = _posts.doc(postId).collection('comments').doc(commentId);
+      final commentRef = _posts
+          .doc(postId)
+          .collection('comments')
+          .doc(commentId);
 
       await _firestore
           .runTransaction((transaction) async {

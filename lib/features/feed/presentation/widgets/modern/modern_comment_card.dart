@@ -14,11 +14,19 @@ class ModernCommentCard extends ConsumerWidget {
     required this.comment,
     required this.postId,
     required this.onReplyTap,
+    this.isBestAnswer = false,
+    this.showBestAnswerAction = false,
+    this.onBestAnswerToggle,
+    this.isBestAnswerUpdating = false,
   });
 
   final PostCommentModel comment;
   final String postId;
   final VoidCallback onReplyTap;
+  final bool isBestAnswer;
+  final bool showBestAnswerAction;
+  final VoidCallback? onBestAnswerToggle;
+  final bool isBestAnswerUpdating;
 
   String _formatTime(DateTime? createdAt) {
     if (createdAt == null) return 'now';
@@ -49,9 +57,15 @@ class ModernCommentCard extends ConsumerWidget {
         children: [
           Container(
             decoration: BoxDecoration(
+              color: isBestAnswer
+                  ? colorScheme.primaryContainer.withValues(alpha: 0.28)
+                  : null,
+              borderRadius: BorderRadius.circular(16),
               border: Border(
                 left: BorderSide(
-                  color: colorScheme.outline.withValues(alpha: 0.2),
+                  color: isBestAnswer
+                      ? colorScheme.primary
+                      : colorScheme.outline.withValues(alpha: 0.2),
                   width: 2,
                 ),
               ),
@@ -90,7 +104,33 @@ class ModernCommentCard extends ConsumerWidget {
                                   ),
                                 ),
                                 if (isAuthorGoldSubscriber)
-                                  const GoldBadgeWidget(size: 12, padding: EdgeInsets.only(left: 4)),
+                                  const GoldBadgeWidget(
+                                    size: 12,
+                                    padding: EdgeInsets.only(left: 4),
+                                  ),
+                                if (isBestAnswer) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      'Best answer',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: colorScheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                             const SizedBox(height: 2),
@@ -98,8 +138,9 @@ class ModernCommentCard extends ConsumerWidget {
                               _formatTime(comment.createdAt),
                               style: TextStyle(
                                 fontSize: 11,
-                                color: colorScheme.onSurfaceVariant
-                                    .withValues(alpha: 0.7),
+                                color: colorScheme.onSurfaceVariant.withValues(
+                                  alpha: 0.7,
+                                ),
                               ),
                             ),
                           ],
@@ -131,18 +172,51 @@ class ModernCommentCard extends ConsumerWidget {
                     repostsCount: comment.repostsCount,
                   ),
                   const SizedBox(height: AppSizes.sm),
-                  // Reply button
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: onReplyTap,
-                      icon: const Icon(Icons.reply_outlined, size: 14),
-                      label: const Text('Reply'),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (showBestAnswerAction)
+                        TextButton.icon(
+                          onPressed: isBestAnswerUpdating
+                              ? null
+                              : onBestAnswerToggle,
+                          icon: isBestAnswerUpdating
+                              ? SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      colorScheme.primary,
+                                    ),
+                                  ),
+                                )
+                              : Icon(
+                                  isBestAnswer
+                                      ? Icons.check_circle_outline_rounded
+                                      : Icons.workspace_premium_outlined,
+                                  size: 14,
+                                ),
+                          label: Text(
+                            isBestAnswer
+                                ? 'Remove best answer'
+                                : 'Mark best answer',
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      TextButton.icon(
+                        onPressed: onReplyTap,
+                        icon: const Icon(Icons.reply_outlined, size: 14),
+                        label: const Text('Reply'),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -154,6 +228,7 @@ class ModernCommentCard extends ConsumerWidget {
               (reply) => ModernCommentCard(
                 comment: reply,
                 postId: postId,
+                isBestAnswer: reply.isBestAnswer,
                 onReplyTap: () {
                   // TODO: Handle reply to nested comment
                 },

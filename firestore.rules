@@ -85,7 +85,27 @@ service cloud.firestore {
         && request.resource.data.media is list
         && request.resource.data.media.size() <= 4;
 
-      allow update: if isSignedIn() && isActiveUser(request.auth.uid);
+      allow update: if (
+          isSignedIn()
+          && isActiveUser(request.auth.uid)
+          && request.resource.data.diff(resource.data).changedKeys()
+            .hasOnly(['likesCount', 'repostsCount', 'commentsCount', 'savesCount', 'updatedAt'])
+        ) || (
+          isSignedIn()
+          && isActiveUser(request.auth.uid)
+          && resource.data.authorUid == request.auth.uid
+          && resource.data.postIntent in ['question', 'feedback']
+          && request.resource.data.diff(resource.data).changedKeys()
+            .hasOnly(['bestAnswerCommentId', 'updatedAt'])
+          && (
+            request.resource.data.bestAnswerCommentId == null
+            || request.resource.data.bestAnswerCommentId is string
+          )
+        ) || (
+          isAdmin()
+          && request.resource.data.diff(resource.data).changedKeys()
+            .hasOnly(['visibility', 'updatedAt'])
+        );
       allow delete: if isAdmin() ||
         resource.data.authorUid == request.auth.uid;
 

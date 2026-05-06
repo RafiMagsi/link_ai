@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/errors/error_handler.dart';
+import '../../../ai_assist/presentation/providers/ai_assist_providers.dart';
 import '../../data/models/profile_model.dart';
 import '../providers/profile_providers.dart';
 
@@ -40,6 +41,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final _imagePicker = ImagePicker();
   File? _selectedAvatarFile;
   bool _isSaving = false;
+  bool _isImprovingBio = false;
+  bool _isImprovingBuilding = false;
 
   void _leaveProfilePage() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -107,6 +110,72 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         .toList();
   }
 
+  Future<void> _improveProfileField(String field) async {
+    final isBio = field == 'bio';
+
+    setState(() {
+      if (isBio) {
+        _isImprovingBio = true;
+      } else {
+        _isImprovingBuilding = true;
+      }
+    });
+
+    try {
+      final text = await ref
+          .read(aiAssistRemoteDataSourceProvider)
+          .improveProfileText(
+            field: field,
+            name: _nameController.text.trim(),
+            role: _roleController.text.trim(),
+            skills: _splitCsv(_skillsController.text),
+            tools: _splitCsv(_toolsController.text),
+            building: _buildingController.text.trim(),
+            need: _needController.text.trim(),
+            currentText: isBio
+                ? _bioController.text.trim()
+                : _buildingController.text.trim(),
+          );
+
+      if (!mounted) return;
+
+      if (text.isEmpty) {
+        _showMessage('AI did not return any text.');
+        return;
+      }
+
+      setState(() {
+        if (isBio) {
+          _bioController.text = text;
+        } else {
+          _buildingController.text = text;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(
+        'AI assist failed: ${ErrorHandler.getUserFriendlyMessage(e)}',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          if (isBio) {
+            _isImprovingBio = false;
+          } else {
+            _isImprovingBuilding = false;
+          }
+        });
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _save(ProfileModel profile) async {
     if (_isSaving) return;
 
@@ -119,7 +188,9 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('The name "$nameLower" is reserved and cannot be used.'),
+          content: Text(
+            'The name "$nameLower" is reserved and cannot be used.',
+          ),
         ),
       );
       return;
@@ -327,6 +398,22 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               _Field(controller: _nameController, label: 'Name'),
               _Field(controller: _roleController, label: 'Role'),
               _Field(controller: _bioController, label: 'Bio', maxLines: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton.icon(
+                  onPressed: _isImprovingBio || _isSaving
+                      ? null
+                      : () => _improveProfileField('bio'),
+                  icon: _isImprovingBio
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome_outlined, size: 16),
+                  label: const Text('Improve bio'),
+                ),
+              ),
               _Field(controller: _locationController, label: 'Location'),
               _Field(
                 controller: _skillsController,
@@ -347,6 +434,22 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                 controller: _buildingController,
                 label: 'What are you building?',
                 maxLines: 3,
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton.icon(
+                  onPressed: _isImprovingBuilding || _isSaving
+                      ? null
+                      : () => _improveProfileField('building'),
+                  icon: _isImprovingBuilding
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome_outlined, size: 16),
+                  label: const Text('Improve building text'),
+                ),
               ),
               _Field(
                 controller: _needController,
