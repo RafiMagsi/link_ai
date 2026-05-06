@@ -9,8 +9,13 @@ import '../../../../core/widgets/skeleton_post_card.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../feed/presentation/providers/post_providers.dart';
 import '../../../feed/presentation/widgets/feed_post_card.dart';
+import '../../../network/presentation/providers/network_providers.dart';
 import '../../../products/presentation/pages/products_page.dart';
 import '../../../products/presentation/providers/product_providers.dart';
+import '../../../profile/data/models/profile_model.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
+import '../../../../core/utils/navigation_utils.dart';
+import '../../../../core/widgets/app_user_avatar.dart';
 
 class SavedItemsPage extends ConsumerStatefulWidget {
   const SavedItemsPage({super.key});
@@ -26,7 +31,7 @@ class _SavedItemsPageState extends ConsumerState<SavedItemsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -47,6 +52,7 @@ class _SavedItemsPageState extends ConsumerState<SavedItemsPage>
           tabs: const [
             Tab(text: 'Posts'),
             Tab(text: 'Products'),
+            Tab(text: 'Profiles'),
           ],
         ),
       ),
@@ -57,6 +63,7 @@ class _SavedItemsPageState extends ConsumerState<SavedItemsPage>
               children: [
                 _SavedPostsTab(uid: uid),
                 _SavedProductsTab(uid: uid),
+                _SavedProfilesTab(uid: uid),
               ],
             ),
     );
@@ -193,6 +200,190 @@ class _SavedProductSkeleton extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
+      ),
+    );
+  }
+}
+
+class _SavedProfilesTab extends ConsumerWidget {
+  const _SavedProfilesTab({required this.uid});
+
+  final String uid;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final savedIdsState = ref.watch(savedProfileIdsProvider);
+    final cached = savedIdsState.error == null ? savedIdsState.value : null;
+
+    Widget buildList(List<String> profileIds) {
+      if (profileIds.isEmpty) {
+        return const AppEmptyState(
+          title: 'No saved profiles',
+          subtitle: 'Profiles you save will show up here.',
+          icon: Icons.people_outline,
+        );
+      }
+
+      final profilesState = ref.watch(profilesByIdsProvider(profileIds));
+      final profilesCached = profilesState.error == null ? profilesState.value : null;
+
+      Widget buildProfiles(List<ProfileModel> profiles) {
+        if (profiles.isEmpty) {
+          return const AppEmptyState(
+            title: 'No saved profiles',
+            subtitle: 'Profiles you save will show up here.',
+            icon: Icons.people_outline,
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(AppSizes.lg),
+          itemCount: profiles.length,
+          separatorBuilder: (context, index) =>
+              const SizedBox(height: AppSizes.md),
+          itemBuilder: (context, index) {
+            final profile = profiles[index];
+            return _SavedProfileCard(profile: profile, currentUid: uid);
+          },
+        );
+      }
+
+      if (profilesCached != null) {
+        return buildProfiles(profilesCached);
+      }
+
+      return profilesState.when(
+        data: buildProfiles,
+        loading: () => ListView.separated(
+          padding: const EdgeInsets.all(AppSizes.lg),
+          itemCount: 4,
+          separatorBuilder: (context, index) =>
+              const SizedBox(height: AppSizes.md),
+          itemBuilder: (context, index) => const _SavedProfileSkeleton(),
+        ),
+        error: (error, stackTrace) =>
+            const Center(child: Text('Unable to load saved profiles.')),
+        skipLoadingOnReload: true,
+        skipLoadingOnRefresh: true,
+      );
+    }
+
+    if (cached != null) return buildList(cached);
+
+    return savedIdsState.when(
+      data: buildList,
+      loading: () => ListView.separated(
+        padding: const EdgeInsets.all(AppSizes.lg),
+        itemCount: 4,
+        separatorBuilder: (context, index) => const SizedBox(height: AppSizes.md),
+        itemBuilder: (context, index) => const _SavedProfileSkeleton(),
+      ),
+      error: (error, stackTrace) =>
+          const Center(child: Text('Unable to load saved profiles.')),
+      skipLoadingOnReload: true,
+      skipLoadingOnRefresh: true,
+    );
+  }
+}
+
+class _SavedProfileCard extends ConsumerWidget {
+  const _SavedProfileCard({
+    required this.profile,
+    required this.currentUid,
+  });
+
+  final ProfileModel profile;
+  final String currentUid;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => navigateToProfile(
+          context: context,
+          uid: profile.uid,
+          isSelfProfile: profile.uid == currentUid,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.lg),
+          child: Row(
+            children: [
+              AppUserAvatar(
+                avatarUrl: profile.avatarUrl,
+                radius: 28,
+                onTap: () => navigateToProfile(
+                  context: context,
+                  uid: profile.uid,
+                  isSelfProfile: profile.uid == currentUid,
+                ),
+              ),
+              const SizedBox(width: AppSizes.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      profile.name.isEmpty ? 'Unnamed Builder' : profile.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                    if (profile.role.trim().isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        profile.role,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                    if (profile.aiCategories.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: profile.aiCategories.take(2).map((item) {
+                          return Chip(
+                            label: Text(item),
+                            visualDensity: VisualDensity.compact,
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Unsave profile',
+                onPressed: () {
+                  ref
+                      .read(savedProfilesControllerProvider.notifier)
+                      .toggleSavedProfile(profile.uid, isSaved: true);
+                },
+                icon: const Icon(Icons.bookmark),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SavedProfileSkeleton extends StatelessWidget {
+  const _SavedProfileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 96,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
       ),
     );
   }
