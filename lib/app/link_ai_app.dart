@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/constants/app_strings.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_mode_provider.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
@@ -28,7 +29,7 @@ class LinkAiApp extends ConsumerWidget {
     });
 
     return MaterialApp.router(
-      title: 'LinkAI',
+      title: AppStrings.appName,
       debugShowCheckedModeBanner: false,
       routerConfig: router,
       theme: AppTheme.light(),

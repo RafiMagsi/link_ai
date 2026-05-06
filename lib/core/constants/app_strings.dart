@@ -1,4 +1,4 @@
 abstract class AppStrings {
-  static const appName = 'LinkAI';
-  static const appTagline = 'Find and connect with AI people.';
+  static const appName = 'AI Links';
+  static const appTagline = 'Professional networking for AI builders.';
 }

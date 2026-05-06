@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/app_loader.dart';
 import '../providers/auth_providers.dart';
 
@@ -69,13 +70,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'LinkAI',
+                    AppStrings.appName,
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Find and connect with AI people.',
+                    AppStrings.appTagline,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white70),
                   ),

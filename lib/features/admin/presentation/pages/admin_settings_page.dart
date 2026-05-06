@@ -269,7 +269,7 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
                           segments: const <ButtonSegment<String>>[
                             ButtonSegment<String>(
                               value: 'twitter',
-                              label: Text('Twitter'),
+                              label: Text('Classic'),
                             ),
                             ButtonSegment<String>(
                               value: 'snow',

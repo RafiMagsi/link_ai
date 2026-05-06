@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
 
 class OnboardingPage extends ConsumerWidget {
@@ -32,7 +33,7 @@ class OnboardingPage extends ConsumerWidget {
             children: [
               const SizedBox(height: 24),
               const Text(
-                'Welcome to LinkAI',
+                'Welcome to ${AppStrings.appName}',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
               ),
@@ -60,9 +61,9 @@ class OnboardingPage extends ConsumerWidget {
               const SizedBox(height: 20),
               _FeatureCard(
                 icon: Icons.handshake_outlined,
-                title: 'Connect & Collaborate',
+                title: 'Follow & Collaborate',
                 description:
-                    'Send and receive connection requests to collaborate on projects',
+                    'Follow AI builders and start conversations around real projects',
               ),
               const SizedBox(height: 20),
               _FeatureCard(
@@ -126,11 +127,7 @@ class _FeatureCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 32,
-            color: Colors.blue,
-          ),
+          Icon(icon, size: 32, color: Colors.blue),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
