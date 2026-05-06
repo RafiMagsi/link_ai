@@ -25,10 +25,32 @@ class IAPRemoteDataSource {
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
+  Completer<bool>? _purchaseCompleter;
+  Completer<bool>? _restoreCompleter;
+  String? _pendingProductId;
+
+  Future<void> initialize() async {
+    if (_purchaseSubscription != null) return;
+
+    _purchaseSubscription = _inAppPurchase.purchaseStream.listen(
+      _handlePurchaseUpdates,
+      onError: (_) {
+        _completePendingPurchase(false);
+        _completeRestore(false);
+      },
+    );
+  }
+
+  Future<void> dispose() async {
+    await _purchaseSubscription?.cancel();
+    _purchaseSubscription = null;
+  }
 
   /// Get available subscription products from the app store
   Future<List<IAPProduct>> getSubscriptionProducts() async {
     try {
+      await initialize();
       final available = await _inAppPurchase.isAvailable();
       if (!available) {
         throw Exception(
@@ -38,9 +60,9 @@ class IAPRemoteDataSource {
         );
       }
 
-      final response = await _inAppPurchase.queryProductDetails(
-        {IAPConstants.goldSubscriptionProductId},
-      );
+      final response = await _inAppPurchase.queryProductDetails({
+        IAPConstants.goldSubscriptionProductId,
+      });
 
       if (response.error != null) {
         throw Exception(
@@ -75,6 +97,7 @@ class IAPRemoteDataSource {
   /// Purchase a subscription
   Future<bool> purchaseSubscription(String productId) async {
     try {
+      await initialize();
       final user = _auth.currentUser;
       if (user == null) {
         throw Exception('User not authenticated');
@@ -100,61 +123,17 @@ class IAPRemoteDataSource {
         return false;
       }
 
-      final completer = Completer<bool>();
-      late final StreamSubscription<List<PurchaseDetails>> subscription;
+      _pendingProductId = productId;
+      _purchaseCompleter = Completer<bool>();
 
-      subscription = _inAppPurchase.purchaseStream.listen(
-        (purchases) async {
-          for (final purchase in purchases) {
-            if (purchase.productID != productId) continue;
-
-            switch (purchase.status) {
-              case PurchaseStatus.pending:
-                break;
-              case PurchaseStatus.canceled:
-                if (!completer.isCompleted) {
-                  completer.complete(false);
-                }
-                break;
-              case PurchaseStatus.error:
-                if (!completer.isCompleted) {
-                  completer.complete(false);
-                }
-                break;
-              case PurchaseStatus.purchased:
-              case PurchaseStatus.restored:
-                try {
-                  if (purchase.pendingCompletePurchase) {
-                    await _inAppPurchase.completePurchase(purchase);
-                  }
-
-                  await _createSubscriptionInFirestore(user.uid);
-
-                  if (!completer.isCompleted) {
-                    completer.complete(true);
-                  }
-                } catch (e) {
-                  if (!completer.isCompleted) {
-                    completer.complete(false);
-                  }
-                }
-                break;
-            }
-          }
-        },
-        onError: (e) {
-          if (!completer.isCompleted) {
-            completer.complete(false);
-          }
-        },
-      );
-
-      final result = await completer.future.timeout(
+      final result = await _purchaseCompleter!.future.timeout(
         const Duration(seconds: 60),
-        onTimeout: () => false,
+        onTimeout: () {
+          _pendingProductId = null;
+          _purchaseCompleter = null;
+          return false;
+        },
       );
-
-      await subscription.cancel();
       return result;
     } catch (e) {
       return false;
@@ -164,56 +143,23 @@ class IAPRemoteDataSource {
   /// Restore previous purchases
   Future<bool> restorePurchases() async {
     try {
+      await initialize();
       final user = _auth.currentUser;
       if (user == null) {
         throw Exception('User not authenticated');
       }
 
-      final completer = Completer<bool>();
-      late final StreamSubscription<List<PurchaseDetails>> subscription;
-
-      subscription = _inAppPurchase.purchaseStream.listen(
-        (purchases) async {
-          for (final purchase in purchases) {
-            if (purchase.productID !=
-                IAPConstants.goldSubscriptionProductId) {
-              continue;
-            }
-
-            switch (purchase.status) {
-              case PurchaseStatus.purchased:
-              case PurchaseStatus.restored:
-                try {
-                  if (purchase.pendingCompletePurchase) {
-                    await _inAppPurchase.completePurchase(purchase);
-                  }
-
-                  await _createSubscriptionInFirestore(user.uid);
-
-                  if (!completer.isCompleted) {
-                    completer.complete(true);
-                  }
-                } catch (e) {
-                  if (!completer.isCompleted) {
-                    completer.complete(false);
-                  }
-                }
-                break;
-              default:
-                break;
-            }
-          }
-        },
-      );
+      _restoreCompleter = Completer<bool>();
 
       await _inAppPurchase.restorePurchases();
 
-      final result = await completer.future.timeout(
+      final result = await _restoreCompleter!.future.timeout(
         const Duration(seconds: 30),
-        onTimeout: () => false,
+        onTimeout: () {
+          _restoreCompleter = null;
+          return false;
+        },
       );
-
-      await subscription.cancel();
       return result;
     } catch (e) {
       return false;
@@ -264,16 +210,85 @@ class IAPRemoteDataSource {
         .collection('subscription')
         .doc('data');
 
-    await subscriptionRef.set(
-      {
-        'uid': uid,
-        'isGoldSubscriber': true,
-        'subscribedAt': FieldValue.serverTimestamp(),
-        'expiresAt': expiresAt,
-        'subscriptionStatus': 'active',
-        'updatedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await subscriptionRef.set({
+      'uid': uid,
+      'isGoldSubscriber': true,
+      'subscribedAt': FieldValue.serverTimestamp(),
+      'expiresAt': expiresAt,
+      'subscriptionStatus': 'active',
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> _handlePurchaseUpdates(List<PurchaseDetails> purchases) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      _completePendingPurchase(false);
+      return;
+    }
+
+    var restoredProductSeen = false;
+
+    for (final purchase in purchases) {
+      final isGoldSubscription =
+          purchase.productID == IAPConstants.goldSubscriptionProductId;
+      if (!isGoldSubscription) {
+        continue;
+      }
+
+      if (purchase.status == PurchaseStatus.restored) {
+        restoredProductSeen = true;
+      }
+
+      switch (purchase.status) {
+        case PurchaseStatus.pending:
+          break;
+        case PurchaseStatus.canceled:
+        case PurchaseStatus.error:
+          if (_pendingProductId == purchase.productID) {
+            _completePendingPurchase(false);
+          }
+          break;
+        case PurchaseStatus.purchased:
+        case PurchaseStatus.restored:
+          try {
+            if (purchase.pendingCompletePurchase) {
+              await _inAppPurchase.completePurchase(purchase);
+            }
+
+            await _createSubscriptionInFirestore(user.uid);
+
+            if (_pendingProductId == purchase.productID) {
+              _completePendingPurchase(true);
+            }
+            _completeRestore(true);
+          } catch (_) {
+            if (_pendingProductId == purchase.productID) {
+              _completePendingPurchase(false);
+            }
+            _completeRestore(false);
+          }
+          break;
+      }
+    }
+
+    if (_restoreCompleter != null && !_restoreCompleter!.isCompleted) {
+      if (restoredProductSeen) return;
+    }
+  }
+
+  void _completePendingPurchase(bool value) {
+    if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+      _purchaseCompleter!.complete(value);
+    }
+    _purchaseCompleter = null;
+    _pendingProductId = null;
+  }
+
+  void _completeRestore(bool value) {
+    if (_restoreCompleter != null && !_restoreCompleter!.isCompleted) {
+      _restoreCompleter!.complete(value);
+    }
+    _restoreCompleter = null;
   }
 }

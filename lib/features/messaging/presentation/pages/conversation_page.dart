@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:link_ai/features/explore/presentation/widgets/shadow_style.dart';
 
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../../core/widgets/app_loader.dart';
@@ -48,16 +49,14 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
     WidgetsBinding.instance.addObserver(this);
     _messageController = TextEditingController();
     _scrollController = ScrollController();
-    _messageFocusNode = FocusNode()
-      ..addListener(_handleMessageFocusChanged);
+    _messageFocusNode = FocusNode()..addListener(_handleMessageFocusChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final currentUid = ref.read(currentUserProvider)?.uid;
       if (currentUid != null && mounted && widget.initialConversation != null) {
-        ref.read(messagingControllerProvider.notifier).markRead(
-          conversationId: widget.conversationId,
-          uid: currentUid,
-        );
+        ref
+            .read(messagingControllerProvider.notifier)
+            .markRead(conversationId: widget.conversationId, uid: currentUid);
       }
       _scrollToBottom(animated: false);
     });
@@ -130,10 +129,9 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
       ref.invalidate(conversationMessagesProvider(widget.conversationId));
 
       if (currentUid.isNotEmpty && widget.initialConversation != null) {
-        await ref.read(messagingControllerProvider.notifier).markRead(
-              conversationId: widget.conversationId,
-              uid: currentUid,
-            );
+        await ref
+            .read(messagingControllerProvider.notifier)
+            .markRead(conversationId: widget.conversationId, uid: currentUid);
       }
 
       await Future<void>.delayed(const Duration(milliseconds: 450));
@@ -191,15 +189,17 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
       setState(() => _isSending = true);
 
       try {
-        await ref.read(messagingControllerProvider.notifier).sendMessage(
-          conversationId: widget.conversationId,
-          text: text,
-          otherUid: otherUid,
-          otherName: 'User',
-          otherAvatarUrl: null,
-          myName: myProfile.name,
-          myAvatarUrl: myProfile.avatarUrl,
-        );
+        await ref
+            .read(messagingControllerProvider.notifier)
+            .sendMessage(
+              conversationId: widget.conversationId,
+              text: text,
+              otherUid: otherUid,
+              otherName: 'User',
+              otherAvatarUrl: null,
+              myName: myProfile.name,
+              myAvatarUrl: myProfile.avatarUrl,
+            );
 
         _messageController.clear();
         if (!mounted) return;
@@ -222,15 +222,17 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
       setState(() => _isSending = true);
 
       try {
-        await ref.read(messagingControllerProvider.notifier).sendMessage(
-          conversationId: widget.conversationId,
-          text: text,
-          otherUid: otherUid,
-          otherName: otherName,
-          otherAvatarUrl: otherAvatarUrl,
-          myName: myProfile.name,
-          myAvatarUrl: myProfile.avatarUrl,
-        );
+        await ref
+            .read(messagingControllerProvider.notifier)
+            .sendMessage(
+              conversationId: widget.conversationId,
+              text: text,
+              otherUid: otherUid,
+              otherName: otherName,
+              otherAvatarUrl: otherAvatarUrl,
+              myName: myProfile.name,
+              myAvatarUrl: myProfile.avatarUrl,
+            );
 
         _messageController.clear();
         if (!mounted) return;
@@ -257,10 +259,9 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
 
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
-    final messagesState = ref.watch(conversationMessagesProvider(
-      widget.conversationId,
-    ));
-
+    final messagesState = ref.watch(
+      conversationMessagesProvider(widget.conversationId),
+    );
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -287,7 +288,11 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
                         currentUid,
                       );
                       if (otherUid.isEmpty) return;
-                      Navigator.of(context).pushNamed('/profile/$otherUid');
+                      navigateToProfile(
+                        context: context,
+                        uid: otherUid,
+                        isSelfProfile: otherUid == currentUid,
+                      );
                     },
               icon: const Icon(Icons.person_outline_rounded),
             ),
@@ -341,7 +346,8 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
                                 const SizedBox(width: 8),
                                 Text(
                                   'Refreshing messages...',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
                                         color: colorScheme.onSurfaceVariant,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -353,141 +359,151 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
                   ),
                   Expanded(
                     child: messagesState.when(
-              data: (messages) {
-                if (messages.isEmpty) {
-                  return ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(AppSizes.xl),
-                    children: [
-                      SizedBox(height: MediaQuery.sizeOf(context).height * 0.18),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 58,
-                            height: 58,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFFBFDBFE),
-                                  Color(0xFFD8B4FE),
-                                  Color(0xFFFBCFE8),
+                      data: (messages) {
+                        if (messages.isEmpty) {
+                          return ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(AppSizes.xl),
+                            children: [
+                              SizedBox(
+                                height:
+                                    MediaQuery.sizeOf(context).height * 0.18,
+                              ),
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 58,
+                                    height: 58,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(20),
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFFBFDBFE),
+                                          Color(0xFFD8B4FE),
+                                          Color(0xFFFBCFE8),
+                                        ],
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.chat_bubble_outline_rounded,
+                                      color: Color(0xFF312E81),
+                                      size: 28,
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppSizes.lg),
+                                  Text(
+                                    'Start the conversation',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w900),
+                                  ),
+                                  const SizedBox(height: AppSizes.sm),
+                                  Text(
+                                    'Send a useful message to $otherName.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: context.appColors.mutedText,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ],
                               ),
-                            ),
-                            child: const Icon(
-                              Icons.chat_bubble_outline_rounded,
-                              color: Color(0xFF312E81),
-                              size: 28,
-                            ),
+                            ],
+                          );
+                        }
+                        if (_lastMessageCount != messages.length) {
+                          _lastMessageCount = messages.length;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            _scrollToBottom(animated: true);
+                          });
+                        }
+
+                        return ListView.builder(
+                          controller: _scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: EdgeInsets.fromLTRB(
+                            10,
+                            8,
+                            10,
+                            bottomInset > 0 ? 16 : 12,
                           ),
-                          const SizedBox(height: AppSizes.lg),
-                          Text(
-                            'Start the conversation',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                ),
-                          ),
-                          const SizedBox(height: AppSizes.sm),
-                          Text(
-                            'Send a useful message to $otherName.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: context.appColors.mutedText,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) {
+                            final message = messages[index];
+                            final isSender = message.senderUid == currentUid;
+                            final previousMessage = index > 0
+                                ? messages[index - 1]
+                                : null;
+                            final nextMessage = index < messages.length - 1
+                                ? messages[index + 1]
+                                : null;
+                            final isSameAsPrevious =
+                                previousMessage?.senderUid == message.senderUid;
+                            final isSameAsNext =
+                                nextMessage?.senderUid == message.senderUid;
+                            final showAvatar = !isSender && !isSameAsNext;
+                            final topSpacing = isSameAsPrevious ? 2.0 : 6.0;
+                            final avatarUrl = otherAvatarUrl;
+
+                            return Padding(
+                              padding: EdgeInsets.only(top: topSpacing),
+                              child: Row(
+                                mainAxisAlignment: isSender
+                                    ? MainAxisAlignment.end
+                                    : MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (!isSender) ...[
+                                    SizedBox(
+                                      width: 26,
+                                      child: showAvatar
+                                          ? AppUserAvatar(
+                                              avatarUrl: avatarUrl,
+                                              radius: 12,
+                                            )
+                                          : const SizedBox(width: 24),
+                                    ),
+                                    const SizedBox(width: 4),
+                                  ],
+                                  Flexible(
+                                    child: MessageBubble(
+                                      message: message,
+                                      isSender: isSender,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      loading: () => ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(AppSizes.xl),
+                        children: const [
+                          SizedBox(height: 180),
+                          Center(child: AppLoader()),
                         ],
                       ),
-                    ],
-                  );
-                }
-                if (_lastMessageCount != messages.length) {
-                  _lastMessageCount = messages.length;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (!mounted) return;
-                    _scrollToBottom(animated: true);
-                  });
-                }
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.fromLTRB(
-                    10,
-                    8,
-                    10,
-                    bottomInset > 0 ? 16 : 12,
-                  ),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[index];
-                    final isSender = message.senderUid == currentUid;
-                    final previousMessage = index > 0 ? messages[index - 1] : null;
-                    final nextMessage = index < messages.length - 1
-                        ? messages[index + 1]
-                        : null;
-                    final isSameAsPrevious =
-                        previousMessage?.senderUid == message.senderUid;
-                    final isSameAsNext = nextMessage?.senderUid == message.senderUid;
-                    final showAvatar = !isSender && !isSameAsNext;
-                    final topSpacing = isSameAsPrevious ? 2.0 : 6.0;
-                    final avatarUrl = otherAvatarUrl;
-
-                    return Padding(
-                      padding: EdgeInsets.only(top: topSpacing),
-                      child: Row(
-                        mainAxisAlignment: isSender
-                            ? MainAxisAlignment.end
-                            : MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      error: (error, stackTrace) => ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(AppSizes.xl),
                         children: [
-                          if (!isSender) ...[
-                            SizedBox(
-                              width: 26,
-                              child: showAvatar
-                                  ? AppUserAvatar(
-                                      avatarUrl: avatarUrl,
-                                      radius: 12,
-                                    )
-                                  : const SizedBox(width: 24),
-                            ),
-                            const SizedBox(width: 4),
-                          ],
-                          Flexible(
-                            child: MessageBubble(
-                              message: message,
-                              isSender: isSender,
-                            ),
+                          SizedBox(
+                            height: MediaQuery.sizeOf(context).height * 0.22,
+                          ),
+                          Text(
+                            'Unable to load messages.\n$error',
+                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
-                    );
-                  },
-                );
-              },
-              loading: () => ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(AppSizes.xl),
-                children: const [
-                  SizedBox(height: 180),
-                  Center(child: AppLoader()),
-                ],
-              ),
-              error: (error, stackTrace) => ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(AppSizes.xl),
-                children: [
-                  SizedBox(height: MediaQuery.sizeOf(context).height * 0.22),
-                  Text(
-                    'Unable to load messages.\n$error',
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
                     ),
                   ),
                 ],
@@ -506,7 +522,9 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
                   color: Theme.of(context).scaffoldBackgroundColor,
                   border: Border(
                     top: BorderSide(
-                      color: Theme.of(context).dividerColor.withValues(alpha: 0.18),
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.18),
                     ),
                   ),
                   boxShadow: ShadowStyle.messageAura(
@@ -525,7 +543,9 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
                           ),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: Theme.of(context).dividerColor.withValues(alpha: 0.16),
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.16),
                             width: 0.7,
                           ),
                           boxShadow: ShadowStyle.lightShadow(),
@@ -538,7 +558,8 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
                           maxLength: _maxMessageChars,
                           keyboardType: TextInputType.multiline,
                           textInputAction: TextInputAction.newline,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
                                 fontSize: 14,
                                 height: 1.18,
                                 fontWeight: FontWeight.w500,
@@ -546,7 +567,9 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
                           decoration: InputDecoration(
                             hintText: 'Message $otherName',
                             hintStyle: TextStyle(
-                              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.72),
+                              color: colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.72,
+                              ),
                               fontWeight: FontWeight.w500,
                             ),
                             border: InputBorder.none,
@@ -572,7 +595,8 @@ class _ConversationPageState extends ConsumerState<ConversationPage>
                         style: IconButton.styleFrom(
                           backgroundColor: colorScheme.primary,
                           foregroundColor: colorScheme.onPrimary,
-                          disabledBackgroundColor: colorScheme.surfaceContainerHighest,
+                          disabledBackgroundColor:
+                              colorScheme.surfaceContainerHighest,
                           disabledForegroundColor: colorScheme.onSurfaceVariant,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           shape: const CircleBorder(),
@@ -637,10 +661,7 @@ class _ConversationAppBarTitle extends StatelessWidget {
                   color: const Color(0xFFA78BFA),
                 ),
               ),
-              child: AppUserAvatar(
-                avatarUrl: avatarUrl,
-                radius: 18,
-              ),
+              child: AppUserAvatar(avatarUrl: avatarUrl, radius: 18),
             ),
             Positioned(
               right: -1,

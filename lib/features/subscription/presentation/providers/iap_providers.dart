@@ -25,7 +25,5 @@ class IAPController {
 }
 
 final iapControllerProvider = Provider<IAPController>((ref) {
-  return IAPController(
-    ref.watch(iapRemoteDataSourceProvider),
-  );
+  return IAPController(ref.watch(iapRemoteDataSourceProvider));
 });
