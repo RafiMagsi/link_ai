@@ -260,6 +260,9 @@ class ProfileRemoteDataSource {
             final meetMatch = profile.wantToMeet.toLowerCase().contains(
               queryLower,
             );
+            final aiCategoriesMatch = profile.aiCategories.any(
+              (item) => item.toLowerCase().contains(queryLower),
+            );
             final lookingForMatch = profile.lookingFor.any(
               (item) => item.toLowerCase().contains(queryLower),
             );
@@ -271,6 +274,7 @@ class ProfileRemoteDataSource {
                 buildingMatch ||
                 needMatch ||
                 meetMatch ||
+                aiCategoriesMatch ||
                 lookingForMatch;
           })
           .take(limit)

@@ -17,6 +17,7 @@ class ProfileModel {
   final String collaborationIntent;
   final String projectStage;
   final List<String> lookingFor;
+  final List<String> aiCategories;
   final Map<String, String> links;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -37,6 +38,7 @@ class ProfileModel {
     required this.collaborationIntent,
     required this.projectStage,
     required this.lookingFor,
+    required this.aiCategories,
     required this.links,
     required this.createdAt,
     required this.updatedAt,
@@ -63,6 +65,7 @@ class ProfileModel {
       collaborationIntent: 'open_to_collaborate',
       projectStage: 'mvp',
       lookingFor: const [],
+      aiCategories: const [],
       links: const {'website': '', 'linkedin': '', 'github': '', 'x': ''},
       createdAt: null,
       updatedAt: null,
@@ -94,6 +97,7 @@ class ProfileModel {
         ),
         projectStage: _safeString(data['projectStage'], fallback: 'mvp'),
         lookingFor: _safeStringList(data['lookingFor']),
+        aiCategories: _safeStringList(data['aiCategories']),
         links: _safeStringMap(data['links']),
         createdAt: _safeTimestamp(data['createdAt']),
         updatedAt: _safeTimestamp(data['updatedAt']),
@@ -221,6 +225,7 @@ class ProfileModel {
       'collaborationIntent': collaborationIntent,
       'projectStage': projectStage,
       'lookingFor': lookingFor,
+      'aiCategories': aiCategories,
       'links': links,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -242,6 +247,7 @@ class ProfileModel {
       'collaborationIntent': collaborationIntent,
       'projectStage': projectStage,
       'lookingFor': lookingFor,
+      'aiCategories': aiCategories,
       'links': links,
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -263,6 +269,7 @@ class ProfileModel {
     String? collaborationIntent,
     String? projectStage,
     List<String>? lookingFor,
+    List<String>? aiCategories,
     Map<String, String>? links,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -283,6 +290,7 @@ class ProfileModel {
       collaborationIntent: collaborationIntent ?? this.collaborationIntent,
       projectStage: projectStage ?? this.projectStage,
       lookingFor: lookingFor ?? this.lookingFor,
+      aiCategories: aiCategories ?? this.aiCategories,
       links: links ?? this.links,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

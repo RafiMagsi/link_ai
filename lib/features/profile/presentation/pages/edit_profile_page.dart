@@ -28,6 +28,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final _needController = TextEditingController();
   final _wantToMeetController = TextEditingController();
   final _lookingForController = TextEditingController();
+  final _aiCategoriesController = TextEditingController();
   final _websiteController = TextEditingController();
   final _linkedinController = TextEditingController();
   final _githubController = TextEditingController();
@@ -66,6 +67,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     _needController.dispose();
     _wantToMeetController.dispose();
     _lookingForController.dispose();
+    _aiCategoriesController.dispose();
     _websiteController.dispose();
     _linkedinController.dispose();
     _githubController.dispose();
@@ -86,6 +88,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     _needController.text = profile.need;
     _wantToMeetController.text = profile.wantToMeet;
     _lookingForController.text = profile.lookingFor.join(', ');
+    _aiCategoriesController.text = profile.aiCategories.join(', ');
     _websiteController.text = profile.links['website'] ?? '';
     _linkedinController.text = profile.links['linkedin'] ?? '';
     _githubController.text = profile.links['github'] ?? '';
@@ -180,6 +183,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         collaborationIntent: _collaborationIntent,
         projectStage: _projectStage,
         lookingFor: _splitCsv(_lookingForController.text),
+        aiCategories: _splitCsv(_aiCategoriesController.text),
         avatarUrl: avatarUrl,
         links: {
           'website': _websiteController.text.trim(),
@@ -333,6 +337,11 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                 controller: _toolsController,
                 label: 'AI Tools / Tech',
                 hint: 'Firebase, ChatGPT, Claude, n8n',
+              ),
+              _Field(
+                controller: _aiCategoriesController,
+                label: 'AI Categories',
+                hint: 'Agents, RAG, AI SaaS, Automation',
               ),
               _Field(
                 controller: _buildingController,

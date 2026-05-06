@@ -103,6 +103,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                       collaborationIntent: profile.collaborationIntent,
                       projectStage: profile.projectStage,
                       lookingFor: profile.lookingFor,
+                      aiCategories: profile.aiCategories,
                       skills: profile.skills,
                       tools: profile.tools,
                       targetUid: profile.uid,
@@ -160,6 +161,7 @@ class _Header extends StatelessWidget {
     required this.collaborationIntent,
     required this.projectStage,
     required this.lookingFor,
+    required this.aiCategories,
     required this.skills,
     required this.tools,
     required this.targetUid,
@@ -182,6 +184,7 @@ class _Header extends StatelessWidget {
   final String collaborationIntent;
   final String projectStage;
   final List<String> lookingFor;
+  final List<String> aiCategories;
   final List<String> skills;
   final List<String> tools;
   final String targetUid;
@@ -428,6 +431,14 @@ class _Header extends StatelessWidget {
                   collaborationIntent: collaborationIntent,
                   projectStage: projectStage,
                   lookingFor: lookingFor,
+                  aiCategories: aiCategories,
+                ),
+              ],
+              if (aiCategories.isNotEmpty) ...[
+                const SizedBox(height: AppSizes.sm),
+                _ProfileChipsSection(
+                  title: 'AI categories',
+                  values: aiCategories,
                 ),
               ],
               if (skills.isNotEmpty || tools.isNotEmpty) ...[
@@ -757,6 +768,7 @@ class _ProfileInfoPanel extends StatelessWidget {
     required this.collaborationIntent,
     required this.projectStage,
     required this.lookingFor,
+    required this.aiCategories,
   });
 
   final String building;
@@ -765,6 +777,7 @@ class _ProfileInfoPanel extends StatelessWidget {
   final String collaborationIntent;
   final String projectStage;
   final List<String> lookingFor;
+  final List<String> aiCategories;
 
   @override
   Widget build(BuildContext context) {
@@ -839,6 +852,15 @@ class _ProfileInfoPanel extends StatelessWidget {
                   icon: Icons.rocket_launch_outlined,
                   label: stageLabel,
                 ),
+                ...aiCategories
+                    .where((value) => value.trim().isNotEmpty)
+                    .take(3)
+                    .map(
+                      (value) => _MetaChip(
+                        icon: Icons.memory_outlined,
+                        label: value,
+                      ),
+                    ),
                 ...lookingFor
                     .where((value) => value.trim().isNotEmpty)
                     .take(4)

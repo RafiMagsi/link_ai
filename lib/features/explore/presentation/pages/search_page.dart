@@ -229,7 +229,8 @@ class _UserCard extends ConsumerWidget {
                       ),
                     if (user.collaborationIntent.isNotEmpty ||
                         user.projectStage.isNotEmpty ||
-                        user.lookingFor.isNotEmpty) ...[
+                        user.lookingFor.isNotEmpty ||
+                        user.aiCategories.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 6,
@@ -243,6 +244,12 @@ class _UserCard extends ConsumerWidget {
                             label: Text(_stageLabel(user.projectStage)),
                             visualDensity: VisualDensity.compact,
                           ),
+                          ...user.aiCategories.take(2).map((item) {
+                            return Chip(
+                              label: Text(item),
+                              visualDensity: VisualDensity.compact,
+                            );
+                          }),
                           ...user.lookingFor.take(2).map((item) {
                             return Chip(
                               label: Text(item),
