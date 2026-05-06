@@ -37,6 +37,25 @@ class ConnectRemoteDataSource {
         });
   }
 
+  Stream<List<ConnectionModel>> watchFollowers(String uid) {
+    return _connections.where('connectedUid', isEqualTo: uid).snapshots().map((
+      snapshot,
+    ) {
+      try {
+        final items = snapshot.docs.map(ConnectionModel.fromFirestore).toList();
+        items.sort((a, b) {
+          final aTime = a.createdAt ?? DateTime(0);
+          final bTime = b.createdAt ?? DateTime(0);
+          return bTime.compareTo(aTime);
+        });
+        return items;
+      } catch (error, stackTrace) {
+        debugPrint('Error parsing followers for $uid: $error\n$stackTrace');
+        return [];
+      }
+    });
+  }
+
   Future<void> followUser({
     required String currentUid,
     required String targetUid,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:link_ai/features/explore/presentation/widgets/shadow_style.dart';
 
 import '../../../../core/constants/app_sizes.dart';
@@ -7,6 +8,9 @@ import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../connect/presentation/providers/connect_providers.dart';
+import '../../../messaging/data/models/conversation_model.dart';
 import '../../../profile/data/models/profile_model.dart';
 import '../providers/network_providers.dart';
 
@@ -16,13 +20,16 @@ class NetworkPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final followingState = ref.watch(followingProfilesProvider);
+    final followersState = ref.watch(followerProfilesProvider);
     final matchesState = ref.watch(collaborationMatchesProvider);
-    final openState = ref.watch(openToCollaborateProfilesProvider);
+    final suggestedState = ref.watch(suggestedProfilesProvider);
 
     Future<void> refreshNetwork() async {
       ref.invalidate(followingProfilesProvider);
+      ref.invalidate(followerProfilesProvider);
       ref.invalidate(collaborationMatchesProvider);
-      ref.invalidate(openToCollaborateProfilesProvider);
+      ref.invalidate(suggestedProfilesProvider);
+      ref.invalidate(savedProfileIdsProvider);
 
       await Future<void>.delayed(const Duration(milliseconds: 350));
     }
@@ -36,11 +43,15 @@ class NetworkPage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(
             AppSizes.lg,
             AppSizes.md,
-            AppSizes.lg,
-            AppSizes.xxxl,
+          AppSizes.lg,
+          AppSizes.xxxl,
           ),
           children: [
-            const _NetworkHero(),
+            _NetworkHero(
+              matchesCount: matchesState.asData?.value.length ?? 0,
+              followingCount: followingState.asData?.value.length ?? 0,
+              followersCount: followersState.asData?.value.length ?? 0,
+            ),
             const SizedBox(height: AppSizes.xxl),
             _Section(
               title: 'Collaboration matches',
@@ -48,6 +59,19 @@ class NetworkPage extends ConsumerWidget {
               icon: Icons.hub_outlined,
               accentColor: const Color(0xFF60A5FA),
               child: _ProfilesList(asyncProfiles: matchesState),
+            ),
+            const SizedBox(height: AppSizes.xxl),
+            _Section(
+              title: 'Followers',
+              subtitle: 'People already following your work and updates.',
+              icon: Icons.favorite_outline,
+              accentColor: const Color(0xFF60A5FA),
+              child: _ProfilesList(
+                asyncProfiles: followersState,
+                emptyTitle: 'No followers yet',
+                emptySubtitle:
+                    'When people follow you, they will show up here.',
+              ),
             ),
             const SizedBox(height: AppSizes.xxl),
             _Section(
@@ -63,11 +87,16 @@ class NetworkPage extends ConsumerWidget {
             ),
             const SizedBox(height: AppSizes.xxl),
             _Section(
-              title: 'Open to collaborate',
-              subtitle: 'People open to hiring, feedback, consulting, or building together.',
-              icon: Icons.handshake_outlined,
+              title: 'Suggested people',
+              subtitle:
+                  'Builders worth following based on overlap and intent.',
+              icon: Icons.person_search_outlined,
               accentColor: const Color(0xFFF9A8D4),
-              child: _ProfilesList(asyncProfiles: openState),
+              child: _ProfilesList(
+                asyncProfiles: suggestedState,
+                emptyTitle: 'No suggestions yet',
+                emptySubtitle: 'Suggestions will appear as your network grows.',
+              ),
             ),
           ],
         ),
@@ -77,7 +106,15 @@ class NetworkPage extends ConsumerWidget {
 }
 
 class _NetworkHero extends StatelessWidget {
-  const _NetworkHero();
+  const _NetworkHero({
+    required this.matchesCount,
+    required this.followingCount,
+    required this.followersCount,
+  });
+
+  final int matchesCount;
+  final int followingCount;
+  final int followersCount;
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +197,7 @@ class _NetworkHero extends StatelessWidget {
                       Expanded(
                         child: _HeroStat(
                           label: 'Matches',
+                          value: matchesCount,
                           icon: Icons.auto_awesome_rounded,
                           color: const Color(0xFF60A5FA),
                         ),
@@ -168,6 +206,7 @@ class _NetworkHero extends StatelessWidget {
                       Expanded(
                         child: _HeroStat(
                           label: 'Following',
+                          value: followingCount,
                           icon: Icons.people_alt_outlined,
                           color: const Color(0xFFA78BFA),
                         ),
@@ -175,8 +214,9 @@ class _NetworkHero extends StatelessWidget {
                       const SizedBox(width: AppSizes.sm),
                       Expanded(
                         child: _HeroStat(
-                          label: 'Open',
-                          icon: Icons.handshake_outlined,
+                          label: 'Followers',
+                          value: followersCount,
+                          icon: Icons.favorite_outline,
                           color: const Color(0xFFF9A8D4),
                         ),
                       ),
@@ -195,11 +235,13 @@ class _NetworkHero extends StatelessWidget {
 class _HeroStat extends StatelessWidget {
   const _HeroStat({
     required this.label,
+    required this.value,
     required this.icon,
     required this.color,
   });
 
   final String label;
+  final int value;
   final IconData icon;
   final Color color;
 
@@ -223,6 +265,13 @@ class _HeroStat extends StatelessWidget {
           children: [
             Icon(icon, size: 19, color: color),
             const SizedBox(height: 5),
+            Text(
+              '$value',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 2),
             Text(
               label,
               maxLines: 1,
@@ -382,16 +431,25 @@ class _ProfilesListState extends State<_ProfilesList> {
   }
 }
 
-class _ProfileTile extends StatelessWidget {
+class _ProfileTile extends ConsumerWidget {
   const _ProfileTile({required this.profile});
 
   final ProfileModel profile;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final intent = _intentLabel(profile.collaborationIntent);
     final stage = _stageLabel(profile.projectStage);
+    final currentUid = ref.watch(currentUserProvider)?.uid;
+    final isFollowing = ref
+            .watch(myConnectionsProvider)
+            .asData
+            ?.value
+            .any((item) => item.connectedUid == profile.uid) ??
+        false;
+    final savedIds = ref.watch(savedProfileIdsProvider).asData?.value ?? const [];
+    final isSaved = savedIds.contains(profile.uid);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.md),
@@ -413,7 +471,7 @@ class _ProfileTile extends StatelessWidget {
               onTap: () => navigateToProfile(
                 context: context,
                 uid: profile.uid,
-                isSelfProfile: false,
+                isSelfProfile: currentUid == profile.uid,
               ),
               child: Padding(
                 padding: const EdgeInsets.all(AppSizes.md),
@@ -501,14 +559,93 @@ class _ProfileTile extends StatelessWidget {
                                   ),
                             ),
                           ],
+                          const SizedBox(height: AppSizes.sm),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: currentUid == null ||
+                                          currentUid == profile.uid
+                                      ? null
+                                      : () {
+                                          if (isFollowing) {
+                                            ref
+                                                .read(
+                                                  connectControllerProvider
+                                                      .notifier,
+                                                )
+                                                .unfollowUser(profile.uid);
+                                          } else {
+                                            ref
+                                                .read(
+                                                  connectControllerProvider
+                                                      .notifier,
+                                                )
+                                                .followUser(profile.uid);
+                                          }
+                                        },
+                                  icon: Icon(
+                                    isFollowing
+                                        ? Icons.check_circle_outline
+                                        : Icons.person_add_alt_1_outlined,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    isFollowing ? 'Following' : 'Follow',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: AppSizes.sm),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: currentUid == null ||
+                                          currentUid == profile.uid
+                                      ? null
+                                      : () {
+                                          final convId = ConversationModel.buildId(
+                                            currentUid,
+                                            profile.uid,
+                                          );
+                                          context.push('/messages/$convId');
+                                        },
+                                  icon: const Icon(
+                                    Icons.chat_bubble_outline,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Message'),
+                                ),
+                              ),
+                              const SizedBox(width: AppSizes.xs),
+                              IconButton(
+                                tooltip: isSaved
+                                    ? 'Unsave profile'
+                                    : 'Save profile',
+                                onPressed: currentUid == null ||
+                                        currentUid == profile.uid
+                                    ? null
+                                    : () {
+                                        ref
+                                            .read(
+                                              savedProfilesControllerProvider
+                                                  .notifier,
+                                            )
+                                            .toggleSavedProfile(
+                                              profile.uid,
+                                              isSaved: isSaved,
+                                            );
+                                      },
+                                icon: Icon(
+                                  isSaved
+                                      ? Icons.bookmark
+                                      : Icons.bookmark_border,
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(width: AppSizes.sm),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
-                    ),
                   ],
                 ),
               ),

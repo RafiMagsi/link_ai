@@ -253,11 +253,18 @@ service cloud.firestore {
     }
 
     match /connections/{connectionId} {
-      // A user can read only their own follow edges.
-      // IMPORTANT: guard against `resource` being null on non-existent docs.
+      // A user can read their own following edges and follower edges pointing
+      // to them. Guard against `resource` being null on non-existent docs.
       allow read: if isSignedIn()
-        && connectionId.matches('^' + request.auth.uid + '_.*')
-        && (resource == null || resource.data.userUid == request.auth.uid);
+        && (
+          connectionId.matches('^' + request.auth.uid + '_.*')
+          || (resource != null && resource.data.connectedUid == request.auth.uid)
+        )
+        && (
+          resource == null
+          || resource.data.userUid == request.auth.uid
+          || resource.data.connectedUid == request.auth.uid
+        );
 
       allow create: if isSignedIn()
         && isActiveUser(request.auth.uid)
@@ -277,6 +284,26 @@ service cloud.firestore {
 
       allow delete: if isSignedIn()
         && resource.data.userUid == request.auth.uid;
+    }
+
+    match /savedProfiles/{saveId} {
+      allow read: if isAdmin()
+        || (
+          isSignedIn()
+          && saveId.matches('^.*_' + request.auth.uid + '$')
+          && (resource == null || resource.data.uid == request.auth.uid)
+        );
+
+      allow create: if isSignedIn()
+        && isActiveUser(request.auth.uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.profileUid is string
+        && request.resource.data.id == saveId;
+
+      allow delete: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
+
+      allow update: if false;
     }
 
     match /userConnectionStats/{uid} {
