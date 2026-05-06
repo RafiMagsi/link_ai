@@ -107,6 +107,7 @@ class PostRemoteDataSource {
     required ProfileModel profile,
     required String text,
     required List<File> imageFiles,
+    required PostIntent postIntent,
   }) async {
     try {
       final postId = _posts.doc().id;
@@ -182,6 +183,7 @@ class PostRemoteDataSource {
         savesCount: 0,
         createdAt: null,
         updatedAt: null,
+        postIntent: postIntent,
         colorCode: PostColors.getRandomColor(),
       );
 

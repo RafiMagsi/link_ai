@@ -376,6 +376,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
   Future<void> createPost({
     required String text,
     required List<File> imageFiles,
+    required PostIntent postIntent,
   }) async {
     state = const AsyncLoading();
 
@@ -409,7 +410,12 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       }
 
       await _postRemoteDataSource
-          .createPost(profile: profile, text: text, imageFiles: imageFiles)
+          .createPost(
+            profile: profile,
+            text: text,
+            imageFiles: imageFiles,
+            postIntent: postIntent,
+          )
           .timeout(
             const Duration(seconds: 60),
             onTimeout: () => throw TimeoutException('Post creation timed out'),

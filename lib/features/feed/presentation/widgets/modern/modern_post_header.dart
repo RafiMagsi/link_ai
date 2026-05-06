@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../data/models/post_model.dart';
 import '../../design/modern_post_design_system.dart';
 import '../../../../subscription/presentation/widgets/gold_badge_widget.dart';
+import '../../utils/post_intent_ui.dart';
 
 class ModernPostHeader extends StatelessWidget {
   const ModernPostHeader({
@@ -81,6 +82,24 @@ class ModernPostHeader extends StatelessWidget {
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: ModernPostDesignSystem.getAccentColor(post.postType),
+                  ),
+                ),
+              ),
+            ],
+            if (postIntentLabel(post.postIntent) != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: postIntentColor(post.postIntent).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text(
+                  postIntentLabel(post.postIntent)!,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: postIntentColor(post.postIntent),
                   ),
                 ),
               ),

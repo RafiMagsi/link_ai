@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../data/models/post_model.dart';
+import '../../utils/post_intent_ui.dart';
 
 class SnowPostHeader extends StatelessWidget {
   const SnowPostHeader({
@@ -115,11 +116,11 @@ class SnowPostHeader extends StatelessWidget {
                     ? CachedNetworkImage(
                         imageUrl: avatarUrl!.trim(),
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => _AvatarFallback(
+                        placeholder: (context, value) => _AvatarFallback(
                           initials: _initials(displayName),
                           color: accent,
                         ),
-                        errorWidget: (_, __, ___) => _AvatarFallback(
+                        errorWidget: (context, value, error) => _AvatarFallback(
                           initials: _initials(displayName),
                           color: accent,
                         ),
@@ -204,6 +205,46 @@ class SnowPostHeader extends StatelessWidget {
                           height: 1,
                         ),
                   ),
+                  if (postIntentLabel(post.postIntent) != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: postIntentColor(post.postIntent).withValues(
+                          alpha: 0.10,
+                        ),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: postIntentColor(post.postIntent).withValues(
+                            alpha: 0.16,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            postIntentIcon(post.postIntent),
+                            size: 12,
+                            color: postIntentColor(post.postIntent),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            postIntentLabel(post.postIntent)!,
+                            style: TextStyle(
+                              color: postIntentColor(post.postIntent),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              height: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],

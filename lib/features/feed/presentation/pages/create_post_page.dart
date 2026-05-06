@@ -11,6 +11,7 @@ import '../../../../core/config/app_limits_provider.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../../core/errors/error_handler.dart';
+import '../../data/models/post_model.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/post_providers.dart';
 
@@ -33,6 +34,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
   final _imagePicker = ImagePicker();
 
   final List<File> _selectedMedia = [];
+  PostIntent _selectedIntent = PostIntent.general;
 
   bool _isUploading = false;
   double _uploadProgress = 0;
@@ -159,7 +161,11 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
 
       await ref
           .read(postControllerProvider.notifier)
-          .createPost(text: text, imageFiles: imageFiles);
+          .createPost(
+            text: text,
+            imageFiles: imageFiles,
+            postIntent: _selectedIntent,
+          );
 
       await progressTimer.cancel();
 
@@ -219,6 +225,14 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     final colors = context.appColors;
     final myProfile = ref.watch(myProfileProvider).asData?.value;
     final canSubmit = !_isUploading && _isValidForSubmit(limits);
+    final hintText = switch (_selectedIntent) {
+      PostIntent.launch => 'What did you launch in AI?',
+      PostIntent.feedback => 'What do you want feedback on?',
+      PostIntent.hiring => 'Who are you hiring for?',
+      PostIntent.cofounder => 'Who are you looking for as a cofounder?',
+      PostIntent.question => 'What AI question do you need help with?',
+      PostIntent.general => 'What are you building in AI?',
+    };
 
     return MediaQuery.removePadding(
       context: context,
@@ -276,7 +290,16 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
                     widget.compact ? AppSizes.md : AppSizes.lg,
                     AppSizes.lg,
                   ),
-                children: [
+                  children: [
+                  _IntentSelector(
+                    selectedIntent: _selectedIntent,
+                    onChanged: (intent) {
+                      setState(() {
+                        _selectedIntent = intent;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: AppSizes.md),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -292,8 +315,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
                           minLines: 5,
                           maxLength: limits.postMaxChars,
                           onChanged: (_) => setState(() {}),
-                          decoration: const InputDecoration(
-                            hintText: 'What are you building in AI?',
+                          decoration: InputDecoration(
+                            hintText: hintText,
                             border: InputBorder.none,
                             counterText: '',
                           ),
@@ -355,6 +378,46 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
           ],
         ),
       ),
+      ),
+    );
+  }
+}
+
+class _IntentSelector extends StatelessWidget {
+  const _IntentSelector({
+    required this.selectedIntent,
+    required this.onChanged,
+  });
+
+  final PostIntent selectedIntent;
+  final ValueChanged<PostIntent> onChanged;
+
+  static const _options = <(PostIntent intent, String label)>[
+    (PostIntent.general, 'General'),
+    (PostIntent.launch, 'Launch'),
+    (PostIntent.feedback, 'Feedback'),
+    (PostIntent.hiring, 'Hiring'),
+    (PostIntent.cofounder, 'Cofounder'),
+    (PostIntent.question, 'Question'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _options.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final option = _options[index];
+          return ChoiceChip(
+            label: Text(option.$2),
+            selected: selectedIntent == option.$1,
+            onSelected: (_) => onChanged(option.$1),
+            visualDensity: VisualDensity.compact,
+          );
+        },
       ),
     );
   }

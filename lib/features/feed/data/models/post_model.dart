@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 
 enum PostType { thought, ship, ask, commentRepost }
 
+enum PostIntent { general, launch, feedback, hiring, cofounder, question }
+
 class ShipMeta {
   final String projectName;
   final String tagline;
@@ -161,6 +163,7 @@ class PostModel {
   final String? quotedCommentAuthorUid;
   final String? quotedPostId;
   final String colorCode;
+  final PostIntent postIntent;
 
   const PostModel({
     required this.id,
@@ -178,6 +181,7 @@ class PostModel {
     required this.createdAt,
     required this.updatedAt,
     required this.colorCode,
+    this.postIntent = PostIntent.general,
     this.postType = PostType.thought,
     this.shipMeta,
     this.askMeta,
@@ -216,6 +220,15 @@ class PostModel {
         );
       }
 
+      PostIntent postIntent = PostIntent.general;
+      final intentStr = data['postIntent'] as String?;
+      if (intentStr != null) {
+        postIntent = PostIntent.values.firstWhere(
+          (e) => e.toString() == 'PostIntent.$intentStr',
+          orElse: () => PostIntent.general,
+        );
+      }
+
       return PostModel(
         id: _safeString(data['id'], fallback: doc.id),
         authorUid: _safeString(data['authorUid']),
@@ -234,6 +247,7 @@ class PostModel {
         postType: postType,
         shipMeta: shipMeta,
         askMeta: askMeta,
+        postIntent: postIntent,
         quotedCommentId: data['quotedCommentId'] as String?,
         quotedCommentText: data['quotedCommentText'] as String?,
         quotedCommentAuthorName: data['quotedCommentAuthorName'] as String?,
@@ -259,6 +273,7 @@ class PostModel {
         savesCount: 0,
         createdAt: null,
         updatedAt: null,
+        postIntent: PostIntent.general,
         postType: PostType.thought,
         colorCode: '0xFF60A5FA',
       );
@@ -355,6 +370,7 @@ class PostModel {
       'commentsCount': commentsCount,
       'savesCount': savesCount,
       'postType': postType.toString().split('.').last,
+      'postIntent': postIntent.toString().split('.').last,
       'colorCode': colorCode,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),

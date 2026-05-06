@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/post_model.dart';
-import 'post_more_menu_button.dart';
+import '../../utils/post_intent_ui.dart';
 
 class PostHeader extends StatelessWidget {
   const PostHeader({
@@ -71,6 +71,38 @@ class PostHeader extends StatelessWidget {
           _timeText(),
           style: TextStyle(color: colors.mutedText, fontSize: 13),
         ),
+        if (postIntentLabel(post.postIntent) != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: postIntentColor(post.postIntent).withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: postIntentColor(post.postIntent).withValues(alpha: 0.18),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  postIntentIcon(post.postIntent),
+                  size: 13,
+                  color: postIntentColor(post.postIntent),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  postIntentLabel(post.postIntent)!,
+                  style: TextStyle(
+                    color: postIntentColor(post.postIntent),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(width: 44),
       ],
     );
