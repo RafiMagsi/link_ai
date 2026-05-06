@@ -108,61 +108,305 @@ class _UserSearchResults extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final query = ref.watch(searchQueryProvider);
     final searchResults = ref.watch(userSearchResultsProvider);
+    final filters = ref.watch(peopleDiscoveryFiltersProvider);
 
-    if (query.isEmpty) {
-      return _EmptySearchState(
-        title: 'Search for users',
-        subtitle: 'Find builders by name, role, or skills',
-      );
-    }
+    return Column(
+      children: [
+        _PeopleDiscoveryFilterBar(filters: filters),
+        Expanded(
+          child: query.isEmpty && !filters.hasActiveFilters
+              ? _EmptySearchState(
+                  title: 'Discover AI builders',
+                  subtitle:
+                      'Search by name or use filters for role, stage, need, category, and location.',
+                )
+              : searchResults.when(
+                  data: (users) {
+                    if (users.isEmpty) {
+                      return _EmptySearchState(
+                        title: 'No users found',
+                        subtitle: 'Try a different search term or adjust filters',
+                      );
+                    }
 
-    return searchResults.when(
-      data: (users) {
-        if (users.isEmpty) {
-          return _EmptySearchState(
-            title: 'No users found',
-            subtitle: 'Try a different search term',
-          );
-        }
+                    return ListView.separated(
+                      padding: const EdgeInsets.all(AppSizes.lg),
+                      itemCount: users.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: AppSizes.md),
+                      itemBuilder: (context, index) {
+                        final user = users[index];
+                        return _UserCard(user: user);
+                      },
+                    );
+                  },
+                  loading: () => const Center(child: AppLoader()),
+                  error: (error, stackTrace) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSizes.lg),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          const SizedBox(height: AppSizes.lg),
+                          const Text(
+                            'Error loading results',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: AppSizes.md),
+                          Text(
+                            ErrorHandler.getUserFriendlyMessage(error),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(AppSizes.lg),
-          itemCount: users.length,
-          separatorBuilder: (context, index) =>
-              const SizedBox(height: AppSizes.md),
-          itemBuilder: (context, index) {
-            final user = users[index];
-            return _UserCard(user: user);
-          },
-        );
-      },
-      loading: () => const Center(child: AppLoader()),
-      error: (error, stackTrace) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSizes.lg),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 48,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              const SizedBox(height: AppSizes.lg),
-              Text(
-                'Error loading results',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: AppSizes.md),
-              Text(
-                ErrorHandler.getUserFriendlyMessage(error),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
+class _PeopleDiscoveryFilterBar extends ConsumerWidget {
+  const _PeopleDiscoveryFilterBar({required this.filters});
+
+  final PeopleDiscoveryFilters filters;
+
+  static const _roles = <String>[
+    'Engineer',
+    'Founder',
+    'Researcher',
+    'Designer',
+    'Product',
+    'Growth',
+  ];
+  static const _stages = <String>['idea', 'mvp', 'launched', 'growing'];
+  static const _lookingForOptions = <String>[
+    'Engineer',
+    'Designer',
+    'Growth',
+    'Feedback',
+    'Cofounder',
+    'Beta users',
+  ];
+  static const _aiCategories = <String>[
+    'Agents',
+    'RAG',
+    'AI SaaS',
+    'Automation',
+    'Research',
+    'Local Models',
+  ];
+  static const _locations = <String>[
+    'Remote',
+    'Dubai',
+    'London',
+    'San Francisco',
+    'New York',
+    'Karachi',
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSizes.lg,
+        AppSizes.sm,
+        AppSizes.lg,
+        AppSizes.sm,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: context.appColors.border.withValues(alpha: 0.7),
           ),
         ),
       ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _FilterChipButton(
+              label: filters.role.isEmpty ? 'Role' : filters.role,
+              onTap: () => _showOptionsSheet(
+                context: context,
+                title: 'Role',
+                options: _roles,
+                selected: filters.role,
+                onSelected: (value) {
+                  ref.read(peopleDiscoveryFiltersProvider.notifier).state =
+                      filters.copyWith(role: value);
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            _FilterChipButton(
+              label: filters.projectStage.isEmpty
+                  ? 'Project stage'
+                  : _stageLabel(filters.projectStage),
+              onTap: () => _showOptionsSheet(
+                context: context,
+                title: 'Project stage',
+                options: _stages,
+                selected: filters.projectStage,
+                onSelected: (value) {
+                  ref.read(peopleDiscoveryFiltersProvider.notifier).state =
+                      filters.copyWith(projectStage: value);
+                },
+                labelBuilder: _stageLabel,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _FilterChipButton(
+              label: filters.lookingFor.isEmpty
+                  ? 'Looking for'
+                  : filters.lookingFor,
+              onTap: () => _showOptionsSheet(
+                context: context,
+                title: 'Looking for',
+                options: _lookingForOptions,
+                selected: filters.lookingFor,
+                onSelected: (value) {
+                  ref.read(peopleDiscoveryFiltersProvider.notifier).state =
+                      filters.copyWith(lookingFor: value);
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            _FilterChipButton(
+              label: filters.aiCategory.isEmpty
+                  ? 'AI category'
+                  : filters.aiCategory,
+              onTap: () => _showOptionsSheet(
+                context: context,
+                title: 'AI category',
+                options: _aiCategories,
+                selected: filters.aiCategory,
+                onSelected: (value) {
+                  ref.read(peopleDiscoveryFiltersProvider.notifier).state =
+                      filters.copyWith(aiCategory: value);
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            _FilterChipButton(
+              label: filters.location.isEmpty ? 'Location' : filters.location,
+              onTap: () => _showOptionsSheet(
+                context: context,
+                title: 'Location',
+                options: _locations,
+                selected: filters.location,
+                onSelected: (value) {
+                  ref.read(peopleDiscoveryFiltersProvider.notifier).state =
+                      filters.copyWith(location: value);
+                },
+              ),
+            ),
+            if (filters.hasActiveFilters) ...[
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () {
+                  ref.read(peopleDiscoveryFiltersProvider.notifier).state =
+                      PeopleDiscoveryFilters.empty;
+                },
+                child: const Text('Clear'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Future<void> _showOptionsSheet({
+    required BuildContext context,
+    required String title,
+    required List<String> options,
+    required String selected,
+    required ValueChanged<String> onSelected,
+    String Function(String value)? labelBuilder,
+  }) async {
+    final labels = labelBuilder ?? (String value) => value;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: ListView.separated(
+            shrinkWrap: true,
+            padding: const EdgeInsets.only(bottom: AppSizes.lg),
+            itemCount: options.length + 1,
+            separatorBuilder: (context, index) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return ListTile(
+                  title: Text(title),
+                  trailing: selected.isEmpty
+                      ? null
+                      : TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            onSelected('');
+                          },
+                          child: const Text('Clear'),
+                        ),
+                );
+              }
+
+              final value = options[index - 1];
+              final isSelected = value == selected;
+              return ListTile(
+                title: Text(labels(value)),
+                trailing: isSelected ? const Icon(Icons.check) : null,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onSelected(value);
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  static String _stageLabel(String value) {
+    switch (value) {
+      case 'idea':
+        return 'Idea';
+      case 'launched':
+        return 'Launched';
+      case 'growing':
+        return 'Growing';
+      case 'mvp':
+      default:
+        return 'MVP';
+    }
+  }
+}
+
+class _FilterChipButton extends StatelessWidget {
+  const _FilterChipButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      label: Text(label),
+      onPressed: onTap,
+      avatar: const Icon(Icons.tune, size: 16),
+      visualDensity: VisualDensity.compact,
     );
   }
 }

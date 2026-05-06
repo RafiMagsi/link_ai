@@ -20,6 +20,48 @@ class HashtagTrend {
   const HashtagTrend({required this.tag, required this.count});
 }
 
+class PeopleDiscoveryFilters {
+  final String role;
+  final String projectStage;
+  final String lookingFor;
+  final String aiCategory;
+  final String location;
+
+  const PeopleDiscoveryFilters({
+    this.role = '',
+    this.projectStage = '',
+    this.lookingFor = '',
+    this.aiCategory = '',
+    this.location = '',
+  });
+
+  bool get hasActiveFilters {
+    return role.isNotEmpty ||
+        projectStage.isNotEmpty ||
+        lookingFor.isNotEmpty ||
+        aiCategory.isNotEmpty ||
+        location.isNotEmpty;
+  }
+
+  PeopleDiscoveryFilters copyWith({
+    String? role,
+    String? projectStage,
+    String? lookingFor,
+    String? aiCategory,
+    String? location,
+  }) {
+    return PeopleDiscoveryFilters(
+      role: role ?? this.role,
+      projectStage: projectStage ?? this.projectStage,
+      lookingFor: lookingFor ?? this.lookingFor,
+      aiCategory: aiCategory ?? this.aiCategory,
+      location: location ?? this.location,
+    );
+  }
+
+  static const empty = PeopleDiscoveryFilters();
+}
+
 final trendingHashtagsProvider = StreamProvider<List<HashtagTrend>>((ref) {
   return ref
       .watch(postRemoteDataSourceProvider)
@@ -49,26 +91,66 @@ final trendingHashtagsProvider = StreamProvider<List<HashtagTrend>>((ref) {
 
 // Search state providers
 final searchQueryProvider = StateProvider<String>((ref) => '');
+final peopleDiscoveryFiltersProvider =
+    StateProvider<PeopleDiscoveryFilters>((ref) {
+      return PeopleDiscoveryFilters.empty;
+    });
 
 final userSearchResultsProvider =
     FutureProvider<List<ProfileModel>>((ref) async {
   final query = ref.watch(searchQueryProvider);
+  final filters = ref.watch(peopleDiscoveryFiltersProvider);
 
-  if (query.isEmpty) {
+  if (query.isEmpty && !filters.hasActiveFilters) {
     return [];
   }
 
   try {
     final dataSource = ref.watch(profileRemoteDataSourceProvider);
-    return await dataSource.searchProfiles(query, limit: 20).timeout(
+    final profiles = query.isEmpty
+        ? await dataSource.getPublicProfiles(limit: 60).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('Timeout fetching public profiles for discovery');
+              return [];
+            },
+          )
+        : await dataSource.searchProfiles(query, limit: 60).timeout(
       const Duration(seconds: 10),
       onTimeout: () {
-       debugPrint('Timeout searching profiles for query: $query');
+        debugPrint('Timeout searching profiles for query: $query');
         return [];
       },
     );
+
+    return profiles.where((profile) {
+      final roleMatch = filters.role.isEmpty ||
+          profile.role.toLowerCase().contains(filters.role.toLowerCase());
+      final stageMatch = filters.projectStage.isEmpty ||
+          profile.projectStage == filters.projectStage;
+      final lookingForMatch = filters.lookingFor.isEmpty ||
+          profile.lookingFor.any(
+            (item) =>
+                item.toLowerCase().contains(filters.lookingFor.toLowerCase()),
+          );
+      final aiCategoryMatch = filters.aiCategory.isEmpty ||
+          profile.aiCategories.any(
+            (item) =>
+                item.toLowerCase().contains(filters.aiCategory.toLowerCase()),
+          );
+      final locationMatch = filters.location.isEmpty ||
+          profile.location.toLowerCase().contains(filters.location.toLowerCase());
+
+      return roleMatch &&
+          stageMatch &&
+          lookingForMatch &&
+          aiCategoryMatch &&
+          locationMatch;
+    }).take(20).toList(growable: false);
   } catch (error, stackTrace) {
-   debugPrint('Error searching profiles for query: $query\n$error\n$stackTrace');
+    debugPrint(
+      'Error searching profiles for query: $query\n$error\n$stackTrace',
+    );
     return [];
   }
 });

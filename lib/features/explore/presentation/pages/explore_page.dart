@@ -179,7 +179,8 @@ class ExplorePage extends ConsumerWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: builders.length,
-              separatorBuilder: (_, __) => const SizedBox(width: AppSizes.md),
+              separatorBuilder: (context, index) =>
+                  const SizedBox(width: AppSizes.md),
               itemBuilder: (context, index) {
                 return _BuilderCard(builder: builders[index]);
               },
@@ -337,7 +338,7 @@ class _ExploreHero extends StatelessWidget {
                   const SizedBox(height: AppSizes.lg),
                   InkWell(
                     borderRadius: BorderRadius.circular(16),
-                    onTap: () => context.push('/network'),
+                    onTap: () => context.push('/search'),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSizes.md,
