@@ -443,9 +443,9 @@ service cloud.firestore {
     }
 
     match /users/{uid}/subscription/{docId} {
-      allow read: if isOwner(uid);
-      allow create: if false;
-      allow update: if false;
+      allow read: if isSignedIn();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
       allow delete: if false;
     }
   }
