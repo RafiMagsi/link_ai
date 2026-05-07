@@ -25,7 +25,9 @@ class SubscriptionRemoteDataSource {
           return SubscriptionModel.fromFirestore(snapshot);
         })
         .handleError((error, stackTrace) {
-          debugPrint('Error watching subscription for $uid: $error\n$stackTrace');
+          debugPrint(
+            'Error watching subscription for $uid: $error\n$stackTrace',
+          );
           return null;
         });
   }
@@ -47,84 +49,6 @@ class SubscriptionRemoteDataSource {
     } catch (error, stackTrace) {
       debugPrint('Error getting subscription for $uid: $error\n$stackTrace');
       return null;
-    }
-  }
-
-  Future<void> createSubscription({
-    required String uid,
-    required String purchaseId,
-    required DateTime expiresAt,
-  }) async {
-    try {
-      final subscription = SubscriptionModel(
-        uid: uid,
-        isGoldSubscriber: true,
-        purchaseId: purchaseId,
-        subscribedAt: DateTime.now(),
-        expiresAt: expiresAt,
-        subscriptionStatus: 'active',
-      );
-
-      await _users
-          .doc(uid)
-          .collection('subscription')
-          .doc('data')
-          .set(subscription.toCreateMap())
-          .timeout(const Duration(seconds: 10));
-    } catch (error, stackTrace) {
-      debugPrint('Error creating subscription for $uid: $error\n$stackTrace');
-      rethrow;
-    }
-  }
-
-  Future<void> updateSubscriptionStatus({
-    required String uid,
-    required String status,
-    DateTime? expiresAt,
-  }) async {
-    try {
-      final updateData = {
-        'subscriptionStatus': status,
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
-
-      if (expiresAt != null) {
-        updateData['expiresAt'] = Timestamp.fromDate(expiresAt);
-      }
-
-      if (status == 'canceled') {
-        updateData['canceledAt'] = FieldValue.serverTimestamp();
-        updateData['isGoldSubscriber'] = false;
-      }
-
-      await _users
-          .doc(uid)
-          .collection('subscription')
-          .doc('data')
-          .update(updateData)
-          .timeout(const Duration(seconds: 10));
-    } catch (error, stackTrace) {
-      debugPrint('Error updating subscription for $uid: $error\n$stackTrace');
-      rethrow;
-    }
-  }
-
-  Future<void> cancelSubscription(String uid) async {
-    try {
-      await _users
-          .doc(uid)
-          .collection('subscription')
-          .doc('data')
-          .update({
-            'subscriptionStatus': 'canceled',
-            'isGoldSubscriber': false,
-            'canceledAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          })
-          .timeout(const Duration(seconds: 10));
-    } catch (error, stackTrace) {
-      debugPrint('Error canceling subscription for $uid: $error\n$stackTrace');
-      rethrow;
     }
   }
 }

@@ -46,6 +46,7 @@ class ModernCommentCard extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isNested = comment.parentCommentId != null;
     final leftPadding = isNested ? 40.0 : 0.0;
+    final isSnowComment = comment.authorUid == 'snow_ai';
     final isAuthorGoldSubscriber = comment.authorUid.isEmpty
         ? false
         : ref.watch(isGoldSubscriberByUidProvider(comment.authorUid));
@@ -108,6 +109,29 @@ class ModernCommentCard extends ConsumerWidget {
                                     size: 12,
                                     padding: EdgeInsets.only(left: 4),
                                   ),
+                                if (isSnowComment) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.tertiary.withValues(
+                                        alpha: 0.14,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      'AI',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: colorScheme.tertiary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                                 if (isBestAnswer) ...[
                                   const SizedBox(width: 6),
                                   Container(

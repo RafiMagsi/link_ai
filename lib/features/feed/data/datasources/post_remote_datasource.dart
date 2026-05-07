@@ -29,10 +29,6 @@ class PostRemoteDataSource {
     return _firestore.collection('postLikes');
   }
 
-  CollectionReference<Map<String, dynamic>> get _postReposts {
-    return _firestore.collection('postReposts');
-  }
-
   CollectionReference<Map<String, dynamic>> get _postSaves {
     return _firestore.collection('postSaves');
   }
@@ -404,13 +400,10 @@ class PostRemoteDataSource {
   }) async {
     try {
       final result = await _posts
-          .where('postType', isEqualTo: 'commentRepost')
-          .where('quotedPostId', isEqualTo: postId)
-          .where('authorUid', isEqualTo: uid)
-          .limit(1)
+          .doc(_repostPostId(postId, uid))
           .get()
           .timeout(const Duration(seconds: 10));
-      return result.docs.isNotEmpty;
+      return result.exists;
     } catch (error, stackTrace) {
       debugPrint(
         'Error checking if post $postId reposted by $uid: $error\n$stackTrace',
@@ -476,41 +469,9 @@ class PostRemoteDataSource {
     required String postId,
     required String uid,
   }) async {
-    try {
-      final repostId = '${postId}_$uid';
-      final repostRef = _postReposts.doc(repostId);
-      final postRef = _posts.doc(postId);
-
-      await _firestore
-          .runTransaction((transaction) async {
-            final repostSnapshot = await transaction.get(repostRef);
-
-            if (repostSnapshot.exists) {
-              transaction.delete(repostRef);
-              transaction.update(postRef, {
-                'repostsCount': FieldValue.increment(-1),
-                'updatedAt': FieldValue.serverTimestamp(),
-              });
-            } else {
-              transaction.set(repostRef, {
-                'id': repostId,
-                'postId': postId,
-                'uid': uid,
-                'createdAt': FieldValue.serverTimestamp(),
-              });
-              transaction.update(postRef, {
-                'repostsCount': FieldValue.increment(1),
-                'updatedAt': FieldValue.serverTimestamp(),
-              });
-            }
-          })
-          .timeout(const Duration(seconds: 10));
-    } catch (error, stackTrace) {
-      debugPrint(
-        'Error toggling repost on post $postId by user $uid: $error\n$stackTrace',
-      );
-      rethrow;
-    }
+    throw UnimplementedError(
+      'Use toggleRepostOfPost with full repost context.',
+    );
   }
 
   Future<void> toggleSave({required String postId, required String uid}) async {
@@ -560,32 +521,25 @@ class PostRemoteDataSource {
   }) async {
     try {
       final originalPostRef = _posts.doc(originalPost.id);
-
-      // Check if user has already reposted this post
-      final existingRepost = await _posts
-          .where('postType', isEqualTo: 'commentRepost')
-          .where('quotedPostId', isEqualTo: originalPost.id)
-          .where('authorUid', isEqualTo: repostingUserUid)
-          .get()
-          .timeout(const Duration(seconds: 10));
+      final repostDocId = _repostPostId(originalPost.id, repostingUserUid);
+      final repostPostRef = _posts.doc(repostDocId);
 
       await _firestore
           .runTransaction((transaction) async {
-            if (existingRepost.docs.isNotEmpty) {
-              // User has already reposted - undo the repost
-              final repostDocId = existingRepost.docs.first.id;
-              transaction.delete(_posts.doc(repostDocId));
+            final repostSnapshot = await transaction.get(repostPostRef);
+            final originalSnapshot = await transaction.get(originalPostRef);
+            final currentCount =
+                (originalSnapshot.data()?['repostsCount'] as int?) ?? 0;
 
-              // Decrement the original post's repost count
+            if (repostSnapshot.exists) {
+              transaction.delete(repostPostRef);
               transaction.update(originalPostRef, {
-                'repostsCount': FieldValue.increment(-1),
+                'repostsCount': currentCount > 0 ? currentCount - 1 : 0,
                 'updatedAt': FieldValue.serverTimestamp(),
               });
             } else {
-              // User hasn't reposted yet - create new repost
-              final newPostId = _uuid.v4();
-              transaction.set(_posts.doc(newPostId), {
-                'id': newPostId,
+              transaction.set(repostPostRef, {
+                'id': repostDocId,
                 'postType': 'commentRepost',
                 'authorUid': repostingUserUid,
                 'authorName': repostingUserName,
@@ -608,9 +562,8 @@ class PostRemoteDataSource {
                 'updatedAt': FieldValue.serverTimestamp(),
               });
 
-              // Increment the original post's repost count
               transaction.update(originalPostRef, {
-                'repostsCount': FieldValue.increment(1),
+                'repostsCount': currentCount + 1,
                 'updatedAt': FieldValue.serverTimestamp(),
               });
             }
@@ -621,6 +574,8 @@ class PostRemoteDataSource {
       rethrow;
     }
   }
+
+  String _repostPostId(String postId, String uid) => 'repost_${postId}_$uid';
 
   Future<void> addComment({
     required ProfileModel profile,
@@ -923,11 +878,14 @@ class PostRemoteDataSource {
       await _firestore
           .runTransaction((transaction) async {
             final repostSnapshot = await transaction.get(repostRef);
+            final commentSnapshot = await transaction.get(commentRef);
+            final currentCount =
+                (commentSnapshot.data()?['repostsCount'] as int?) ?? 0;
 
             if (repostSnapshot.exists) {
               transaction.delete(repostRef);
               transaction.update(commentRef, {
-                'repostsCount': FieldValue.increment(-1),
+                'repostsCount': currentCount > 0 ? currentCount - 1 : 0,
               });
             } else {
               transaction.set(repostRef, {
@@ -938,7 +896,7 @@ class PostRemoteDataSource {
                 'createdAt': FieldValue.serverTimestamp(),
               });
               transaction.update(commentRef, {
-                'repostsCount': FieldValue.increment(1),
+                'repostsCount': currentCount + 1,
               });
 
               final newPostId = _uuid.v4();

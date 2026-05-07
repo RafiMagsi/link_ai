@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../data/datasources/snow_chat_remote_datasource.dart';
+import '../providers/snow_chat_providers.dart';
 import '../../../subscription/presentation/providers/subscription_providers.dart';
 import '../widgets/snow_chat_bubble.dart';
 
@@ -18,7 +22,8 @@ class _SnowChatPageState extends ConsumerState<SnowChatPage> {
 
   final List<Map<String, dynamic>> _messages = [
     {
-      'text': 'Hey there! I\'m Snow, your AI assistant. How can I help you today?',
+      'text':
+          'Hey there! I\'m Snow, your AI assistant. How can I help you today?',
       'isUser': false,
       'timestamp': DateTime.now(),
     },
@@ -53,7 +58,8 @@ class _SnowChatPageState extends ConsumerState<SnowChatPage> {
   Future<void> _sendMessage() async {
     if (_messageController.text.isEmpty) return;
 
-    final userMessage = _messageController.text;
+    final userMessage = _messageController.text.trim();
+    if (userMessage.isEmpty) return;
     _messageController.clear();
 
     setState(() {
@@ -67,20 +73,44 @@ class _SnowChatPageState extends ConsumerState<SnowChatPage> {
 
     _scrollToBottom();
 
-    // TODO: Send message to Cloud Function and get AI response
-    // For now, simulate a response
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final history = _messages
+          .take(_messages.length - 1)
+          .map(
+            (message) => SnowChatMessagePayload(
+              role: message['isUser'] == true ? 'user' : 'assistant',
+              text: message['text'] as String,
+            ),
+          )
+          .toList();
 
-    setState(() {
-      _messages.add({
-        'text': 'This is a simulated response. AI integration coming soon!',
-        'isUser': false,
-        'timestamp': DateTime.now(),
+      final reply = await ref
+          .read(snowChatRemoteDataSourceProvider)
+          .sendMessage(message: userMessage, history: history);
+
+      if (!mounted) return;
+      setState(() {
+        _messages.add({
+          'text': reply,
+          'isUser': false,
+          'timestamp': DateTime.now(),
+        });
+        _isLoading = false;
       });
-      _isLoading = false;
-    });
-
-    _scrollToBottom();
+      _scrollToBottom();
+    } on FirebaseFunctionsException catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message ?? 'Snow request failed.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Snow request failed: $error')));
+    }
   }
 
   @override
@@ -88,13 +118,8 @@ class _SnowChatPageState extends ConsumerState<SnowChatPage> {
     final isGoldSubscriber = ref.watch(isGoldSubscriberProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Snow AI'),
-        centerTitle: true,
-      ),
-      body: isGoldSubscriber
-          ? _buildChatUI()
-          : _buildLockedUI(),
+      appBar: AppBar(title: const Text('Snow AI'), centerTitle: true),
+      body: isGoldSubscriber ? _buildChatUI() : _buildLockedUI(),
     );
   }
 
@@ -140,11 +165,7 @@ class _SnowChatPageState extends ConsumerState<SnowChatPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: Theme.of(context).dividerColor,
-          ),
-        ),
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: Row(
         children: [
@@ -184,11 +205,7 @@ class _SnowChatPageState extends ConsumerState<SnowChatPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.lock,
-              size: 48,
-              color: Colors.grey,
-            ),
+            const Icon(Icons.lock, size: 48, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
               'Snow AI is a Gold Feature',
@@ -201,11 +218,20 @@ class _SnowChatPageState extends ConsumerState<SnowChatPage> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Back'),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => context.push('/subscription'),
+                child: const Text('Get Gold'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: const Text('Back'),
+              ),
             ),
           ],
         ),

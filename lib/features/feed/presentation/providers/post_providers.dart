@@ -531,6 +531,16 @@ class PostController extends StateNotifier<AsyncValue<void>> {
         postInteractionStateProvider(postId).future,
       );
       final currentPost = _ref.read(postByIdProvider(postId)).asData?.value;
+      final myProfile = await _ref.read(myProfileProvider.future);
+
+      if (currentPost == null) {
+        throw Exception('Post not found.');
+      }
+
+      if (myProfile == null) {
+        throw Exception('Profile not found. Please log in again.');
+      }
+
       final newReposted = !currentInteractionState.reposted;
 
       final optimisticInteractionState = currentInteractionState.copyWith(
@@ -540,17 +550,20 @@ class PostController extends StateNotifier<AsyncValue<void>> {
           .read(optimisticInteractionProvider(postId).notifier)
           .setOptimistic(optimisticInteractionState);
 
-      if (currentPost != null) {
-        _ref
-            .read(optimisticPostCountProvider.notifier)
-            .updateRepostCount(postId, currentPost, newReposted);
-      }
+      _ref
+          .read(optimisticPostCountProvider.notifier)
+          .updateRepostCount(postId, currentPost, newReposted);
 
       await _postRemoteDataSource
-          .toggleRepost(postId: postId, uid: user.uid)
+          .toggleRepostOfPost(
+            originalPost: currentPost,
+            repostingUserUid: user.uid,
+            repostingUserName: myProfile.name,
+            repostingUserRole: myProfile.role,
+            repostingUserAvatarUrl: myProfile.avatarUrl,
+          )
           .timeout(const Duration(seconds: 10));
 
-      // Keep optimistic state on success
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling repost: $error\n$stackTrace');
@@ -563,39 +576,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
   }
 
   Future<void> toggleRepostOfPost(String postId) async {
-    state = const AsyncLoading();
-
-    try {
-      final user = _ref.read(currentUserProvider);
-      if (user == null) {
-        throw Exception('You must be logged in to repost.');
-      }
-
-      final myProfile = await _ref.read(myProfileProvider.future);
-      if (myProfile == null) {
-        throw Exception('Profile not found. Please log in again.');
-      }
-
-      final originalPost = _ref.read(postByIdProvider(postId)).asData?.value;
-      if (originalPost == null) {
-        throw Exception('Post not found.');
-      }
-
-      await _postRemoteDataSource
-          .toggleRepostOfPost(
-            originalPost: originalPost,
-            repostingUserUid: user.uid,
-            repostingUserName: myProfile.name,
-            repostingUserRole: myProfile.role,
-            repostingUserAvatarUrl: myProfile.avatarUrl,
-          )
-          .timeout(const Duration(seconds: 15));
-
-      state = const AsyncData(null);
-    } catch (error, stackTrace) {
-      debugPrint('Error toggling repost: $error\n$stackTrace');
-      state = AsyncError(error, stackTrace);
-    }
+    await toggleRepost(postId);
   }
 
   Future<void> toggleSave(String postId) async {

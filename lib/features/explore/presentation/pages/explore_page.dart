@@ -7,6 +7,7 @@ import 'package:link_ai/features/explore/presentation/widgets/shadow_style.dart'
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/app_loader.dart';
+import '../../../subscription/presentation/providers/subscription_providers.dart';
 import '../providers/explore_providers.dart';
 
 class ExplorePage extends ConsumerWidget {
@@ -239,12 +240,13 @@ class ExplorePage extends ConsumerWidget {
   }
 }
 
-class _ExploreHero extends StatelessWidget {
+class _ExploreHero extends ConsumerWidget {
   const _ExploreHero();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isGoldSubscriber = ref.watch(isGoldSubscriberProvider);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -334,6 +336,73 @@ class _ExploreHero extends StatelessWidget {
                           height: 1.35,
                           fontWeight: FontWeight.w600,
                         ),
+                  ),
+                  const SizedBox(height: AppSizes.lg),
+                  Container(
+                    padding: const EdgeInsets.all(AppSizes.md),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface.withValues(alpha: 0.94),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: const Color(0xFF60A5FA).withValues(alpha: 0.12),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFFBFDBFE),
+                                Color(0xFFD8B4FE),
+                              ],
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.smart_toy_outlined,
+                            color: Color(0xFF312E81),
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ask Snow',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isGoldSubscriber
+                                    ? 'Open Snow AI chat for ideas and feedback.'
+                                    : 'Gold members can chat with Snow AI.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.sm),
+                        FilledButton.tonal(
+                          onPressed: () => context.push(
+                            isGoldSubscriber ? '/snow-chat' : '/subscription',
+                          ),
+                          child: Text(isGoldSubscriber ? 'Open' : 'Get Gold'),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: AppSizes.lg),
                   InkWell(

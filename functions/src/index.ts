@@ -1,5 +1,6 @@
 import {onCall, HttpsError, onRequest} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
+import {createSign} from "node:crypto";
 import {
   onDocumentCreated,
 } from "firebase-functions/v2/firestore";
@@ -7,6 +8,24 @@ import {
 admin.initializeApp();
 
 const db = admin.firestore();
+const SNOW_UID = "snow_ai";
+const SNOW_NAME = "Snow AI";
+const DEFAULT_SNOW_USER_COOLDOWN_HOURS = 6;
+const DEFAULT_SNOW_GLOBAL_MAX_REPLIES_PER_HOUR = 10;
+const DEFAULT_GOLD_PRODUCT_IDS = ["gold_subscription_monthly"];
+const APPLE_API_PRODUCTION_URL = "https://api.storekit.itunes.apple.com";
+const APPLE_API_SANDBOX_URL = "https://api.storekit-sandbox.itunes.apple.com";
+
+type AppleTransactionPayload = {
+  bundleId?: string;
+  productId?: string;
+  environment?: string;
+  transactionId?: string;
+  originalTransactionId?: string;
+  purchaseDate?: number;
+  expiresDate?: number;
+  revocationDate?: number;
+};
 
 /**
  * Returns OpenAI runtime config.
@@ -66,6 +85,397 @@ async function generateOpenAiText(params: {
   }
 
   return output;
+}
+
+/**
+ * Returns true when a comment explicitly asks Snow.
+ * @param {string} text comment text
+ * @return {boolean} whether Snow should reply
+ */
+function shouldReplyAsSnow(text: string): boolean {
+  return /(^|\s)@snow\b/i.test(text);
+}
+
+/**
+ * Removes the @snow mention from a prompt body.
+ * @param {string} text comment text
+ * @return {string} cleaned text
+ */
+function stripSnowMention(text: string): string {
+  return text.replace(/(^|\s)@snow\b/gi, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Encodes a string or buffer as base64url.
+ * @param {Buffer|string} input value
+ * @return {string} encoded value
+ */
+function toBase64Url(input: Buffer | string): string {
+  return Buffer.from(input)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+/**
+ * Decodes a compact JWS payload without verifying the signature.
+ * @param {string} token compact JWS
+ * @return {Record<string, unknown>} decoded payload
+ */
+function decodeJwsPayload(token: string): Record<string, unknown> {
+  const parts = token.split(".");
+  if (parts.length < 2) {
+    throw new HttpsError("invalid-argument", "Invalid signed payload.");
+  }
+
+  const normalized = parts[1]
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+  const padding = normalized.length % 4;
+  const padded = padding == 0 ?
+    normalized :
+    normalized.padEnd(normalized.length + (4 - padding), "=");
+
+  return JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as
+    Record<string, unknown>;
+}
+
+/**
+ * Returns direct App Store Server API config.
+ * @return {{
+ *   issuerId: string,
+ *   keyId: string,
+ *   privateKey: string,
+ *   bundleId: string,
+ *   productIds: string[]
+ * }} config
+ */
+function getAppleSubscriptionConfig(): {
+  issuerId: string;
+  keyId: string;
+  privateKey: string;
+  bundleId: string;
+  productIds: string[];
+  } {
+  const issuerId = process.env.APPLE_SUBSCRIPTION_ISSUER_ID;
+  const keyId = process.env.APPLE_SUBSCRIPTION_KEY_ID;
+  const privateKey = process.env.APPLE_SUBSCRIPTION_PRIVATE_KEY;
+  const bundleId =
+    process.env.APPLE_SUBSCRIPTION_BUNDLE_ID || "com.nextfiction.linkaiapp";
+  const productIds = (
+    process.env.APPLE_SUBSCRIPTION_PRODUCT_IDS ||
+    DEFAULT_GOLD_PRODUCT_IDS.join(",")
+  )
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  if (!issuerId || !keyId || !privateKey) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Apple subscription server verification is not configured."
+    );
+  }
+
+  return {
+    issuerId,
+    keyId,
+    privateKey: privateKey.replace(/\\n/g, "\n"),
+    bundleId,
+    productIds,
+  };
+}
+
+/**
+ * Creates a signed JWT for App Store Server API requests.
+ * @return {string} signed JWT
+ */
+function createAppleApiToken(): string {
+  const config = getAppleSubscriptionConfig();
+  const issuedAt = Math.floor(Date.now() / 1000);
+  const expiresAt = issuedAt + (60 * 10);
+  const header = {
+    alg: "ES256",
+    kid: config.keyId,
+    typ: "JWT",
+  };
+  const payload = {
+    iss: config.issuerId,
+    iat: issuedAt,
+    exp: expiresAt,
+    aud: "appstoreconnect-v1",
+    bid: config.bundleId,
+  };
+
+  const encodedHeader = toBase64Url(JSON.stringify(header));
+  const encodedPayload = toBase64Url(JSON.stringify(payload));
+  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+  const signature = createSign("SHA256")
+    .update(unsignedToken)
+    .end()
+    .sign({
+      key: config.privateKey,
+      dsaEncoding: "ieee-p1363",
+    });
+
+  return `${unsignedToken}.${toBase64Url(signature)}`;
+}
+
+/**
+ * Loads verified App Store transaction info for a transaction identifier.
+ * @param {string} transactionId transaction id
+ * @return {Promise<AppleTransactionPayload>} verified payload
+ */
+async function fetchAppleTransactionInfo(
+  transactionId: string
+): Promise<AppleTransactionPayload> {
+  const token = createAppleApiToken();
+  const urls = [
+    APPLE_API_PRODUCTION_URL,
+    APPLE_API_SANDBOX_URL,
+  ];
+
+  for (const baseUrl of urls) {
+    const response = await fetch(
+      `${baseUrl}/inApps/v1/transactions/${transactionId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json() as {
+        signedTransactionInfo?: string;
+      };
+      const signedInfo = data.signedTransactionInfo;
+      if (!signedInfo) {
+        throw new HttpsError(
+          "internal",
+          "Missing signed transaction info from Apple."
+        );
+      }
+      return decodeJwsPayload(signedInfo) as AppleTransactionPayload;
+    }
+
+    if (response.status === 404) {
+      continue;
+    }
+
+    const errorText = await response.text();
+    console.error("Apple transaction lookup failed:", errorText);
+    throw new HttpsError(
+      "internal",
+      "Failed to verify the App Store transaction."
+    );
+  }
+
+  throw new HttpsError(
+    "not-found",
+    "Transaction was not found in App Store environments."
+  );
+}
+
+/**
+ * Loads Snow mention settings from app config with safe defaults.
+ * @return {Promise<{
+ *   userCooldownHours: number,
+ *   globalMaxRepliesPerHour: number
+ * }>}
+ */
+async function getSnowMentionSettings(): Promise<{
+  userCooldownHours: number;
+  globalMaxRepliesPerHour: number;
+}> {
+  const snapshot = await db.collection("appConfig").doc("global").get();
+  const data = snapshot.data() || {};
+
+  const userCooldownHours =
+    typeof data.snowAiUserCooldownHours === "number" &&
+      data.snowAiUserCooldownHours > 0 ?
+      data.snowAiUserCooldownHours :
+      DEFAULT_SNOW_USER_COOLDOWN_HOURS;
+
+  const globalMaxRepliesPerHour =
+    typeof data.snowAiGlobalMaxRepliesPerHour === "number" &&
+      data.snowAiGlobalMaxRepliesPerHour > 0 ?
+      data.snowAiGlobalMaxRepliesPerHour :
+      DEFAULT_SNOW_GLOBAL_MAX_REPLIES_PER_HOUR;
+
+  return {
+    userCooldownHours,
+    globalMaxRepliesPerHour,
+  };
+}
+
+/**
+ * Reserves a Snow reply slot with idempotency and rate limiting.
+ * @param {object} params input
+ * @param {string} params.commentId comment id
+ * @param {string} params.authorUid author uid
+ * @param {number} params.userCooldownHours per-user cooldown
+ * @param {number} params.globalMaxRepliesPerHour global hourly cap
+ * @return {Promise<boolean>} whether Snow may proceed
+ */
+async function reserveSnowReply(params: {
+  commentId: string;
+  authorUid: string;
+  userCooldownHours: number;
+  globalMaxRepliesPerHour: number;
+}): Promise<boolean> {
+  const replyRef = db.collection("snowAiReplies").doc(params.commentId);
+  const userUsageRef = db.collection("snowAiUserUsage").doc(params.authorUid);
+  const globalUsageRef = db.collection("snowAiUsage").doc("global");
+  const now = admin.firestore.Timestamp.now();
+  const nowMs = now.toMillis();
+  const cooldownMs = params.userCooldownHours * 60 * 60 * 1000;
+  const windowMs = 60 * 60 * 1000;
+
+  return db.runTransaction(async (transaction) => {
+    const [replySnap, userUsageSnap, globalUsageSnap] = await Promise.all([
+      transaction.get(replyRef),
+      transaction.get(userUsageRef),
+      transaction.get(globalUsageRef),
+    ]);
+
+    if (replySnap.exists) {
+      return false;
+    }
+
+    const userUsage = userUsageSnap.data() || {};
+    const lastReplyAt = userUsage.lastReplyAt as
+      | admin.firestore.Timestamp
+      | undefined;
+    if (lastReplyAt && nowMs - lastReplyAt.toMillis() < cooldownMs) {
+      return false;
+    }
+
+    const globalUsage = globalUsageSnap.data() || {};
+    const windowStartedAt = globalUsage.windowStartedAt as
+      | admin.firestore.Timestamp
+      | undefined;
+    const currentCount = typeof globalUsage.replyCount === "number" ?
+      globalUsage.replyCount :
+      0;
+
+    const isSameWindow = windowStartedAt &&
+      nowMs - windowStartedAt.toMillis() < windowMs;
+    const nextCount = isSameWindow ? currentCount + 1 : 1;
+
+    if (isSameWindow && currentCount >= params.globalMaxRepliesPerHour) {
+      return false;
+    }
+
+    transaction.set(replyRef, {
+      commentId: params.commentId,
+      authorUid: params.authorUid,
+      status: "pending",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    transaction.set(userUsageRef, {
+      uid: params.authorUid,
+      lastReplyAt: now,
+      updatedAt: now,
+    }, {merge: true});
+
+    transaction.set(globalUsageRef, {
+      windowStartedAt: isSameWindow ? windowStartedAt : now,
+      replyCount: nextCount,
+      updatedAt: now,
+    }, {merge: true});
+
+    return true;
+  });
+}
+
+/**
+ * Loads prompt context for a Snow reply.
+ * @param {object} params input
+ * @param {string} params.postId post id
+ * @param {string=} params.parentCommentId parent comment id
+ * @return {Promise<string>} compact context string
+ */
+async function buildSnowThreadContext(params: {
+  postId: string;
+  parentCommentId?: string;
+}): Promise<string> {
+  const contextParts: string[] = [];
+
+  if (params.parentCommentId) {
+    const parentSnapshot = await db
+      .collection("posts")
+      .doc(params.postId)
+      .collection("comments")
+      .doc(params.parentCommentId)
+      .get();
+
+    if (parentSnapshot.exists) {
+      const parent = parentSnapshot.data() || {};
+      const parentAuthor = (parent.authorName as string | undefined) || "User";
+      const parentText = (parent.text as string | undefined)?.trim() || "";
+      if (parentText) {
+        contextParts.push(
+          `Parent comment by ${parentAuthor}: ${parentText}`
+        );
+      }
+    }
+  }
+
+  const recentCommentsSnapshot = await db
+    .collection("posts")
+    .doc(params.postId)
+    .collection("comments")
+    .orderBy("createdAt", "desc")
+    .limit(4)
+    .get();
+
+  const recentComments = recentCommentsSnapshot.docs
+    .map((doc) => doc.data())
+    .filter((item) => item.authorUid !== SNOW_UID)
+    .map((item) => {
+      const author = (item.authorName as string | undefined) || "User";
+      const text = (item.text as string | undefined)?.trim() || "";
+      return text ? `${author}: ${text}` : "";
+    })
+    .filter((item) => item.length > 0);
+
+  if (recentComments.length > 0) {
+    contextParts.push(`Recent discussion:\n${recentComments.join("\n")}`);
+  }
+
+  return contextParts.join("\n\n");
+}
+
+/**
+ * Returns whether a user currently has an active Gold subscription.
+ * @param {string} uid user id
+ * @return {Promise<boolean>} whether gold is active
+ */
+async function isUserGoldSubscriber(uid: string): Promise<boolean> {
+  const snapshot = await db
+    .collection("users")
+    .doc(uid)
+    .collection("subscription")
+    .doc("data")
+    .get();
+
+  if (!snapshot.exists) {
+    return false;
+  }
+
+  const data = snapshot.data() || {};
+  const isGold = data.isGoldSubscriber === true;
+  const expiresAt = data.expiresAt as admin.firestore.Timestamp | undefined;
+
+  if (!isGold) {
+    return false;
+  }
+
+  return !expiresAt || expiresAt.toMillis() > Date.now();
 }
 
 /**
@@ -168,6 +578,107 @@ async function getProfileSafe(uid: string) {
     avatarUrl: data.avatarUrl || null,
   };
 }
+
+/**
+ * Syncs a Gold entitlement from a verified App Store transaction.
+ */
+export const syncGoldSubscription = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Login required.");
+  }
+
+  const uid = request.auth.uid;
+  const purchaseSource =
+    (request.data.purchaseSource as string | undefined)?.trim() || "";
+  const productId =
+    (request.data.productId as string | undefined)?.trim() || "";
+  const transactionIdInput =
+    (request.data.transactionId as string | undefined)?.trim() || "";
+  const serverVerificationData =
+    (request.data.serverVerificationData as string | undefined)?.trim() || "";
+
+  if (purchaseSource !== "app_store") {
+    throw new HttpsError(
+      "failed-precondition",
+      "Direct Gold verification is configured for App Store only."
+    );
+  }
+
+  const config = getAppleSubscriptionConfig();
+  if (!config.productIds.includes(productId)) {
+    throw new HttpsError("invalid-argument", "Unsupported product id.");
+  }
+
+  const fallbackPayload = serverVerificationData ?
+    decodeJwsPayload(serverVerificationData) :
+    null;
+  const transactionId = transactionIdInput ||
+    (typeof fallbackPayload?.transactionId === "string" ?
+      fallbackPayload.transactionId :
+      "");
+
+  if (!transactionId) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Transaction id is required for App Store verification."
+    );
+  }
+
+  const payload = await fetchAppleTransactionInfo(transactionId);
+  if (payload.bundleId !== config.bundleId) {
+    throw new HttpsError("permission-denied", "Bundle id mismatch.");
+  }
+  if (payload.productId !== productId) {
+    throw new HttpsError("permission-denied", "Product id mismatch.");
+  }
+
+  const expiresAtMs =
+    typeof payload.expiresDate === "number" ? payload.expiresDate : null;
+  const purchaseDateMs =
+    typeof payload.purchaseDate === "number" ? payload.purchaseDate : null;
+  const revoked = typeof payload.revocationDate === "number";
+  const isActive = !revoked &&
+    (!expiresAtMs || expiresAtMs > Date.now());
+  const subscriptionStatus = revoked ?
+    "revoked" :
+    isActive ?
+      "active" :
+      "expired";
+
+  await db
+    .collection("users")
+    .doc(uid)
+    .collection("subscription")
+    .doc("data")
+    .set({
+      uid,
+      productId,
+      purchaseId: payload.originalTransactionId || transactionId,
+      transactionId: payload.transactionId || transactionId,
+      originalTransactionId: payload.originalTransactionId || transactionId,
+      provider: "app_store",
+      environment: payload.environment || "unknown",
+      isGoldSubscriber: isActive,
+      subscribedAt: purchaseDateMs ?
+        admin.firestore.Timestamp.fromMillis(purchaseDateMs) :
+        admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: expiresAtMs ?
+        admin.firestore.Timestamp.fromMillis(expiresAtMs) :
+        null,
+      subscriptionStatus,
+      verificationSource: "app_store_server_api",
+      lastVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+
+  return {
+    isActive,
+    subscriptionStatus,
+    expiresAt: expiresAtMs ?
+      new Date(expiresAtMs).toISOString() :
+      null,
+  };
+});
 
 export const onPostLikeCreated = onDocumentCreated(
   "postLikes/{likeId}",
@@ -313,6 +824,120 @@ export const onPostCommentCreated = onDocumentCreated(
     });
   }
 );
+
+export const onSnowMentionCommentCreated = onDocumentCreated(
+  "posts/{postId}/comments/{commentId}",
+  async (event) => {
+    const comment = event.data?.data();
+
+    if (!comment) return;
+
+    const postId = event.params.postId;
+    const commentId = event.params.commentId;
+    const authorUid = comment.authorUid as string | undefined;
+    const rawText = (comment.text as string | undefined)?.trim() || "";
+    const parentCommentId =
+      (comment.parentCommentId as string | undefined)?.trim() || undefined;
+
+    if (!authorUid ||
+      !rawText ||
+      authorUid === SNOW_UID ||
+      !shouldReplyAsSnow(rawText)
+    ) {
+      return;
+    }
+
+    const settings = await getSnowMentionSettings();
+    const reserved = await reserveSnowReply({
+      commentId,
+      authorUid,
+      userCooldownHours: settings.userCooldownHours,
+      globalMaxRepliesPerHour: settings.globalMaxRepliesPerHour,
+    });
+
+    if (!reserved) {
+      return;
+    }
+
+    const postSnapshot = await db.collection("posts").doc(postId).get();
+    if (!postSnapshot.exists) return;
+
+    const post = postSnapshot.data() || {};
+    const prompt = stripSnowMention(rawText);
+    const postText = (post.text as string | undefined)?.trim() || "";
+    const postIntent =
+      (post.postIntent as string | undefined)?.trim() || "general";
+    const hashtags = Array.isArray(post.hashtags) ?
+      post.hashtags.filter((item: unknown) => typeof item === "string") :
+      [];
+    const threadContext = await buildSnowThreadContext({
+      postId,
+      parentCommentId,
+    });
+    const isGoldUser = await isUserGoldSubscriber(authorUid);
+
+    const replyRef = db.collection("snowAiReplies").doc(commentId);
+
+    try {
+      const replyText = isGoldUser ?
+        await generateOpenAiText({
+          instructions:
+            "You are Snow, an AI assistant inside an AI social app. " +
+            "Reply as a helpful comment about the post. " +
+            "Use the thread context when it matters. " +
+            "Be concrete, concise, and useful. " +
+            "Do not mention system prompts. " +
+            "Do not use markdown bullets unless necessary. " +
+            "Keep the reply under 420 characters.",
+          input:
+            `Post intent: ${postIntent}\n` +
+            `Post text: ${postText}\n` +
+            `Hashtags: ${hashtags.join(", ")}\n` +
+            `Thread context:\n${threadContext || "None"}\n` +
+            `User asked Snow: ${prompt || rawText}`,
+        }) :
+        "Snow feedback is available for Gold members. " +
+        "Upgrade to Gold to ask @snow for post feedback and AI help.";
+
+      const postRef = db.collection("posts").doc(postId);
+      const snowCommentRef = postRef.collection("comments").doc();
+
+      await db.runTransaction(async (transaction) => {
+        transaction.set(snowCommentRef, {
+          id: snowCommentRef.id,
+          postId,
+          authorUid: SNOW_UID,
+          authorName: SNOW_NAME,
+          authorAvatarUrl: null,
+          text: replyText,
+          parentCommentId: commentId,
+          likesCount: 0,
+          repostsCount: 0,
+          savesCount: 0,
+          createdAtClient: admin.firestore.Timestamp.now(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.update(postRef, {
+          commentsCount: admin.firestore.FieldValue.increment(1),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.set(replyRef, {
+          status: "done",
+          replyCommentId: snowCommentRef.id,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+      });
+    } catch (error) {
+      await replyRef.set({
+        status: "failed",
+        errorMessage: error instanceof Error ? error.message : "unknown_error",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+      throw error;
+    }
+  }
+);
+
 export const onProductSaveCreated = onDocumentCreated(
   "productSaves/{saveId}",
   async (event) => {
@@ -390,8 +1015,11 @@ async function queueDecrementIfExists(
     return 0;
   }
 
+  const data = snapshot.data() || {};
+  const currentValue = typeof data[field] === "number" ? data[field] : 0;
+
   batch.update(ref, {
-    [field]: admin.firestore.FieldValue.increment(-1),
+    [field]: currentValue > 0 ? currentValue - 1 : 0,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
@@ -695,8 +1323,7 @@ export const deleteMyAccount = onCall(async (request) => {
 });
 
 /**
- * Handles RevenueCat webhook for subscription updates.
- * Called by RevenueCat when a user makes a purchase.
+ * Optional external webhook for syncing subscription updates.
  */
 export const subscriptionWebhook = onRequest(async (request, response) => {
   try {
@@ -748,6 +1375,14 @@ export const snowAiResponse = onCall(async (request) => {
 
   const uid = request.auth.uid;
   const userMessage = request.data.message as string;
+  const history = Array.isArray(request.data.messages) ?
+    request.data.messages.filter((item: unknown) =>
+      typeof item === "object" &&
+      item !== null &&
+      typeof (item as {role?: unknown}).role === "string" &&
+      typeof (item as {text?: unknown}).text === "string"
+    ) as Array<{role: string; text: string}> :
+    [];
 
   if (!userMessage || userMessage.trim().length === 0) {
     throw new HttpsError(
@@ -756,25 +1391,7 @@ export const snowAiResponse = onCall(async (request) => {
     );
   }
 
-  // Check if user is a gold subscriber
-  const subRef = db
-    .collection("users")
-    .doc(uid)
-    .collection("subscription")
-    .doc("data");
-  const subSnapshot = await subRef.get();
-
-  if (!subSnapshot.exists) {
-    throw new HttpsError(
-      "permission-denied",
-      "Gold subscription required.",
-    );
-  }
-
-  const subscription = subSnapshot.data();
-  const expiresAt = subscription?.expiresAt?.toDate?.() || new Date(0);
-
-  if (!subscription?.isGoldSubscriber || new Date() > expiresAt) {
+  if (!(await isUserGoldSubscriber(uid))) {
     throw new HttpsError(
       "permission-denied",
       "Gold subscription required.",
@@ -782,13 +1399,21 @@ export const snowAiResponse = onCall(async (request) => {
   }
 
   try {
-    // TODO: Integrate with Gemini API
-    // For now, return a placeholder response
-    const msg = userMessage.substring(0, 50);
-    const response = "Thanks for the message! " +
-        "This is a simulated response from @snow. " +
-        "Gemini API integration coming soon. " +
-        `Your message: "${msg}..."`;
+    const historyText = history
+      .slice(-8)
+      .map((item) => `${item.role}: ${item.text}`)
+      .join("\n");
+    const response = await generateOpenAiText({
+      instructions:
+        "You are Snow, an AI assistant inside AI Links. " +
+        "Be concise, useful, and practical. " +
+        "Focus on AI products, builders, feedback, growth, and networking. " +
+        "Do not claim actions you cannot take. " +
+        "Return only the assistant reply.",
+      input:
+        `Conversation so far:\n${historyText}\n\n` +
+        `User: ${userMessage.trim()}`,
+    });
 
     return {
       success: true,

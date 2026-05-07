@@ -1,9 +1,9 @@
 import 'dart:async';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/iap_constants.dart';
 
@@ -21,13 +21,35 @@ class IAPProduct {
   });
 }
 
+enum IAPActionStatus { success, canceled, failed }
+
+class IAPActionResult {
+  const IAPActionResult({required this.status, required this.message});
+
+  final IAPActionStatus status;
+  final String message;
+
+  bool get isSuccess => status == IAPActionStatus.success;
+
+  static const IAPActionResult canceled = IAPActionResult(
+    status: IAPActionStatus.canceled,
+    message: 'Purchase was cancelled.',
+  );
+
+  static const IAPActionResult restoreEmpty = IAPActionResult(
+    status: IAPActionStatus.failed,
+    message: 'No active Gold subscription was found to restore.',
+  );
+}
+
 class IAPRemoteDataSource {
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final Uuid _uuid = const Uuid();
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
-  Completer<bool>? _purchaseCompleter;
-  Completer<bool>? _restoreCompleter;
+  Completer<IAPActionResult>? _purchaseCompleter;
+  Completer<IAPActionResult>? _restoreCompleter;
   String? _pendingProductId;
 
   Future<void> initialize() async {
@@ -36,8 +58,18 @@ class IAPRemoteDataSource {
     _purchaseSubscription = _inAppPurchase.purchaseStream.listen(
       _handlePurchaseUpdates,
       onError: (_) {
-        _completePendingPurchase(false);
-        _completeRestore(false);
+        _completePendingPurchase(
+          const IAPActionResult(
+            status: IAPActionStatus.failed,
+            message: 'Store purchase stream failed.',
+          ),
+        );
+        _completeRestore(
+          const IAPActionResult(
+            status: IAPActionStatus.failed,
+            message: 'Store restore stream failed.',
+          ),
+        );
       },
     );
   }
@@ -95,7 +127,7 @@ class IAPRemoteDataSource {
   }
 
   /// Purchase a subscription
-  Future<bool> purchaseSubscription(String productId) async {
+  Future<IAPActionResult> purchaseSubscription(String productId) async {
     try {
       await initialize();
       final user = _auth.currentUser;
@@ -114,34 +146,44 @@ class IAPRemoteDataSource {
       }
 
       final productDetails = response.productDetails.first;
+      final appAccountToken = _appAccountToken(user.uid);
 
       final purchased = await _inAppPurchase.buyNonConsumable(
-        purchaseParam: PurchaseParam(productDetails: productDetails),
+        purchaseParam: PurchaseParam(
+          productDetails: productDetails,
+          applicationUserName: appAccountToken,
+        ),
       );
 
       if (!purchased) {
-        return false;
+        return IAPActionResult.canceled;
       }
 
       _pendingProductId = productId;
-      _purchaseCompleter = Completer<bool>();
+      _purchaseCompleter = Completer<IAPActionResult>();
 
       final result = await _purchaseCompleter!.future.timeout(
         const Duration(seconds: 60),
         onTimeout: () {
           _pendingProductId = null;
           _purchaseCompleter = null;
-          return false;
+          return const IAPActionResult(
+            status: IAPActionStatus.failed,
+            message: 'Purchase verification timed out. Try restore later.',
+          );
         },
       );
       return result;
     } catch (e) {
-      return false;
+      return IAPActionResult(
+        status: IAPActionStatus.failed,
+        message: 'Purchase failed: $e',
+      );
     }
   }
 
   /// Restore previous purchases
-  Future<bool> restorePurchases() async {
+  Future<IAPActionResult> restorePurchases() async {
     try {
       await initialize();
       final user = _auth.currentUser;
@@ -149,81 +191,40 @@ class IAPRemoteDataSource {
         throw Exception('User not authenticated');
       }
 
-      _restoreCompleter = Completer<bool>();
+      _restoreCompleter = Completer<IAPActionResult>();
 
-      await _inAppPurchase.restorePurchases();
+      await _inAppPurchase.restorePurchases(
+        applicationUserName: _appAccountToken(user.uid),
+      );
 
       final result = await _restoreCompleter!.future.timeout(
         const Duration(seconds: 30),
         onTimeout: () {
           _restoreCompleter = null;
-          return false;
+          return const IAPActionResult(
+            status: IAPActionStatus.failed,
+            message: 'Restore timed out. Try again.',
+          );
         },
       );
       return result;
     } catch (e) {
-      return false;
+      return IAPActionResult(
+        status: IAPActionStatus.failed,
+        message: 'Restore failed: $e',
+      );
     }
-  }
-
-  /// Check if user has an active subscription
-  Future<bool> hasActiveSubscription(String uid) async {
-    try {
-      final subscriptionRef = _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('subscription')
-          .doc('data');
-
-      final doc = await subscriptionRef.get();
-      if (!doc.exists) {
-        return false;
-      }
-
-      final data = doc.data();
-      if (data == null) {
-        return false;
-      }
-
-      final isActive = data['isGoldSubscriber'] == true;
-      final expiresAt = data['expiresAt'] as Timestamp?;
-
-      if (!isActive || expiresAt == null) {
-        return false;
-      }
-
-      return expiresAt.toDate().isAfter(DateTime.now());
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Create subscription in Firestore after successful purchase
-  Future<void> _createSubscriptionInFirestore(String uid) async {
-    final thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-    final expiresAtMs = DateTime.now().millisecondsSinceEpoch + thirtyDaysMs;
-    final expiresAt = Timestamp.fromMillisecondsSinceEpoch(expiresAtMs);
-
-    final subscriptionRef = _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('subscription')
-        .doc('data');
-
-    await subscriptionRef.set({
-      'uid': uid,
-      'isGoldSubscriber': true,
-      'subscribedAt': FieldValue.serverTimestamp(),
-      'expiresAt': expiresAt,
-      'subscriptionStatus': 'active',
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
   }
 
   Future<void> _handlePurchaseUpdates(List<PurchaseDetails> purchases) async {
     final user = _auth.currentUser;
     if (user == null) {
-      _completePendingPurchase(false);
+      _completePendingPurchase(
+        const IAPActionResult(
+          status: IAPActionStatus.failed,
+          message: 'User not authenticated.',
+        ),
+      );
       return;
     }
 
@@ -244,40 +245,118 @@ class IAPRemoteDataSource {
         case PurchaseStatus.pending:
           break;
         case PurchaseStatus.canceled:
+          if (_pendingProductId == purchase.productID) {
+            _completePendingPurchase(IAPActionResult.canceled);
+          }
+          break;
         case PurchaseStatus.error:
           if (_pendingProductId == purchase.productID) {
-            _completePendingPurchase(false);
+            _completePendingPurchase(
+              IAPActionResult(
+                status: IAPActionStatus.failed,
+                message: purchase.error?.message ?? 'Store purchase failed.',
+              ),
+            );
           }
           break;
         case PurchaseStatus.purchased:
         case PurchaseStatus.restored:
           try {
+            final syncResult = await _syncGoldSubscription(
+              purchase: purchase,
+              uid: user.uid,
+            );
+
             if (purchase.pendingCompletePurchase) {
               await _inAppPurchase.completePurchase(purchase);
             }
 
-            await _createSubscriptionInFirestore(user.uid);
-
             if (_pendingProductId == purchase.productID) {
-              _completePendingPurchase(true);
+              _completePendingPurchase(syncResult);
             }
-            _completeRestore(true);
-          } catch (_) {
+            _completeRestore(syncResult);
+          } catch (error) {
             if (_pendingProductId == purchase.productID) {
-              _completePendingPurchase(false);
+              _completePendingPurchase(
+                IAPActionResult(
+                  status: IAPActionStatus.failed,
+                  message: 'Verification failed: $error',
+                ),
+              );
             }
-            _completeRestore(false);
+            _completeRestore(
+              IAPActionResult(
+                status: IAPActionStatus.failed,
+                message: 'Restore failed: $error',
+              ),
+            );
           }
           break;
       }
     }
 
     if (_restoreCompleter != null && !_restoreCompleter!.isCompleted) {
-      if (restoredProductSeen) return;
+      if (!restoredProductSeen) {
+        _completeRestore(IAPActionResult.restoreEmpty);
+      }
     }
   }
 
-  void _completePendingPurchase(bool value) {
+  Future<IAPActionResult> _syncGoldSubscription({
+    required PurchaseDetails purchase,
+    required String uid,
+  }) async {
+    final purchaseId = purchase.purchaseID;
+    final productId = purchase.productID;
+    final verificationData = purchase.verificationData.serverVerificationData;
+
+    if (purchase.verificationData.source != 'app_store') {
+      throw Exception(
+        'Gold verification is currently configured for App Store only.',
+      );
+    }
+
+    if ((purchaseId == null || purchaseId.isEmpty) &&
+        verificationData.isEmpty) {
+      throw Exception('Missing purchase verification data.');
+    }
+
+    final callable = _functions.httpsCallable('syncGoldSubscription');
+    final response = await callable.call<Map<String, dynamic>>({
+      'uid': uid,
+      'purchaseSource': purchase.verificationData.source,
+      'productId': productId,
+      'transactionId': purchaseId,
+      'serverVerificationData': verificationData,
+    });
+
+    final data = response.data;
+    final isActive = data['isActive'] == true;
+    final status = data['subscriptionStatus'] as String? ?? 'inactive';
+    final expiresAt = data['expiresAt'] as String?;
+
+    if (!isActive) {
+      return IAPActionResult(
+        status: IAPActionStatus.failed,
+        message: expiresAt == null
+            ? 'Gold is not active for this Apple account.'
+            : 'Gold is not active. Expired on ${expiresAt.split('T').first}.',
+      );
+    }
+
+    return IAPActionResult(
+      status: IAPActionStatus.success,
+      message: status == 'active'
+          ? 'Gold is active.'
+          : 'Gold synced successfully.',
+    );
+  }
+
+  String _appAccountToken(String uid) {
+    return _uuid.v5(Namespace.url.value, 'ai-links:$uid');
+  }
+
+  void _completePendingPurchase(IAPActionResult value) {
     if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
       _purchaseCompleter!.complete(value);
     }
@@ -285,7 +364,7 @@ class IAPRemoteDataSource {
     _pendingProductId = null;
   }
 
-  void _completeRestore(bool value) {
+  void _completeRestore(IAPActionResult value) {
     if (_restoreCompleter != null && !_restoreCompleter!.isCompleted) {
       _restoreCompleter!.complete(value);
     }

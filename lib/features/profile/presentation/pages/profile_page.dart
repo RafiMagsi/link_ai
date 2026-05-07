@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../subscription/presentation/providers/subscription_providers.dart';
 import '../../../../core/widgets/app_loader.dart';
 import '../widgets/profile_options_sidebar.dart';
 import '../widgets/profile_view.dart';
@@ -15,6 +16,7 @@ class ProfilePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final uid = user?.uid;
+    final isGoldSubscriber = ref.watch(isGoldSubscriberProvider);
 
     return Scaffold(
       body: uid == null
@@ -29,6 +31,23 @@ class ProfilePage extends ConsumerWidget {
                   context: context,
                   title: 'Profile options',
                   actions: [
+                    ProfileSidebarAction(
+                      icon: Icons.smart_toy_outlined,
+                      label: 'Chat with Snow',
+                      onTap: () {
+                        if (!context.mounted) return;
+                        context.push(
+                          isGoldSubscriber ? '/snow-chat' : '/subscription',
+                        );
+                      },
+                    ),
+                    ProfileSidebarAction(
+                      icon: Icons.workspace_premium_outlined,
+                      label: isGoldSubscriber ? 'Manage Gold' : 'Get Gold',
+                      onTap: () {
+                        if (context.mounted) context.push('/subscription');
+                      },
+                    ),
                     ProfileSidebarAction(
                       icon: Icons.bookmark_border,
                       label: 'View saved',

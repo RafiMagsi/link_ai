@@ -15,11 +15,11 @@ class IAPController {
 
   final IAPRemoteDataSource _dataSource;
 
-  Future<bool> purchaseSubscription(String productId) async {
+  Future<IAPActionResult> purchaseSubscription(String productId) async {
     return await _dataSource.purchaseSubscription(productId);
   }
 
-  Future<bool> restorePurchases() async {
+  Future<IAPActionResult> restorePurchases() async {
     return await _dataSource.restorePurchases();
   }
 }

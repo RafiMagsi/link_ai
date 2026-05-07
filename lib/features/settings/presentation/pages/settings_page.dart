@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/errors/error_handler.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../subscription/presentation/providers/subscription_providers.dart';
 import '../providers/settings_providers.dart';
 import '../../../admin/presentation/providers/admin_providers.dart';
 import '../../../../core/constants/app_sizes.dart';
@@ -98,6 +99,7 @@ class SettingsPage extends ConsumerWidget {
     final settingsState = ref.watch(userSettingsProvider);
     final controllerState = ref.watch(settingsControllerProvider);
     final adminStatus = ref.watch(adminStatusRefreshProvider);
+    final isGoldSubscriber = ref.watch(isGoldSubscriberProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -183,6 +185,30 @@ class SettingsPage extends ConsumerWidget {
               _SettingsSection(
                 title: 'Account & Profile',
                 children: [
+                  ListTile(
+                    leading: const Icon(Icons.smart_toy_outlined),
+                    title: const Text('Snow AI'),
+                    subtitle: Text(
+                      isGoldSubscriber
+                          ? 'Open your AI assistant chat'
+                          : 'Gold members can chat with Snow AI',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(
+                      isGoldSubscriber ? '/snow-chat' : '/subscription',
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.workspace_premium_outlined),
+                    title: Text(isGoldSubscriber ? 'Manage Gold' : 'Get Gold'),
+                    subtitle: Text(
+                      isGoldSubscriber
+                          ? 'Subscription status, restore, manage billing'
+                          : 'Unlock @snow and premium AI features',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/subscription'),
+                  ),
                   ListTile(
                     leading: const Icon(Icons.person),
                     title: const Text('Edit Profile'),

@@ -4,10 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:link_ai/features/explore/presentation/widgets/shadow_style.dart';
 
 import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../subscription/presentation/providers/subscription_providers.dart';
 import '../providers/messaging_providers.dart';
 
 class InboxPage extends ConsumerWidget {
@@ -17,6 +17,7 @@ class InboxPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final inboxState = ref.watch(myInboxProvider);
     final currentUid = ref.watch(currentUserProvider)?.uid ?? '';
+    final isGoldSubscriber = ref.watch(isGoldSubscriberProvider);
 
     Future<void> refreshInbox() async {
       ref.invalidate(myInboxProvider);
@@ -31,6 +32,12 @@ class InboxPage extends ConsumerWidget {
         onRefresh: refreshInbox,
         child: inboxState.when(
           data: (conversations) {
+            final unreadTotal = conversations.fold<int>(
+              0,
+              (total, conversation) =>
+                  total + conversation.unreadCountFor(currentUid),
+            );
+
             if (conversations.isEmpty) {
               return ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -40,17 +47,18 @@ class InboxPage extends ConsumerWidget {
                   AppSizes.lg,
                   AppSizes.xxxl,
                 ),
-                children: const [
-                  _InboxEmptyState(),
+                children: [
+                  const _InboxEmptyState(),
+                  const SizedBox(height: AppSizes.md),
+                  _SnowConversationTile(
+                    isGoldSubscriber: isGoldSubscriber,
+                    onTap: () => context.push(
+                      isGoldSubscriber ? '/snow-chat' : '/subscription',
+                    ),
+                  ),
                 ],
               );
             }
-
-            final unreadTotal = conversations.fold<int>(
-              0,
-              (total, conversation) =>
-                  total + conversation.unreadCountFor(currentUid),
-            );
 
             return ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -60,18 +68,29 @@ class InboxPage extends ConsumerWidget {
                 AppSizes.lg,
                 AppSizes.xxxl,
               ),
-              itemCount: conversations.length + 1,
+              itemCount: conversations.length + 2,
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return _InboxHeader(
                     conversationsCount: conversations.length,
                     unreadCount: unreadTotal,
+                    isGoldSubscriber: isGoldSubscriber,
                   );
                 }
 
-                final conversation = conversations[index - 1];
+                if (index == 1) {
+                  return _SnowConversationTile(
+                    isGoldSubscriber: isGoldSubscriber,
+                    onTap: () => context.push(
+                      isGoldSubscriber ? '/snow-chat' : '/subscription',
+                    ),
+                  );
+                }
+
+                final conversation = conversations[index - 2];
                 final otherName = conversation.getOtherName(currentUid);
-                final otherAvatarUrl = conversation.getOtherAvatarUrl(currentUid);
+                final otherAvatarUrl =
+                    conversation.getOtherAvatarUrl(currentUid);
                 final unreadCount = conversation.unreadCountFor(currentUid);
 
                 return _ConversationTile(
@@ -110,10 +129,12 @@ class _InboxHeader extends StatelessWidget {
   const _InboxHeader({
     required this.conversationsCount,
     required this.unreadCount,
+    required this.isGoldSubscriber,
   });
 
   final int conversationsCount;
   final int unreadCount;
+  final bool isGoldSubscriber;
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +187,9 @@ class _InboxHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '$conversationsCount conversations',
+                      isGoldSubscriber
+                          ? '$conversationsCount conversations + Snow AI'
+                          : '$conversationsCount conversations',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w600,
@@ -180,6 +203,119 @@ class _InboxHeader extends StatelessWidget {
                   label: unreadCount > 99 ? '99+' : '$unreadCount',
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SnowConversationTile extends StatelessWidget {
+  const _SnowConversationTile({
+    required this.isGoldSubscriber,
+    required this.onTap,
+  });
+
+  final bool isGoldSubscriber;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.md),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: const Color(0xFFA78BFA).withValues(alpha: 0.16),
+            width: 0.7,
+          ),
+          boxShadow: ShadowStyle.lightShadow(
+            color: const Color(0xFFA78BFA),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.md),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFFBFDBFE),
+                            Color(0xFFD8B4FE),
+                            Color(0xFFFBCFE8),
+                          ],
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.smart_toy_outlined,
+                        color: Color(0xFF312E81),
+                      ),
+                    ),
+                    const SizedBox(width: AppSizes.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Ask @Snow',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.1,
+                                  ),
+                                ),
+                              ),
+                              _UnreadBadge(
+                                label: isGoldSubscriber ? 'AI' : 'Gold',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            isGoldSubscriber
+                                ? 'Open your AI assistant conversation.'
+                                : 'Upgrade to Gold to chat with Snow AI.',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.25,
+                                    ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSizes.sm),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color:
+                          colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -293,15 +429,16 @@ class _ConversationTile extends StatelessWidget {
                                 : lastMessage,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: hasUnread
-                                      ? colorScheme.onSurface
-                                      : colorScheme.onSurfaceVariant,
-                                  fontWeight: hasUnread
-                                      ? FontWeight.w700
-                                      : FontWeight.w600,
-                                  height: 1.25,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: hasUnread
+                                          ? colorScheme.onSurface
+                                          : colorScheme.onSurfaceVariant,
+                                      fontWeight: hasUnread
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
+                                      height: 1.25,
+                                    ),
                           ),
                         ],
                       ),
@@ -309,7 +446,8 @@ class _ConversationTile extends StatelessWidget {
                     const SizedBox(width: AppSizes.sm),
                     Icon(
                       Icons.chevron_right_rounded,
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
+                      color:
+                          colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
                     ),
                   ],
                 ),

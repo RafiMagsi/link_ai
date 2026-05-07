@@ -42,7 +42,7 @@ class PostActionRow extends ConsumerWidget {
             active: reposted,
             count: post.repostsCount,
             onTap: () =>
-                ref.read(postControllerProvider.notifier).toggleRepostOfPost(post.id),
+                ref.read(postControllerProvider.notifier).toggleRepost(post.id),
           ),
           PostActionButton(
             icon: Icons.favorite_border,
