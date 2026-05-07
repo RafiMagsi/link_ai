@@ -18,11 +18,47 @@ import '../widgets/feed_post_card.dart';
 import 'create_post_page.dart';
 import '../../../notifications/presentation/providers/notification_providers.dart';
 
-class FeedPage extends ConsumerWidget {
+class FeedPage extends ConsumerStatefulWidget {
   const FeedPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FeedPage> createState() => _FeedPageState();
+}
+
+class _FeedPageState extends ConsumerState<FeedPage> {
+  late ScrollController _scrollController;
+  double _scrollOffset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    setState(() {
+      _scrollOffset = _scrollController.offset;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final statusBarHeight = MediaQuery.of(context).viewPadding.top;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+
+    // Header collapse: 0 offset = expanded (50), fully hidden after ~60px scroll
+    final headerCollapseFraction = (_scrollOffset / 30).clamp(0.0, 3.0);
+    final headerHeight = (50.0 - (20 * headerCollapseFraction)).clamp(0.0, 50.0);
+    final titleOpacity = (1 - headerCollapseFraction).clamp(0.0, 1.0);
+
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -53,27 +89,21 @@ class FeedPage extends ConsumerWidget {
             }
           },
         ),
-        body: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) {
-            final statusBarHeight = MediaQuery.of(context).viewPadding.top;
-            final bgColor = Theme.of(context).scaffoldBackgroundColor;
-
-            return [
-              SliverAppBar(
-                floating: true,
-                snap: true,
-                pinned: false,
-                elevation: 0,
-                backgroundColor: bgColor,
-                scrolledUnderElevation: 0,
-                expandedHeight: 112 + statusBarHeight,
-                collapsedHeight: 48 + statusBarHeight,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Container(
-                    color: bgColor,
-                    padding: EdgeInsets.only(top: statusBarHeight),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
+        body: Column(
+          children: [
+            // Animated header
+            Container(
+              color: bgColor,
+              padding: EdgeInsets.only(top: statusBarHeight),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 100),
+                height: headerHeight,
+                color: bgColor,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Opacity(
+                      opacity: titleOpacity,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
@@ -84,70 +114,86 @@ class FeedPage extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  ),
-                  collapseMode: CollapseMode.parallax,
-                ),
-                leadingWidth: 0,
-                automaticallyImplyLeading: false,
-                actions: [
-                  IconButton(
-                    onPressed: () => context.push('/search'),
-                    icon: const Icon(Icons.search),
-                  ),
-                  Consumer(
-                    builder: (context, ref, _) {
-                      final unreadState = ref.watch(unreadNotificationsCountProvider);
-                      final unreadCount = unreadState.asData?.value ?? 0;
-
-                      return Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          IconButton(
-                            onPressed: () => context.push('/notifications'),
-                            icon: const Icon(Icons.notifications_none),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => context.push('/search'),
+                          icon: const Icon(Icons.search),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 44,
+                            minHeight: 44,
                           ),
-                          if (unreadCount > 0)
-                            Positioned(
-                              right: 8,
-                              top: 8,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.error,
-                                  shape: BoxShape.circle,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 18,
-                                  minHeight: 18,
-                                ),
-                                child: Text(
-                                  unreadCount > 99 ? '99+' : unreadCount.toString(),
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onError,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
+                        ),
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final unreadState = ref.watch(unreadNotificationsCountProvider);
+                            final unreadCount = unreadState.asData?.value ?? 0;
+
+                            return Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                IconButton(
+                                  onPressed: () => context.push('/notifications'),
+                                  icon: const Icon(Icons.notifications_none),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 44,
+                                    minHeight: 44,
                                   ),
                                 ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                ],
-              ),
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _TabBarDelegate(
-                  statusBarHeight: statusBarHeight,
-                  backgroundColor: bgColor,
+                                if (unreadCount > 0)
+                                  Positioned(
+                                    right: 4,
+                                    top: 4,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).colorScheme.error,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 18,
+                                        minHeight: 18,
+                                      ),
+                                      child: Text(
+                                        unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Theme.of(context).colorScheme.onError,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ];
-          },
-          body: _FeedTabView(),
+            ),
+            // Pinned TabBar
+            Container(
+              color: bgColor,
+              child: const TabBar(
+                tabs: [
+                  Tab(text: 'Latest'),
+                  Tab(text: 'Connected'),
+                  Tab(text: 'Viral'),
+                ],
+              ),
+            ),
+            // Feed content
+            Expanded(
+              child: _FeedTabView(scrollController: _scrollController),
+            ),
+          ],
         ),
       ),
     );
@@ -155,7 +201,9 @@ class FeedPage extends ConsumerWidget {
 }
 
 class _FeedTabView extends ConsumerWidget {
-  const _FeedTabView();
+  const _FeedTabView({required this.scrollController});
+
+  final ScrollController scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -165,13 +213,14 @@ class _FeedTabView extends ConsumerWidget {
 
     return TabBarView(
       children: [
-        _FeedList(kind: _FeedKind.latest, posts: latestPosts),
+        _FeedList(kind: _FeedKind.latest, posts: latestPosts, scrollController: scrollController),
         _FeedList(
           kind: _FeedKind.connected,
           posts: connectedPosts,
           emptyStateText: 'Follow people to see their posts here.',
+          scrollController: scrollController,
         ),
-        _FeedList(kind: _FeedKind.viral, posts: viralPosts),
+        _FeedList(kind: _FeedKind.viral, posts: viralPosts, scrollController: scrollController),
       ],
     );
   }
@@ -421,11 +470,13 @@ class _FeedList extends ConsumerWidget {
   const _FeedList({
     required this.kind,
     required this.posts,
+    required this.scrollController,
     this.emptyStateText = 'No posts yet.',
   });
 
   final _FeedKind kind;
   final AsyncValue<List<PostModel>> posts;
+  final ScrollController scrollController;
   final String emptyStateText;
 
   @override
@@ -443,9 +494,11 @@ class _FeedList extends ConsumerWidget {
       child: posts.when(
         data: (visiblePosts) {
           return ListView.separated(
+            padding: EdgeInsets.zero,
+            controller: scrollController,
             itemCount: visiblePosts.isEmpty ? 2 : visiblePosts.length + 1,
             separatorBuilder: (context, index) {
-              return const Divider(height: 1);
+              return const Divider(height: 0.5);
             },
             itemBuilder: (context, index) {
               if (index == 0) {
@@ -506,8 +559,9 @@ class _FeedList extends ConsumerWidget {
           );
         },
         loading: () => ListView.separated(
+          controller: scrollController,
           itemCount: 6,
-          separatorBuilder: (context, index) => const Divider(height: 1),
+          separatorBuilder: (context, index) => const Divider(height: 0.5),
           itemBuilder: (context, index) {
             if (index == 0) {
               return const _FeedComposerEntry();
@@ -842,13 +896,13 @@ class _FeedComposerEntry extends ConsumerWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSizes.lg,
-          vertical: AppSizes.lg,
+          vertical: AppSizes.md,
         ),
         child: Row(
           children: [
             AppUserAvatar(
               avatarUrl: myProfile?.avatarUrl,
-              radius: 24,
+              radius: 20,
               onTap: () async {
                 try {
                   await navigateToProfile(
@@ -867,7 +921,7 @@ class _FeedComposerEntry extends ConsumerWidget {
                 }
               },
             ),
-            const SizedBox(width: AppSizes.lg),
+            const SizedBox(width: 12),
             Expanded(
               child: InkWell(
                 borderRadius: BorderRadius.circular(AppSizes.radiusCircle),
@@ -888,8 +942,8 @@ class _FeedComposerEntry extends ConsumerWidget {
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.lg,
-                    vertical: AppSizes.md,
+                    horizontal: 12,
+                    vertical: 10,
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppSizes.radiusCircle),
@@ -897,7 +951,7 @@ class _FeedComposerEntry extends ConsumerWidget {
                   ),
                   child: Text(
                     'What are you building in AI?',
-                    style: TextStyle(color: colors.mutedText, fontSize: 15),
+                    style: TextStyle(color: colors.mutedText, fontSize: 14),
                   ),
                 ),
               ),
@@ -909,45 +963,3 @@ class _FeedComposerEntry extends ConsumerWidget {
   }
 }
 
-class _TabBarDelegate extends SliverPersistentHeaderDelegate {
-  final double statusBarHeight;
-  final Color backgroundColor;
-
-  _TabBarDelegate({
-    required this.statusBarHeight,
-    required this.backgroundColor,
-  });
-
-  @override
-  double get minExtent => 48 + statusBarHeight;
-
-  @override
-  double get maxExtent => 48 + statusBarHeight;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: backgroundColor,
-      child: Column(
-        children: [
-          SizedBox(height: statusBarHeight),
-          const Expanded(
-            child: TabBar(
-              tabs: [
-                Tab(text: 'Latest'),
-                Tab(text: 'Connected'),
-                Tab(text: 'Viral'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_TabBarDelegate oldDelegate) {
-    return statusBarHeight != oldDelegate.statusBarHeight ||
-        backgroundColor != oldDelegate.backgroundColor;
-  }
-}
