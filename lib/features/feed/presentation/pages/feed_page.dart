@@ -555,6 +555,7 @@ class _PaginatedFeedListState extends ConsumerState<_PaginatedFeedList> {
     final posts = state.posts;
 
     return ListView.separated(
+      padding: EdgeInsets.zero,
       controller: _scrollController,
       itemCount: posts.isEmpty ? 2 : posts.length + 2,
       separatorBuilder: (context, index) => const Divider(height: 0.5),

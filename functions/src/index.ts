@@ -1,4 +1,5 @@
 import {onCall, HttpsError, onRequest} from "firebase-functions/v2/https";
+import {defineSecret} from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import {createSign} from "node:crypto";
 import {
@@ -17,6 +18,10 @@ const DEFAULT_SNOW_GLOBAL_MAX_REPLIES_PER_HOUR = 10;
 const DEFAULT_GOLD_PRODUCT_IDS = ["gold_subscription_monthly"];
 const APPLE_API_PRODUCTION_URL = "https://api.storekit.itunes.apple.com";
 const APPLE_API_SANDBOX_URL = "https://api.storekit-sandbox.itunes.apple.com";
+const AWS_ACCESS_KEY_ID_SECRET = defineSecret("AWS_ACCESS_KEY_ID");
+const AWS_SECRET_ACCESS_KEY_SECRET = defineSecret("AWS_SECRET_ACCESS_KEY");
+const AWS_REGION_SECRET = defineSecret("AWS_REGION");
+const S3_BUCKET_SECRET = defineSecret("S3_BUCKET");
 
 type AppleTransactionPayload = {
   bundleId?: string;
@@ -27,6 +32,13 @@ type AppleTransactionPayload = {
   purchaseDate?: number;
   expiresDate?: number;
   revocationDate?: number;
+};
+
+type S3Config = {
+  region: string;
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey: string;
 };
 
 /**
@@ -105,6 +117,32 @@ function shouldReplyAsSnow(text: string): boolean {
  */
 function stripSnowMention(text: string): string {
   return text.replace(/(^|\s)@snow\b/gi, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Returns validated S3 runtime config from bound secrets.
+ * @return {{region: string, bucket: string, accessKeyId: string,
+ * secretAccessKey: string}} S3 runtime config
+ */
+function getS3Config(): S3Config {
+  const bucket = S3_BUCKET_SECRET.value().trim();
+  const accessKeyId = AWS_ACCESS_KEY_ID_SECRET.value().trim();
+  const secretAccessKey = AWS_SECRET_ACCESS_KEY_SECRET.value().trim();
+  const region = AWS_REGION_SECRET.value().trim() || "us-east-1";
+
+  if (!bucket || !accessKeyId || !secretAccessKey) {
+    throw new HttpsError(
+      "failed-precondition",
+      "S3 upload is not configured on the server."
+    );
+  }
+
+  return {
+    region,
+    bucket,
+    accessKeyId,
+    secretAccessKey,
+  };
 }
 
 /**
@@ -1600,7 +1638,14 @@ export const validateGoldFeatures = onCall(async (request) => {
  * Generates a presigned S3 upload URL for direct client-to-S3 uploads.
  * AWS credentials are stored in Firebase Secret Manager, never exposed.
  */
-export const generateS3UploadUrl = onCall(async (request) => {
+export const generateS3UploadUrl = onCall({
+  secrets: [
+    AWS_ACCESS_KEY_ID_SECRET,
+    AWS_SECRET_ACCESS_KEY_SECRET,
+    AWS_REGION_SECRET,
+    S3_BUCKET_SECRET,
+  ],
+}, async (request) => {
   const {path, contentType, idToken} = request.data as {
     path: string;
     contentType: string;
@@ -1648,17 +1693,7 @@ export const generateS3UploadUrl = onCall(async (request) => {
   }
 
   try {
-    const region = process.env.AWS_REGION || "us-east-1";
-    const bucket = process.env.S3_BUCKET;
-    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-
-    if (!bucket || !accessKeyId || !secretAccessKey) {
-      throw new HttpsError(
-        "failed-precondition",
-        "S3 upload is not configured on the server."
-      );
-    }
+    const {region, bucket, accessKeyId, secretAccessKey} = getS3Config();
 
     const s3Client = new S3Client({
       region,
@@ -1692,6 +1727,12 @@ export const generateS3UploadUrl = onCall(async (request) => {
 
 export const generateS3UploadUrlHttp = onRequest({
   invoker: "public",
+  secrets: [
+    AWS_ACCESS_KEY_ID_SECRET,
+    AWS_SECRET_ACCESS_KEY_SECRET,
+    AWS_REGION_SECRET,
+    S3_BUCKET_SECRET,
+  ],
 }, async (request, response) => {
   response.set("Access-Control-Allow-Origin", "*");
   response.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -1745,15 +1786,7 @@ export const generateS3UploadUrlHttp = onRequest({
       return;
     }
 
-    const region = process.env.AWS_REGION || "us-east-1";
-    const bucket = process.env.S3_BUCKET;
-    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-
-    if (!bucket || !accessKeyId || !secretAccessKey) {
-      response.status(500).json({error: "S3 upload is not configured"});
-      return;
-    }
+    const {region, bucket, accessKeyId, secretAccessKey} = getS3Config();
 
     const s3Client = new S3Client({
       region,
@@ -1780,6 +1813,11 @@ export const generateS3UploadUrlHttp = onRequest({
     });
   } catch (error) {
     console.error("Error generating S3 upload URL via HTTP:", error);
+    if (error instanceof HttpsError &&
+        error.code === "failed-precondition") {
+      response.status(500).json({error: error.message});
+      return;
+    }
     response.status(401).json({error: "Unauthenticated"});
   }
 });

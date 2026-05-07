@@ -165,7 +165,11 @@ class S3UploadService {
           .timeout(const Duration(seconds: 60));
 
       if (response.statusCode != 200) {
-        throw Exception('S3 upload failed: HTTP ${response.statusCode}');
+        throw Exception(
+          'S3 upload failed: HTTP ${response.statusCode} '
+          'url=${Uri.parse(presignedUrl).host} '
+          'body=${response.body}',
+        );
       }
 
       // Report progress
