@@ -594,6 +594,7 @@ class PostRemoteDataSource {
     required ProfileModel profile,
     required String postId,
     required String text,
+    String? parentCommentId,
   }) async {
     try {
       final commentRef = _posts.doc(postId).collection('comments').doc();
@@ -607,6 +608,7 @@ class PostRemoteDataSource {
         text: text,
         createdAt: null,
         createdAtClient: null,
+        parentCommentId: parentCommentId,
       );
 
       final postRef = _posts.doc(postId);

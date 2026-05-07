@@ -16,6 +16,7 @@ class CommentActionRow extends ConsumerWidget {
     required this.likesCount,
     required this.savesCount,
     required this.repostsCount,
+    this.onReplyTap,
   });
 
   final String postId;
@@ -27,6 +28,7 @@ class CommentActionRow extends ConsumerWidget {
   final int likesCount;
   final int savesCount;
   final int repostsCount;
+  final VoidCallback? onReplyTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -55,24 +57,18 @@ class CommentActionRow extends ConsumerWidget {
       isReposted = false;
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
           PostActionButton(
-            icon: Icons.favorite_outline,
-            activeIcon: Icons.favorite,
-            active: isLiked,
-            count: likesCount,
-            onTap: () {
-              ref
-                  .read(postControllerProvider.notifier)
-                  .toggleCommentLike(postId: postId, commentId: commentId);
-            },
+            icon: Icons.chat_bubble_outline,
+            activeIcon: Icons.chat_bubble,
+            active: false,
+            count: 0,
+            onTap: onReplyTap ?? () {},
           ),
           PostActionButton(
-            icon: Icons.repeat_outlined,
+            icon: Icons.repeat,
             activeIcon: Icons.repeat,
             active: isReposted,
             count: repostsCount,
@@ -90,7 +86,18 @@ class CommentActionRow extends ConsumerWidget {
             },
           ),
           PostActionButton(
-            icon: Icons.bookmark_outline,
+            icon: Icons.favorite_border,
+            activeIcon: Icons.favorite,
+            active: isLiked,
+            count: likesCount,
+            onTap: () {
+              ref
+                  .read(postControllerProvider.notifier)
+                  .toggleCommentLike(postId: postId, commentId: commentId);
+            },
+          ),
+          PostActionButton(
+            icon: Icons.bookmark_border,
             activeIcon: Icons.bookmark,
             active: isSaved,
             count: savesCount,
@@ -101,7 +108,6 @@ class CommentActionRow extends ConsumerWidget {
             },
           ),
         ],
-      ),
-    );
+      );
   }
 }

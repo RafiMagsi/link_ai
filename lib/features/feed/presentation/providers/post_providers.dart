@@ -580,6 +580,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
   Future<void> addComment({
     required String postId,
     required String text,
+    String? parentCommentId,
   }) async {
     state = const AsyncLoading();
 
@@ -600,7 +601,12 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       }
 
       await _postRemoteDataSource
-          .addComment(profile: profile, postId: postId, text: text)
+          .addComment(
+            profile: profile,
+            postId: postId,
+            text: text,
+            parentCommentId: parentCommentId,
+          )
           .timeout(
             const Duration(seconds: 30),
             onTimeout: () => throw TimeoutException('Adding comment timed out'),

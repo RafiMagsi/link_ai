@@ -10,7 +10,7 @@ import '../../data/models/post_comment_model.dart';
 import '../providers/post_providers.dart';
 import '../widgets/comments/comment_composer_bar.dart';
 import '../widgets/feed_post_card.dart';
-import '../widgets/modern/modern_comment_card.dart';
+import '../widgets/feed_comment_card.dart';
 import '../../data/models/post_model.dart';
 
 class PostDetailPage extends ConsumerStatefulWidget {
@@ -143,6 +143,100 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Unable to update best answer.')),
       );
+    }
+  }
+
+  Future<void> _showReplyComposer(String parentCommentId) async {
+    _commentController.clear();
+
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Reply to comment',
+      barrierColor: Colors.black.withValues(alpha: 0.34),
+      transitionDuration: const Duration(milliseconds: 420),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return const SizedBox.shrink();
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutExpo,
+          reverseCurve: Curves.easeInCubic,
+        );
+
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: AnimatedBuilder(
+            animation: curved,
+            builder: (context, _) {
+              final value = curved.value;
+              final slide = 96 * (1 - value);
+              final scaleY = 0.90 + (0.10 * value);
+              final scaleX = 0.985 + (0.015 * value);
+              final opacity = value.clamp(0.0, 1.0);
+
+              return Opacity(
+                opacity: opacity,
+                child: Transform.translate(
+                  offset: Offset(0, slide),
+                  child: Transform.scale(
+                    scaleX: scaleX,
+                    scaleY: scaleY,
+                    alignment: Alignment.bottomCenter,
+                    child: _ReplyComposerSheet(
+                      animationValue: value,
+                      controller: _commentController,
+                      isSending: _isSending,
+                      onSend: () => _addReply(parentCommentId),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    ).then((_) {
+      _commentController.clear();
+    });
+  }
+
+  Future<void> _addReply(String parentCommentId) async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+
+    if (text.length > _maxCommentChars) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reply must be 500 characters or less.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSending = true);
+    final controller = ref.read(postControllerProvider.notifier);
+
+    try {
+      await controller.addComment(
+        postId: widget.postId,
+        text: text,
+        parentCommentId: parentCommentId,
+      );
+      if (mounted) {
+        Navigator.of(context).pop();
+        _commentController.clear();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send reply: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isSending = false);
     }
   }
 
@@ -287,7 +381,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                             index,
                           ) {
                             final comment = decoratedComments[index];
-                            return ModernCommentCard(
+                            return FeedCommentCard(
                               comment: comment,
                               postId: widget.postId,
                               isBestAnswer: comment.isBestAnswer,
@@ -303,9 +397,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                                     ? null
                                     : comment.id,
                               ),
-                              onReplyTap: () {
-                                // TODO: Open reply composer for this comment
-                              },
+                              onReplyTap: () => _showReplyComposer(comment.id),
                             );
                           }, childCount: decoratedComments.length),
                         );
@@ -341,6 +433,84 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
             isSending: _isSending,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReplyComposerSheet extends StatelessWidget {
+  const _ReplyComposerSheet({
+    required this.animationValue,
+    required this.controller,
+    required this.isSending,
+    required this.onSend,
+  });
+
+  final double animationValue;
+  final TextEditingController controller;
+  final bool isSending;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final statusBarHeight = MediaQuery.of(context).viewPadding.top;
+    final appBarHeight = 56.0;
+    final topInset = statusBarHeight + appBarHeight;
+    final sheetHeight = (screenHeight * 0.64).clamp(430.0, 590.0);
+
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: EdgeInsets.only(top: topInset, bottom: keyboardHeight),
+        child: SizedBox(
+          height: sheetHeight,
+          width: double.infinity,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+              ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Reply to comment',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close),
+                          style: IconButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(40, 40),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: CommentComposerBar(
+                        controller: controller,
+                        maxChars: 500,
+                        onSend: onSend,
+                        isSending: isSending,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
