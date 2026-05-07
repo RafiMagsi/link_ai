@@ -28,7 +28,6 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
   bool _enableComments = true;
   bool _enableProducts = true;
   bool _enableViralFeed = true;
-  String _postDesignStyle = 'twitter';
 
   @override
   void dispose() {
@@ -60,7 +59,6 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
     _enableComments = config.enableComments;
     _enableProducts = config.enableProducts;
     _enableViralFeed = config.enableViralFeed;
-    _postDesignStyle = config.postDesignStyle;
 
     _initialized = true;
   }
@@ -132,7 +130,6 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
       enableViralFeed: _enableViralFeed,
       postRateLimitPerHour: postRateLimitPerHour,
       connectCooldownMinutes: connectCooldownMinutes,
-      postDesignStyle: _postDesignStyle,
     );
 
     await ref
@@ -251,44 +248,6 @@ class _AdminSettingsPageState extends ConsumerState<AdminSettingsPage> {
                     onChanged: (value) {
                       setState(() => _enableViralFeed = value);
                     },
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'Post Design Style',
-                            style: Theme.of(context).textTheme.labelMedium,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SegmentedButton<String>(
-                          segments: const <ButtonSegment<String>>[
-                            ButtonSegment<String>(
-                              value: 'twitter',
-                              label: Text('Classic'),
-                            ),
-                            ButtonSegment<String>(
-                              value: 'snow',
-                              label: Text('Snow'),
-                            ),
-                            ButtonSegment<String>(
-                              value: 'modern',
-                              label: Text('Modern'),
-                            ),
-                          ],
-                          selected: <String>{_postDesignStyle},
-                          onSelectionChanged: (Set<String> newSelection) {
-                            setState(
-                              () => _postDesignStyle = newSelection.first,
-                            );
-                          },
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ),

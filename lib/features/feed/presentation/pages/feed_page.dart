@@ -14,7 +14,7 @@ import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../../connect/presentation/providers/connect_providers.dart';
 import '../providers/post_providers.dart';
-import '../widgets/post_design_switcher.dart';
+import '../widgets/feed_post_card.dart';
 import 'create_post_page.dart';
 import '../../../notifications/presentation/providers/notification_providers.dart';
 
@@ -434,7 +434,7 @@ class _FeedList extends ConsumerWidget {
               final detailPostId = post.detailPostId;
               final detailExtra = detailPostId == post.id ? post : null;
 
-              return PostDesignSwitcher(
+              return FeedPostCard(
                 post: post,
                 onCommentTap: () {
                   try {

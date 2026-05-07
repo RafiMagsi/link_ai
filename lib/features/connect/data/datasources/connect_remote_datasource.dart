@@ -1,14 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import '../models/connection_model.dart';
 
 class ConnectRemoteDataSource {
-  ConnectRemoteDataSource(this._firestore, this._functions);
+  ConnectRemoteDataSource(this._firestore);
 
   final FirebaseFirestore _firestore;
-  final FirebaseFunctions _functions;
 
   CollectionReference<Map<String, dynamic>> get _connections {
     return _firestore.collection('connections');
@@ -77,28 +75,6 @@ class ConnectRemoteDataSource {
     await _connections.doc(connectionId).delete();
   }
 
-  Future<void> sendPing({required String targetUid}) async {
-    try {
-      final callable = _functions.httpsCallable('sendPing');
-      await callable
-          .call({'targetUid': targetUid})
-          .timeout(
-            const Duration(seconds: 20),
-            onTimeout: () => throw TimeoutException('Ping request timed out'),
-          );
-    } on FirebaseFunctionsException catch (e) {
-      _handleCloudFunctionError(e, 'sendPing');
-    } on TimeoutException catch (e) {
-      debugPrint('Timeout in sendPing: $e');
-      throw Exception(
-        'Request timed out. Please check your connection and try again.',
-      );
-    } catch (e) {
-      debugPrint('Error sending ping: $e');
-      rethrow;
-    }
-  }
-
   Future<ConnectRelationshipStatus> getRelationshipStatus({
     required String currentUid,
     required String targetUid,
@@ -116,55 +92,6 @@ class ConnectRemoteDataSource {
     } on TimeoutException {
       // Avoid an infinite "Checking..." state on poor networks/offline.
       return ConnectRelationshipStatus.none;
-    }
-  }
-
-  /// Handles FirebaseFunctionsException with proper error mapping
-  Never _handleCloudFunctionError(
-    FirebaseFunctionsException error,
-    String functionName,
-  ) {
-    debugPrint(
-      'Cloud Function error in $functionName: ${error.code} - ${error.message}',
-    );
-
-    switch (error.code) {
-      case 'unauthenticated':
-        throw Exception('Authentication failed. Please log in again.');
-      case 'permission-denied':
-        throw Exception('You do not have permission to perform this action.');
-      case 'resource-exhausted':
-        throw Exception(
-          'Too many requests. Please wait a moment and try again.',
-        );
-      case 'not-found':
-        throw Exception(
-          'The requested resource was not found. The user may have been deleted.',
-        );
-      case 'invalid-argument':
-        throw Exception(
-          'Invalid request data. Please check your input and try again.',
-        );
-      case 'failed-precondition':
-        throw Exception(
-          'Cannot perform this action at the moment. Please try again.',
-        );
-      case 'aborted':
-        throw Exception('Operation was cancelled. Please try again.');
-      case 'internal':
-        throw Exception('Server error occurred. Please try again later.');
-      case 'deadline-exceeded':
-        throw Exception(
-          'Request timed out. Please check your connection and try again.',
-        );
-      case 'unavailable':
-        throw Exception(
-          'Service is temporarily unavailable. Please try again later.',
-        );
-      default:
-        throw Exception(
-          'An error occurred while processing your request. Please try again.',
-        );
     }
   }
 }

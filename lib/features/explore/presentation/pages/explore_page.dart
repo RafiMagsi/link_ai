@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:link_ai/features/explore/presentation/widgets/shadow_style.dart';
@@ -7,7 +6,6 @@ import 'package:link_ai/features/explore/presentation/widgets/shadow_style.dart'
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/app_loader.dart';
-import '../../../subscription/presentation/providers/subscription_providers.dart';
 import '../providers/explore_providers.dart';
 
 class ExplorePage extends ConsumerWidget {
@@ -41,57 +39,8 @@ class ExplorePage extends ConsumerWidget {
       initials: 'RK',
       color: Color(0xFFA78BFA),
     ),
-    _FeaturedBuilder(
-      name: 'AI Builder Daily',
-      role: 'Community prompts',
-      building: 'Daily build challenges',
-      need: 'Makers shipping AI tools',
-      initials: 'BD',
-      color: Color(0xFFF9A8D4),
-    ),
   ];
 
-  static const products = <_FeaturedProduct>[
-    _FeaturedProduct(
-      name: 'Resume Labs',
-      tagline: 'AI resume builder for faster job applications.',
-      tag: 'AI Career',
-      icon: Icons.description_outlined,
-      color: Color(0xFF60A5FA),
-    ),
-    _FeaturedProduct(
-      name: 'VoicePost AI',
-      tagline: 'Turn audio and podcasts into social content.',
-      tag: 'Content AI',
-      icon: Icons.mic_none_rounded,
-      color: Color(0xFFA78BFA),
-    ),
-    _FeaturedProduct(
-      name: 'PlotMotion AI',
-      tagline: 'Create AI motion videos from structured prompts.',
-      tag: 'AI Video',
-      icon: Icons.video_camera_back_outlined,
-      color: Color(0xFFF9A8D4),
-    ),
-  ];
-
-  static const links = <_ExploreLink>[
-    _ExploreLink(
-      title: 'OpenAI Blog',
-      subtitle: 'Official releases and research updates',
-      url: 'https://openai.com/blog',
-    ),
-    _ExploreLink(
-      title: 'Google AI Blog',
-      subtitle: 'Research and product announcements',
-      url: 'https://ai.googleblog.com/',
-    ),
-    _ExploreLink(
-      title: 'Anthropic News',
-      subtitle: 'Model updates and safety posts',
-      url: 'https://www.anthropic.com/news',
-    ),
-  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -129,12 +78,10 @@ class ExplorePage extends ConsumerWidget {
           ),
           children: [
           const _ExploreHero(),
-          const SizedBox(height: AppSizes.xl),
+          const SizedBox(height: AppSizes.lg),
           _SectionHeader(
             title: 'Trending now',
-            subtitle: 'Hashtags people are using in AI Links.',
-            actionText: 'Network',
-            onActionTap: () => context.push('/network'),
+            subtitle: 'Popular hashtags in AI Links.',
           ),
           const SizedBox(height: AppSizes.md),
           trendsState.when(
@@ -148,7 +95,7 @@ class ExplorePage extends ConsumerWidget {
               }
 
               return Column(
-                children: trends.take(6).toList().asMap().entries.map((entry) {
+                children: trends.take(5).toList().asMap().entries.map((entry) {
                   final rank = entry.key + 1;
                   final trend = entry.value;
                   return _TrendingTile(
@@ -188,18 +135,9 @@ class ExplorePage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSizes.xxl),
-          _SectionHeader(
-            title: 'Featured products',
-            subtitle: 'AI tools and projects worth checking.',
-            actionText: 'Products',
-            onActionTap: () => context.push('/products'),
-          ),
-          const SizedBox(height: AppSizes.md),
-          ...products.map((product) => _ProductCard(product: product)),
-          const SizedBox(height: AppSizes.xxl),
           const _SectionHeader(
             title: 'Topics',
-            subtitle: 'Jump into focused AI communities.',
+            subtitle: 'Explore AI communities by category.',
           ),
           const SizedBox(height: AppSizes.md),
           GridView.builder(
@@ -220,19 +158,6 @@ class ExplorePage extends ConsumerWidget {
               );
             },
           ),
-          const SizedBox(height: AppSizes.xxl),
-          const _SectionHeader(
-            title: 'AI Radar',
-            subtitle: 'Official AI updates and research sources.',
-          ),
-          const SizedBox(height: AppSizes.md),
-          ...links.map(
-            (link) => _LinkCard(
-              title: link.title,
-              subtitle: link.subtitle,
-              url: link.url,
-            ),
-          ),
           ],
         ),
       ),
@@ -246,11 +171,10 @@ class _ExploreHero extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isGoldSubscriber = ref.watch(isGoldSubscriberProvider);
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         color: colorScheme.surface,
         border: Border.all(
           color: const Color(0xFFA78BFA).withValues(alpha: 0.10),
@@ -258,190 +182,91 @@ class _ExploreHero extends ConsumerWidget {
         ),
         boxShadow: ShadowStyle.lightShadow(),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Stack(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Positioned(
-              top: -72,
-              right: -62,
-              child: Container(
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFF60A5FA).withValues(alpha: 0.06),
-                      const Color(0xFF60A5FA).withValues(alpha: 0.00),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -84,
-              left: -70,
-              child: Container(
-                width: 190,
-                height: 190,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFFF9A8D4).withValues(alpha: 0.06),
-                      const Color(0xFFF9A8D4).withValues(alpha: 0.00),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(AppSizes.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFFBFDBFE),
-                          Color(0xDDD8B4FE),
-                          Color(0xFFFBCFE8),
-                        ],
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.auto_awesome_rounded,
-                      color: Color(0xFF312E81),
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.md),
-                  Text(
-                    'Discover AI builders, products, and ideas',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          height: 1.05,
-                          letterSpacing: -0.5,
-                        ),
-                  ),
-                  const SizedBox(height: AppSizes.sm),
-                  Text(
-                    'Find people building in AI, explore trending topics, and discover tools from the community.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          height: 1.35,
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  const SizedBox(height: AppSizes.lg),
-                  Container(
-                    padding: const EdgeInsets.all(AppSizes.md),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surface.withValues(alpha: 0.94),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: const Color(0xFF60A5FA).withValues(alpha: 0.12),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFFBFDBFE),
-                                Color(0xFFD8B4FE),
-                              ],
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.smart_toy_outlined,
-                            color: Color(0xFF312E81),
-                          ),
-                        ),
-                        const SizedBox(width: AppSizes.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Ask Snow',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall
-                                    ?.copyWith(fontWeight: FontWeight.w800),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                isGoldSubscriber
-                                    ? 'Open Snow AI chat for ideas and feedback.'
-                                    : 'Gold members can chat with Snow AI.',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: AppSizes.sm),
-                        FilledButton.tonal(
-                          onPressed: () => context.push(
-                            isGoldSubscriber ? '/snow-chat' : '/subscription',
-                          ),
-                          child: Text(isGoldSubscriber ? 'Open' : 'Get Gold'),
-                        ),
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFFBFDBFE),
+                        Color(0xFFD8B4FE),
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSizes.lg),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => context.push('/search'),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSizes.md,
-                        vertical: AppSizes.md,
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Color(0xFF312E81),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: AppSizes.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Discover what\'s happening',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
                       ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface.withValues(alpha: 0.92),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFFA78BFA).withValues(alpha: 0.09),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Find builders, trending topics, and ideas',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.lg),
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => context.push('/search'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.md,
+                  vertical: AppSizes.md,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFFA78BFA).withValues(alpha: 0.12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.search_rounded,
+                      color: colorScheme.onSurfaceVariant,
+                      size: 18,
+                    ),
+                    const SizedBox(width: AppSizes.sm),
+                    Expanded(
+                      child: Text(
+                        'Search builders, hashtags...',
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.search_rounded,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: AppSizes.sm),
-                          Expanded(
-                            child: Text(
-                              'Search builders, products, hashtags...',
-                              style: TextStyle(
-                                color: colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const Icon(Icons.arrow_forward_rounded, size: 18),
-                        ],
-                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -455,46 +280,35 @@ class _SectionHeader extends StatelessWidget {
   const _SectionHeader({
     required this.title,
     required this.subtitle,
-    this.actionText,
-    this.onActionTap,
   });
 
   final String title;
   final String subtitle;
-  final String? actionText;
-  final VoidCallback? onActionTap;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-            ],
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
         ),
-        if (actionText != null && onActionTap != null)
-          TextButton(
-            onPressed: onActionTap,
-            child: Text(actionText!),
-          ),
       ],
     );
   }
@@ -665,84 +479,6 @@ class _BuilderCard extends StatelessWidget {
   }
 }
 
-class _ProductCard extends StatelessWidget {
-  const _ProductCard({required this.product});
-
-  final _FeaturedProduct product;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: product.color.withValues(alpha: 0.10),
-            width: 0.7,
-          ),
-          boxShadow: ShadowStyle.lightShadow(color: product.color),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSizes.md),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: LinearGradient(
-                    colors: [
-                      product.color.withValues(alpha: 0.16),
-                      product.color.withValues(alpha: 0.06),
-                    ],
-                  ),
-                ),
-                child: Icon(product.icon, color: product.color),
-              ),
-              const SizedBox(width: AppSizes.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            product.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                ),
-                          ),
-                        ),
-                        _MiniBadge(label: product.tag),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      product.tagline,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            height: 1.25,
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _TopicCard extends StatelessWidget {
   const _TopicCard({required this.topic, required this.onTap});
@@ -803,30 +539,6 @@ class _TopicCard extends StatelessWidget {
   }
 }
 
-class _MiniBadge extends StatelessWidget {
-  const _MiniBadge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F7FF),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Color(0xFF6D28D9),
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
 
 class _ExploreTopic {
   const _ExploreTopic({
@@ -858,95 +570,3 @@ class _FeaturedBuilder {
   final Color color;
 }
 
-class _FeaturedProduct {
-  const _FeaturedProduct({
-    required this.name,
-    required this.tagline,
-    required this.tag,
-    required this.icon,
-    required this.color,
-  });
-
-  final String name;
-  final String tagline;
-  final String tag;
-  final IconData icon;
-  final Color color;
-}
-
-class _ExploreLink {
-  const _ExploreLink({
-    required this.title,
-    required this.subtitle,
-    required this.url,
-  });
-
-  final String title;
-  final String subtitle;
-  final String url;
-}
-
-class _LinkCard extends StatelessWidget {
-  const _LinkCard({
-    required this.title,
-    required this.subtitle,
-    required this.url,
-  });
-
-  final String title;
-  final String subtitle;
-  final String url;
-
-  Future<void> _copy(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: url));
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Link copied')));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _copy(context),
-        child: Ink(
-          padding: const EdgeInsets.all(AppSizes.md),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color(0xFFA78BFA).withValues(alpha: 0.075),
-            ),
-            boxShadow: ShadowStyle.lightShadow(),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.link_rounded),
-              const SizedBox(width: AppSizes.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.copy_rounded, size: 18),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

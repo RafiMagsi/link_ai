@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../core/theme/app_theme_colors.dart';
 import '../../../data/models/post_model.dart';
 import '../../utils/post_intent_ui.dart';
+import '../../../../subscription/presentation/widgets/gold_badge_widget.dart';
+import '../../../../subscription/presentation/providers/subscription_providers.dart';
 
-class PostHeader extends StatelessWidget {
+class PostHeader extends ConsumerWidget {
   const PostHeader({
     super.key,
     required this.post,
@@ -32,7 +35,7 @@ class PostHeader extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.appColors;
     final authorName = (authorNameOverride?.trim().isNotEmpty ?? false)
         ? authorNameOverride!.trim()
@@ -40,19 +43,31 @@ class PostHeader extends StatelessWidget {
     final authorRole = (authorRoleOverride?.trim().isNotEmpty ?? false)
         ? authorRoleOverride!.trim()
         : post.authorRole;
+    final isAuthorGoldSubscriber = post.authorUid.isEmpty
+        ? false
+        : ref.watch(isGoldSubscriberByUidProvider(post.authorUid));
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Flexible(
-          child: Text(
-            authorName.isEmpty ? 'Unknown Builder' : authorName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
-            ),
+          child: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  authorName.isEmpty ? 'Unknown Builder' : authorName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              if (isAuthorGoldSubscriber)
+                const GoldBadgeWidget(size: 13, padding: EdgeInsets.only(left: 5)),
+            ],
           ),
         ),
         const SizedBox(width: 6),

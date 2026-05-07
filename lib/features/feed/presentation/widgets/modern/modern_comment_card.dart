@@ -59,15 +59,19 @@ class ModernCommentCard extends ConsumerWidget {
           Container(
             decoration: BoxDecoration(
               color: isBestAnswer
-                  ? colorScheme.primaryContainer.withValues(alpha: 0.28)
-                  : null,
-              borderRadius: BorderRadius.circular(16),
+                  ? const Color(0xFFF1F8E9).withValues(alpha: 0.8)
+                  : isSnowComment
+                      ? const Color(0xFFEFF6FF).withValues(alpha: 0.9)
+                      : null,
+              borderRadius: BorderRadius.circular(12),
               border: Border(
                 left: BorderSide(
                   color: isBestAnswer
-                      ? colorScheme.primary
-                      : colorScheme.outline.withValues(alpha: 0.2),
-                  width: 2,
+                      ? const Color(0xFF2E7D32)
+                      : isSnowComment
+                          ? const Color(0xFF0284C7)
+                          : colorScheme.outline.withValues(alpha: 0.2),
+                  width: 3.5,
                 ),
               ),
             ),
@@ -117,17 +121,17 @@ class ModernCommentCard extends ConsumerWidget {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: colorScheme.tertiary.withValues(
-                                        alpha: 0.14,
+                                      color: const Color(0xFF0284C7).withValues(
+                                        alpha: 0.12,
                                       ),
                                       borderRadius: BorderRadius.circular(999),
                                     ),
-                                    child: Text(
+                                    child: const Text(
                                       'AI',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
-                                        color: colorScheme.tertiary,
+                                        color: Color(0xFF0284C7),
                                       ),
                                     ),
                                   ),
@@ -140,17 +144,17 @@ class ModernCommentCard extends ConsumerWidget {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: colorScheme.primary.withValues(
+                                      color: const Color(0xFF2E7D32).withValues(
                                         alpha: 0.12,
                                       ),
                                       borderRadius: BorderRadius.circular(999),
                                     ),
-                                    child: Text(
+                                    child: const Text(
                                       'Best answer',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
-                                        color: colorScheme.primary,
+                                        color: Color(0xFF2E7D32),
                                       ),
                                     ),
                                   ),
@@ -182,20 +186,21 @@ class ModernCommentCard extends ConsumerWidget {
                       fontWeight: FontWeight.w400,
                     ),
                   ),
-                  const SizedBox(height: AppSizes.sm),
-                  // Action row
-                  CommentActionRow(
-                    postId: postId,
-                    commentId: comment.id,
-                    commentText: comment.text,
-                    commentAuthorUid: comment.authorUid,
-                    commentAuthorName: comment.authorName,
-                    commentAuthorAvatarUrl: comment.authorAvatarUrl,
-                    likesCount: comment.likesCount,
-                    savesCount: comment.savesCount,
-                    repostsCount: comment.repostsCount,
-                  ),
-                  const SizedBox(height: AppSizes.sm),
+                  if (!isSnowComment) ...[
+                    const SizedBox(height: AppSizes.md),
+                    CommentActionRow(
+                      postId: postId,
+                      commentId: comment.id,
+                      commentText: comment.text,
+                      commentAuthorUid: comment.authorUid,
+                      commentAuthorName: comment.authorName,
+                      commentAuthorAvatarUrl: comment.authorAvatarUrl,
+                      likesCount: comment.likesCount,
+                      savesCount: comment.savesCount,
+                      repostsCount: comment.repostsCount,
+                    ),
+                    const SizedBox(height: AppSizes.md),
+                  ],
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -210,8 +215,8 @@ class ModernCommentCard extends ConsumerWidget {
                                   height: 14,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      colorScheme.primary,
+                                    valueColor: const AlwaysStoppedAnimation<Color>(
+                                      Color(0xFF2E7D32),
                                     ),
                                   ),
                                 )
@@ -220,26 +225,31 @@ class ModernCommentCard extends ConsumerWidget {
                                       ? Icons.check_circle_outline_rounded
                                       : Icons.workspace_premium_outlined,
                                   size: 14,
+                                  color: const Color(0xFF2E7D32),
                                 ),
                           label: Text(
                             isBestAnswer
                                 ? 'Remove best answer'
                                 : 'Mark best answer',
+                            style: const TextStyle(
+                              color: Color(0xFF2E7D32),
+                            ),
                           ),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
                         ),
-                      TextButton.icon(
-                        onPressed: onReplyTap,
-                        icon: const Icon(Icons.reply_outlined, size: 14),
-                        label: const Text('Reply'),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      if (!isSnowComment)
+                        TextButton.icon(
+                          onPressed: onReplyTap,
+                          icon: const Icon(Icons.reply_outlined, size: 14),
+                          label: const Text('Reply'),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ],

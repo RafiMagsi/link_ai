@@ -17,7 +17,7 @@ class GoldBadgeWidget extends StatelessWidget {
       child: Icon(
         Icons.star,
         size: size,
-        color: const Color(0xFFFFD700),
+        color: const Color(0xFFFDB022),
       ),
     );
   }

@@ -89,73 +89,33 @@ class FeedPostCard extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     // Use the repost's color (which has its own random color), not the original post's
     final postColor = PostColors.colorFromHex(post.colorCode);
-    final complementaryColor = _getComplementaryColor(postColor);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 5),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: postColor.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          color: postColor.withValues(alpha: 0.08),
           border: Border.all(
-            color: postColor.withValues(alpha: 0.90),
-            width: 0.7,
+            color: postColor.withValues(alpha: 0.15),
+            width: 0.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.025),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-            BoxShadow(
-              color: postColor.withValues(alpha: 0.025),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           child: Column(
             children: [
               if (isRepost)
                 RepostHeader(post: post, onAuthorTap: onReposterTap),
               Stack(
                 children: [
-                  Positioned(
-                    top: -72,
-                    right: -60,
-                    child: Container(
-                      width: 170,
-                      height: 170,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            postColor.withValues(alpha: 0.055),
-                            postColor.withValues(alpha: 0.00),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: -82,
-                    left: -66,
-                    child: Container(
-                      width: 185,
-                      height: 185,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            complementaryColor.withValues(alpha: 0.055),
-                            complementaryColor.withValues(alpha: 0.00),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
                   Material(
                     color: Colors.transparent,
                     child: InkWell(
@@ -300,9 +260,4 @@ class FeedPostCard extends ConsumerWidget {
     );
   }
 
-  Color _getComplementaryColor(Color color) {
-    final hslColor = HSLColor.fromColor(color);
-    final complementary = hslColor.withHue((hslColor.hue + 180) % 360);
-    return complementary.toColor();
-  }
 }

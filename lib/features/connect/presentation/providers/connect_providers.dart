@@ -17,7 +17,6 @@ final connectRemoteDataSourceProvider = Provider<ConnectRemoteDataSource>((
 ) {
   return ConnectRemoteDataSource(
     ref.watch(firebaseFirestoreProvider),
-    ref.watch(firebaseFunctionsProvider),
   );
 });
 
@@ -74,17 +73,6 @@ class ConnectController extends StateNotifier<AsyncValue<void>> {
 
   final Ref _ref;
   final ConnectRemoteDataSource _connectRemoteDataSource;
-
-  Future<void> pingUser(String targetUid) async {
-    state = const AsyncLoading();
-
-    try {
-      await _connectRemoteDataSource.sendPing(targetUid: targetUid);
-      state = const AsyncData(null);
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-    }
-  }
 
   Future<void> followUser(String targetUid) async {
     final user = _ref.read(currentUserProvider);
