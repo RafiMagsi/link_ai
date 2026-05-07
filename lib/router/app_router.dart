@@ -19,6 +19,7 @@ import '../features/admin/presentation/providers/admin_providers.dart';
 import '../features/feed/presentation/pages/feed_page.dart';
 import '../features/feed/presentation/pages/create_post_page.dart';
 import '../features/feed/presentation/pages/post_detail_page.dart';
+import '../features/feed/presentation/pages/comment_detail_page.dart';
 import '../features/main/presentation/pages/main_shell_page.dart';
 import '../features/notifications/presentation/pages/notifications_page.dart';
 import '../features/messaging/presentation/pages/inbox_page.dart';
@@ -27,6 +28,7 @@ import '../features/products/presentation/pages/products_page.dart';
 import '../features/messaging/presentation/pages/conversation_page.dart';
 import '../features/messaging/data/models/conversation_model.dart';
 import '../features/feed/data/models/post_model.dart';
+import '../features/feed/data/models/post_comment_model.dart';
 import '../features/explore/presentation/pages/hashtag_page.dart';
 import '../features/explore/presentation/pages/search_page.dart';
 import '../features/network/presentation/pages/network_page.dart';
@@ -262,6 +264,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           } catch (e) {
             return Scaffold(
               body: Center(child: Text('Error loading post: $e')),
+            );
+          }
+        },
+      ),
+      GoRoute(
+        path: '/posts/:postId/comments/:commentId',
+        name: 'comment-detail',
+        builder: (context, state) {
+          try {
+            final postId = state.pathParameters['postId'];
+            final commentId = state.pathParameters['commentId'];
+            if (postId == null || postId.isEmpty || commentId == null || commentId.isEmpty) {
+              return const Scaffold(
+                body: Center(child: Text('Invalid post or comment ID.')),
+              );
+            }
+            final initialComment = state.extra is PostCommentModel
+                ? state.extra as PostCommentModel
+                : null;
+            return CommentDetailPage(
+              postId: postId,
+              commentId: commentId,
+              initialComment: initialComment,
+            );
+          } catch (e) {
+            return Scaffold(
+              body: Center(child: Text('Error loading comment: $e')),
             );
           }
         },

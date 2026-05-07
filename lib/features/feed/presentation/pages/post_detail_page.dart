@@ -366,7 +366,12 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                           resolvedPost.bestAnswerCommentId,
                         );
 
-                        if (decoratedComments.isEmpty) {
+                        // Show only top-level comments (no parent)
+                        final topLevelComments = decoratedComments
+                            .where((c) => c.parentCommentId == null)
+                            .toList();
+
+                        if (topLevelComments.isEmpty) {
                           return const SliverToBoxAdapter(
                             child: Padding(
                               padding: EdgeInsets.all(AppSizes.xl),
@@ -380,7 +385,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                             context,
                             index,
                           ) {
-                            final comment = decoratedComments[index];
+                            final comment = topLevelComments[index];
                             return FeedCommentCard(
                               comment: comment,
                               postId: widget.postId,
@@ -398,8 +403,11 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
                                     : comment.id,
                               ),
                               onReplyTap: () => _showReplyComposer(comment.id),
+                              onCommentTap: () =>
+                                  context.push('/posts/${widget.postId}/comments/${comment.id}', extra: comment),
+                              showNestedReplies: false,
                             );
-                          }, childCount: decoratedComments.length),
+                          }, childCount: topLevelComments.length),
                         );
                       },
                       loading: () => const SliverToBoxAdapter(

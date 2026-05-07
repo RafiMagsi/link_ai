@@ -16,7 +16,9 @@ class CommentActionRow extends ConsumerWidget {
     required this.likesCount,
     required this.savesCount,
     required this.repostsCount,
+    required this.repliesCount,
     this.onReplyTap,
+    this.onCommentTap,
   });
 
   final String postId;
@@ -28,7 +30,9 @@ class CommentActionRow extends ConsumerWidget {
   final int likesCount;
   final int savesCount;
   final int repostsCount;
+  final int repliesCount;
   final VoidCallback? onReplyTap;
+  final VoidCallback? onCommentTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -64,8 +68,8 @@ class CommentActionRow extends ConsumerWidget {
             icon: Icons.chat_bubble_outline,
             activeIcon: Icons.chat_bubble,
             active: false,
-            count: 0,
-            onTap: onReplyTap ?? () {},
+            count: repliesCount,
+            onTap: onCommentTap ?? onReplyTap ?? () {},
           ),
           PostActionButton(
             icon: Icons.repeat,

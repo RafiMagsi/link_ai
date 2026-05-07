@@ -14,19 +14,25 @@ class FeedCommentCard extends ConsumerWidget {
     required this.comment,
     required this.postId,
     required this.onReplyTap,
+    this.onCommentTap,
     this.isBestAnswer = false,
     this.showBestAnswerAction = false,
     this.onBestAnswerToggle,
     this.isBestAnswerUpdating = false,
+    this.showNestedReplies = true,
+    this.showNestedIndentation = true,
   });
 
   final PostCommentModel comment;
   final String postId;
   final VoidCallback onReplyTap;
+  final VoidCallback? onCommentTap;
   final bool isBestAnswer;
   final bool showBestAnswerAction;
   final VoidCallback? onBestAnswerToggle;
   final bool isBestAnswerUpdating;
+  final bool showNestedReplies;
+  final bool showNestedIndentation;
 
   String _formatTime(DateTime? createdAt) {
     if (createdAt == null) return 'now';
@@ -50,7 +56,6 @@ class FeedCommentCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isNested = comment.parentCommentId != null;
     final isSnowComment = comment.authorUid == 'snow_ai';
     final accentColor = _accentColor(isSnowComment: isSnowComment);
     final isAuthorGoldSubscriber = comment.authorUid.isEmpty
@@ -59,7 +64,7 @@ class FeedCommentCard extends ConsumerWidget {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        AppSizes.md + (isNested ? 24.0 : 0),
+        AppSizes.md,
         isBestAnswer ? AppSizes.sm : (isSnowComment ? AppSizes.xs : 5),
         AppSizes.md,
         isSnowComment ? AppSizes.xs : 5,
@@ -89,45 +94,48 @@ class FeedCommentCard extends ConsumerWidget {
                 children: [
                   Material(
                     color: Colors.transparent,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(11, 11, 11, 7),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AppUserAvatar(
-                            avatarUrl: comment.authorAvatarUrl,
-                            radius: 18,
-                          ),
-                          const SizedBox(width: AppSizes.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _CommentHeader(
-                                  comment: comment,
-                                  timeText: _formatTime(comment.createdAt),
-                                  isSnowComment: isSnowComment,
-                                  isBestAnswer: isBestAnswer,
-                                  isAuthorGoldSubscriber: isAuthorGoldSubscriber,
-                                ),
-                                const SizedBox(height: 5),
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 4),
-                                  child: Text(
-                                    comment.text,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      height: 1.34,
-                                      fontWeight: FontWeight.w400,
-                                      letterSpacing: -0.04,
+                    child: InkWell(
+                      onTap: onCommentTap,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(11, 11, 11, 7),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AppUserAvatar(
+                              avatarUrl: comment.authorAvatarUrl,
+                              radius: 18,
+                            ),
+                            const SizedBox(width: AppSizes.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _CommentHeader(
+                                    comment: comment,
+                                    timeText: _formatTime(comment.createdAt),
+                                    isSnowComment: isSnowComment,
+                                    isBestAnswer: isBestAnswer,
+                                    isAuthorGoldSubscriber: isAuthorGoldSubscriber,
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 4),
+                                    child: Text(
+                                      comment.text,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        height: 1.34,
+                                        fontWeight: FontWeight.w400,
+                                        letterSpacing: -0.04,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                if (!isSnowComment) const SizedBox(height: 46),
-                              ],
+                                  if (!isSnowComment) const SizedBox(height: 46),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -167,7 +175,9 @@ class FeedCommentCard extends ConsumerWidget {
                                   likesCount: comment.likesCount,
                                   savesCount: comment.savesCount,
                                   repostsCount: comment.repostsCount,
+                                  repliesCount: comment.repliesCount,
                                   onReplyTap: onReplyTap,
+                                  onCommentTap: onCommentTap,
                                 ),
                               ),
                             ],
@@ -220,15 +230,19 @@ class FeedCommentCard extends ConsumerWidget {
               ),
             ),
           ),
-          if (comment.replies.isNotEmpty)
+          if (showNestedReplies && comment.replies.isNotEmpty)
             ...comment.replies.map(
               (reply) => FeedCommentCard(
                 comment: reply,
                 postId: postId,
                 isBestAnswer: reply.isBestAnswer,
-                onReplyTap: () {
-                  // TODO: Handle reply to nested comment.
-                },
+                showBestAnswerAction: showBestAnswerAction,
+                isBestAnswerUpdating: isBestAnswerUpdating,
+                onBestAnswerToggle: onBestAnswerToggle,
+                onReplyTap: onReplyTap,
+                onCommentTap: onCommentTap,
+                showNestedReplies: showNestedReplies,
+                showNestedIndentation: showNestedIndentation,
               ),
             ),
         ],

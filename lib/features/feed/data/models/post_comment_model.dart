@@ -14,6 +14,7 @@ class PostCommentModel {
   final int likesCount;
   final int repostsCount;
   final int savesCount;
+  final int repliesCount;
   final bool isBestAnswer;
 
   const PostCommentModel({
@@ -30,6 +31,7 @@ class PostCommentModel {
     this.likesCount = 0,
     this.repostsCount = 0,
     this.savesCount = 0,
+    this.repliesCount = 0,
     this.isBestAnswer = false,
   });
 
@@ -51,6 +53,7 @@ class PostCommentModel {
       likesCount: data['likesCount'] as int? ?? 0,
       repostsCount: data['repostsCount'] as int? ?? 0,
       savesCount: data['savesCount'] as int? ?? 0,
+      repliesCount: data['repliesCount'] as int? ?? 0,
       isBestAnswer: data['isBestAnswer'] as bool? ?? false,
     );
   }
@@ -92,6 +95,7 @@ class PostCommentModel {
     // Build the tree recursively
     PostCommentModel buildNode(PostCommentModel comment) {
       final replies = commentReplies[comment.id] ?? [];
+      final builtReplies = replies.map(buildNode).toList();
       return PostCommentModel(
         id: comment.id,
         postId: comment.postId,
@@ -102,10 +106,11 @@ class PostCommentModel {
         createdAt: comment.createdAt,
         createdAtClient: comment.createdAtClient,
         parentCommentId: comment.parentCommentId,
-        replies: replies.map(buildNode).toList(),
+        replies: builtReplies,
         likesCount: comment.likesCount,
         repostsCount: comment.repostsCount,
         savesCount: comment.savesCount,
+        repliesCount: builtReplies.length,
         isBestAnswer: comment.isBestAnswer,
       );
     }
@@ -116,6 +121,7 @@ class PostCommentModel {
   PostCommentModel copyWith({
     List<PostCommentModel>? replies,
     bool? isBestAnswer,
+    int? repliesCount,
   }) {
     return PostCommentModel(
       id: id,
@@ -131,6 +137,7 @@ class PostCommentModel {
       likesCount: likesCount,
       repostsCount: repostsCount,
       savesCount: savesCount,
+      repliesCount: repliesCount ?? this.repliesCount,
       isBestAnswer: isBestAnswer ?? this.isBestAnswer,
     );
   }
