@@ -119,7 +119,9 @@ class SettingsPage extends ConsumerWidget {
                             ListTile(
                               leading: const Icon(Icons.admin_panel_settings),
                               title: const Text('Global Settings'),
-                              subtitle: const Text('Limits, feature flags, throttles'),
+                              subtitle: const Text(
+                                'Limits, feature flags, throttles',
+                              ),
                               trailing: const Icon(Icons.chevron_right),
                               onTap: () {
                                 try {
@@ -131,7 +133,9 @@ class SettingsPage extends ConsumerWidget {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          ErrorHandler.getUserFriendlyMessage(e),
+                                          ErrorHandler.getUserFriendlyMessage(
+                                            e,
+                                          ),
                                         ),
                                       ),
                                     );
@@ -149,10 +153,7 @@ class SettingsPage extends ConsumerWidget {
                 },
                 loading: () => const Padding(
                   padding: EdgeInsets.only(bottom: 18),
-                  child: SizedBox(
-                    height: 20,
-                    child: AppLoader(),
-                  ),
+                  child: SizedBox(height: 20, child: AppLoader()),
                 ),
                 error: (error, stack) => Padding(
                   padding: const EdgeInsets.only(bottom: 18),
@@ -466,10 +467,14 @@ class SettingsPage extends ConsumerWidget {
                     subtitle: const Text('Permanent account deletion'),
                     onTap: () => _deleteAccount(context, ref),
                   ),
-                  const ListTile(
-                    leading: Icon(Icons.link),
-                    title: Text('Manage Login Providers'),
-                    subtitle: Text('Coming later'),
+                  ListTile(
+                    leading: const Icon(Icons.alternate_email_rounded),
+                    title: const Text('Sign-in method'),
+                    subtitle: const Text('Email and password'),
+                    trailing: Icon(
+                      Icons.verified_user_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                 ],
               ),

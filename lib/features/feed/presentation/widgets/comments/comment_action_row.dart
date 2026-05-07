@@ -30,8 +30,12 @@ class CommentActionRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final interactionState = ref.watch(commentInteractionStateProvider(commentId));
-    final optimisticState = ref.watch(optimisticCommentInteractionProvider(commentId));
+    final interactionState = ref.watch(
+      commentInteractionStateProvider(commentId),
+    );
+    final optimisticState = ref.watch(
+      optimisticCommentInteractionProvider(commentId),
+    );
 
     late bool isLiked;
     late bool isSaved;
@@ -62,26 +66,27 @@ class CommentActionRow extends ConsumerWidget {
             active: isLiked,
             count: likesCount,
             onTap: () {
-              ref.read(postControllerProvider.notifier).toggleCommentLike(
-                postId: postId,
-                commentId: commentId,
-              );
+              ref
+                  .read(postControllerProvider.notifier)
+                  .toggleCommentLike(postId: postId, commentId: commentId);
             },
           ),
           PostActionButton(
             icon: Icons.repeat_outlined,
             activeIcon: Icons.repeat,
-            active: false,
+            active: isReposted,
             count: repostsCount,
             onTap: () {
-              ref.read(postControllerProvider.notifier).toggleCommentRepost(
-                postId: postId,
-                commentId: commentId,
-                commentText: commentText,
-                commentAuthorUid: commentAuthorUid,
-                commentAuthorName: commentAuthorName,
-                commentAuthorAvatarUrl: commentAuthorAvatarUrl,
-              );
+              ref
+                  .read(postControllerProvider.notifier)
+                  .toggleCommentRepost(
+                    postId: postId,
+                    commentId: commentId,
+                    commentText: commentText,
+                    commentAuthorUid: commentAuthorUid,
+                    commentAuthorName: commentAuthorName,
+                    commentAuthorAvatarUrl: commentAuthorAvatarUrl,
+                  );
             },
           ),
           PostActionButton(
@@ -90,10 +95,9 @@ class CommentActionRow extends ConsumerWidget {
             active: isSaved,
             count: savesCount,
             onTap: () {
-              ref.read(postControllerProvider.notifier).toggleCommentSave(
-                postId: postId,
-                commentId: commentId,
-              );
+              ref
+                  .read(postControllerProvider.notifier)
+                  .toggleCommentSave(postId: postId, commentId: commentId);
             },
           ),
         ],

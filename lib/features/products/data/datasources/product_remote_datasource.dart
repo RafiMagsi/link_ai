@@ -32,7 +32,6 @@ class ProductRemoteDataSource {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .timeout(const Duration(seconds: 10), onTimeout: (sink) => sink.close())
         .map((snapshot) {
           try {
             return snapshot.docs.map(ProductModel.fromFirestore).toList();
@@ -49,7 +48,6 @@ class ProductRemoteDataSource {
         .orderBy('updatedAt', descending: true)
         .limit(limit)
         .snapshots()
-        .timeout(const Duration(seconds: 10), onTimeout: (sink) => sink.close())
         .map((snapshot) {
           try {
             return snapshot.docs.map(ProductModel.fromFirestore).toList();
@@ -63,19 +61,15 @@ class ProductRemoteDataSource {
   }
 
   Stream<ProductModel?> watchProduct(String productId) {
-    return _products
-        .doc(productId)
-        .snapshots()
-        .timeout(const Duration(seconds: 10), onTimeout: (sink) => sink.close())
-        .map((doc) {
-          try {
-            if (!doc.exists) return null;
-            return ProductModel.fromFirestore(doc);
-          } catch (error, stackTrace) {
-            debugPrint('Error parsing product $productId: $error\n$stackTrace');
-            return null;
-          }
-        });
+    return _products.doc(productId).snapshots().map((doc) {
+      try {
+        if (!doc.exists) return null;
+        return ProductModel.fromFirestore(doc);
+      } catch (error, stackTrace) {
+        debugPrint('Error parsing product $productId: $error\n$stackTrace');
+        return null;
+      }
+    });
   }
 
   Future<void> createProduct({

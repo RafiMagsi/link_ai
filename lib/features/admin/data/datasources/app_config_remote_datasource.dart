@@ -15,19 +15,14 @@ class AppConfigRemoteDataSource {
   }
 
   Stream<AppConfigModel> watchGlobalConfig() {
-    return _globalConfig.snapshots()
-        .timeout(
-          const Duration(seconds: 10),
-          onTimeout: (sink) => sink.close(),
-        )
-        .map((snapshot) {
-          try {
-            return AppConfigModel.fromFirestore(snapshot);
-          } catch (error, stackTrace) {
-           debugPrint('Error parsing global config: $error\n$stackTrace');
-            rethrow;
-          }
-        });
+    return _globalConfig.snapshots().map((snapshot) {
+      try {
+        return AppConfigModel.fromFirestore(snapshot);
+      } catch (error, stackTrace) {
+        debugPrint('Error parsing global config: $error\n$stackTrace');
+        rethrow;
+      }
+    });
   }
 
   Future<AppConfigModel> getGlobalConfig() async {
@@ -38,11 +33,11 @@ class AppConfigRemoteDataSource {
       );
       return AppConfigModel.fromFirestore(snapshot);
     } on TimeoutException catch (e) {
-     debugPrint('Timeout fetching global config: $e');
+      debugPrint('Timeout fetching global config: $e');
       // Return default config on timeout to prevent app crash
       return AppConfigModel.defaults();
     } catch (e) {
-     debugPrint('Error fetching global config: $e');
+      debugPrint('Error fetching global config: $e');
       // Return default config on error to prevent app crash
       return AppConfigModel.defaults();
     }
@@ -53,22 +48,26 @@ class AppConfigRemoteDataSource {
     required String updatedBy,
   }) async {
     try {
-      await _globalConfig.set(
-        config.toUpdateMap(updatedBy: updatedBy),
-        SetOptions(merge: true),
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Config update timed out'),
-      );
+      await _globalConfig
+          .set(
+            config.toUpdateMap(updatedBy: updatedBy),
+            SetOptions(merge: true),
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw TimeoutException('Config update timed out'),
+          );
     } on TimeoutException catch (e) {
-     debugPrint('Timeout updating global config: $e');
+      debugPrint('Timeout updating global config: $e');
       throw Exception(
         'Config update took too long. Please check your connection and try again.',
       );
     } on FirebaseException catch (e) {
-     debugPrint('Firebase error updating config: ${e.code} - ${e.message}');
+      debugPrint('Firebase error updating config: ${e.code} - ${e.message}');
       if (e.code == 'permission-denied') {
-        throw Exception('You do not have permission to update the app configuration.');
+        throw Exception(
+          'You do not have permission to update the app configuration.',
+        );
       } else if (e.code == 'invalid-argument') {
         throw Exception('Invalid configuration data. Please check your input.');
       } else if (e.code == 'unauthenticated') {
@@ -76,7 +75,7 @@ class AppConfigRemoteDataSource {
       }
       rethrow;
     } catch (e) {
-     debugPrint('Error updating global config: $e');
+      debugPrint('Error updating global config: $e');
       rethrow;
     }
   }
@@ -90,28 +89,35 @@ class AppConfigRemoteDataSource {
 
       if (snapshot.exists) return;
 
-      await _globalConfig.set(
-        AppConfigModel.defaults().toUpdateMap(updatedBy: updatedBy),
-        SetOptions(merge: true),
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Default config creation timed out'),
-      );
+      await _globalConfig
+          .set(
+            AppConfigModel.defaults().toUpdateMap(updatedBy: updatedBy),
+            SetOptions(merge: true),
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () =>
+                throw TimeoutException('Default config creation timed out'),
+          );
     } on TimeoutException catch (e) {
-     debugPrint('Timeout creating default config: $e');
+      debugPrint('Timeout creating default config: $e');
       throw Exception(
         'Default config creation took too long. Please try again.',
       );
     } on FirebaseException catch (e) {
-     debugPrint('Firebase error creating default config: ${e.code} - ${e.message}');
+      debugPrint(
+        'Firebase error creating default config: ${e.code} - ${e.message}',
+      );
       if (e.code == 'permission-denied') {
-        throw Exception('You do not have permission to create the app configuration.');
+        throw Exception(
+          'You do not have permission to create the app configuration.',
+        );
       } else if (e.code == 'unauthenticated') {
         throw Exception('You must be authenticated to create configuration.');
       }
       rethrow;
     } catch (e) {
-     debugPrint('Error creating default config: $e');
+      debugPrint('Error creating default config: $e');
       rethrow;
     }
   }

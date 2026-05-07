@@ -5,10 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../data/models/post_model.dart';
 
 class SnowPostShipBody extends StatelessWidget {
-  const SnowPostShipBody({
-    super.key,
-    required this.post,
-  });
+  const SnowPostShipBody({super.key, required this.post});
 
   final PostModel post;
 
@@ -24,18 +21,12 @@ class SnowPostShipBody extends StatelessWidget {
       children: [
         Text(
           shipMeta.projectName,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 2),
         Text(
           shipMeta.tagline,
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[600],
-          ),
+          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
         ),
         const SizedBox(height: 10),
         if (shipMeta.demoUrl?.isNotEmpty ?? false)
@@ -50,10 +41,10 @@ class SnowPostShipBody extends StatelessWidget {
               child: CachedNetworkImage(
                 imageUrl: shipMeta.demoUrl!,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => const Center(
+                placeholder: (context, url) => const Center(
                   child: Icon(Icons.image, color: Color(0xFF639922)),
                 ),
-                errorWidget: (_, __, ___) => const Center(
+                errorWidget: (context, url, error) => const Center(
                   child: Icon(Icons.broken_image, color: Color(0xFF639922)),
                 ),
               ),
