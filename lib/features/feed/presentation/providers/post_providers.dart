@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -12,11 +13,53 @@ import '../../../connect/presentation/providers/connect_providers.dart';
 import '../../data/datasources/post_remote_datasource.dart';
 import '../../data/models/post_comment_model.dart';
 import '../../data/models/post_model.dart';
+import '../../../../core/services/s3_upload_service.dart';
+
+// Pagination state class
+class PaginatedPostsState {
+  final List<PostModel> posts;
+  final DocumentSnapshot? cursor;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final bool isInitialLoading;
+  final Object? error;
+
+  const PaginatedPostsState({
+    required this.posts,
+    this.cursor,
+    this.isLoadingMore = false,
+    this.hasMore = true,
+    this.isInitialLoading = false,
+    this.error,
+  });
+
+  PaginatedPostsState copyWith({
+    List<PostModel>? posts,
+    DocumentSnapshot? cursor,
+    bool? isLoadingMore,
+    bool? hasMore,
+    bool? isInitialLoading,
+    Object? error,
+  }) {
+    return PaginatedPostsState(
+      posts: posts ?? this.posts,
+      cursor: cursor ?? this.cursor,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      hasMore: hasMore ?? this.hasMore,
+      isInitialLoading: isInitialLoading ?? this.isInitialLoading,
+      error: error ?? this.error,
+    );
+  }
+}
+
+final s3UploadServiceProvider = Provider<S3UploadService>((ref) {
+  return S3UploadService();
+});
 
 final postRemoteDataSourceProvider = Provider<PostRemoteDataSource>((ref) {
   return PostRemoteDataSource(
     ref.watch(firebaseFirestoreProvider),
-    ref.watch(firebaseStorageProvider),
+    ref.watch(s3UploadServiceProvider),
   );
 });
 
@@ -24,6 +67,84 @@ final latestPostsProvider = StreamProvider<List<PostModel>>((ref) {
   return ref.watch(postRemoteDataSourceProvider).watchLatestPosts();
 });
 
+// Pagination notifier for Latest posts
+class LatestFeedNotifier extends StateNotifier<PaginatedPostsState> {
+  LatestFeedNotifier(this._ds)
+      : super(const PaginatedPostsState(posts: [], isInitialLoading: true)) {
+    loadInitial();
+  }
+
+  final PostRemoteDataSource _ds;
+
+  Future<void> loadInitial() async {
+    try {
+      state = state.copyWith(isInitialLoading: true, error: null);
+      final (posts, cursor) = await _ds.fetchLatestPostsPage();
+      state = PaginatedPostsState(
+        posts: posts,
+        cursor: cursor,
+        hasMore: posts.length >= 20,
+        isInitialLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(error: e, isInitialLoading: false);
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoadingMore || !state.hasMore) return;
+
+    try {
+      state = state.copyWith(isLoadingMore: true, error: null);
+      final (newPosts, cursor) = await _ds.fetchLatestPostsPage(after: state.cursor);
+      if (newPosts.isEmpty) {
+        state = state.copyWith(hasMore: false, isLoadingMore: false);
+      } else {
+        state = PaginatedPostsState(
+          posts: [...state.posts, ...newPosts],
+          cursor: cursor,
+          hasMore: newPosts.length >= 20,
+          isLoadingMore: false,
+        );
+      }
+    } catch (e) {
+      state = state.copyWith(error: e, isLoadingMore: false);
+    }
+  }
+
+  Future<void> refresh() async {
+    await loadInitial();
+  }
+}
+
+final latestFeedProvider =
+    StateNotifierProvider<LatestFeedNotifier, PaginatedPostsState>((ref) {
+  final ds = ref.watch(postRemoteDataSourceProvider);
+  return LatestFeedNotifier(ds);
+});
+
+// Connected posts derive from latest paginated posts
+final connectedFeedProvider = Provider<List<PostModel>>((ref) {
+  final latestState = ref.watch(latestFeedProvider);
+  final connectionsAsync = ref.watch(myConnectionsProvider);
+
+  return connectionsAsync.when(
+    data: (connections) {
+      final followingUids = connections
+          .map((c) => c.connectedUid)
+          .where((uid) => uid.isNotEmpty)
+          .toSet();
+
+      return latestState.posts
+          .where((p) => followingUids.contains(p.authorUid))
+          .toList();
+    },
+    loading: () => <PostModel>[],
+    error: (_, _) => <PostModel>[],
+  );
+});
+
+// Keep old provider for backward compatibility
 final connectedPostsProvider = StreamProvider<List<PostModel>>((ref) {
   return ref
       .watch(latestPostsProvider)
@@ -52,6 +173,15 @@ final connectedPostsProvider = StreamProvider<List<PostModel>>((ref) {
       );
 });
 
+// Viral posts derive from latest paginated posts
+final viralFeedProvider = Provider<List<PostModel>>((ref) {
+  final latestState = ref.watch(latestFeedProvider);
+  final sorted = latestState.posts.toList()
+    ..sort((a, b) => _calculateViralScore(b).compareTo(_calculateViralScore(a)));
+  return sorted;
+});
+
+// Keep old provider for backward compatibility
 final viralPostsProvider = StreamProvider<List<PostModel>>((ref) {
   return ref
       .watch(latestPostsProvider)
@@ -1040,3 +1170,25 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
   }
 }
+
+/// Holds the postId of the currently auto-playing video in the feed.
+final activeVideoPostIdProvider = StateProvider<String?>((ref) => null);
+
+/// Provides all media items from a user's posts, sorted by creation date (newest first).
+final userMediaProvider = FutureProvider.family<
+    List<(PostModel post, int mediaIndex)>,
+    String>((ref, uid) async {
+  final postsState = ref.watch(postsByAuthorProvider(uid));
+  final posts = postsState.asData?.value ?? [];
+
+  final mediaItems = <(PostModel post, int mediaIndex)>[];
+  for (final post in posts) {
+    if (post.media.isNotEmpty) {
+      for (int i = 0; i < post.media.length; i++) {
+        mediaItems.add((post, i));
+      }
+    }
+  }
+
+  return mediaItems;
+});

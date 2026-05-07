@@ -57,6 +57,8 @@ dependencies:
   package_info_plus: ^10.1.0
   shared_preferences: ^2.3.0
   in_app_purchase: ^3.2.3
+  http: ^1.1.0
+  video_player: ^2.8.7
 
 dev_dependencies:
   flutter_test:

@@ -2,22 +2,22 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/constants/post_colors.dart';
 import '../../../../core/errors/error_handler.dart';
+import '../../../../core/services/s3_upload_service.dart';
 import '../../../../core/utils/hashtag_utils.dart';
 import '../../../profile/data/models/profile_model.dart';
 import '../models/post_comment_model.dart';
 import '../models/post_model.dart';
 
 class PostRemoteDataSource {
-  PostRemoteDataSource(this._firestore, this._storage);
+  PostRemoteDataSource(this._firestore, this._s3);
 
   final FirebaseFirestore _firestore;
-  final FirebaseStorage _storage;
+  final S3UploadService _s3;
 
   static const _uuid = Uuid();
 
@@ -115,58 +115,20 @@ class PostRemoteDataSource {
       final uploadedMedia = <PostMediaModel>[];
       final hashtags = HashtagUtils.extractNormalized(text);
 
+      // Upload files in parallel using Future.wait()
+      final uploadTasks = <Future<void>>[];
+
       for (var i = 0; i < imageFiles.length; i++) {
-        try {
-          final file = imageFiles[i];
-          final fileName = '${_uuid.v4()}.jpg';
-
-          final ref = _storage.ref().child(
-            'postMedia/${profile.uid}/$postId/$fileName',
-          );
-
-          await ref
-              .putFile(
-                file,
-                SettableMetadata(
-                  contentType: 'image/jpeg',
-                  customMetadata: {'uid': profile.uid, 'postId': postId},
-                ),
-              )
-              .timeout(
-                const Duration(seconds: 30),
-                onTimeout: () =>
-                    throw TimeoutException('Image upload timed out'),
-              );
-
-          final url = await ref.getDownloadURL().timeout(
-            const Duration(seconds: 10),
-            onTimeout: () =>
-                throw TimeoutException('Image URL retrieval timed out'),
-          );
-
-          uploadedMedia.add(PostMediaModel(url: url, type: 'image', order: i));
-        } on FirebaseException catch (e) {
-          debugPrint(
-            'Firebase error uploading image $i: ${e.code} - ${e.message}',
-          );
-          if (e.code == 'storage/quota-exceeded') {
-            throw StorageQuotaError(
-              'Storage quota exceeded. Please delete some posts and try again.',
-            );
-          } else if (e.code == 'storage/unauthorized') {
-            throw Exception('You do not have permission to upload images.');
-          }
-          rethrow;
-        } on TimeoutException catch (e) {
-          debugPrint('Timeout uploading image $i: $e');
-          throw Exception(
-            'Image upload took too long. Please check your connection and try again.',
-          );
-        } catch (error, stackTrace) {
-          debugPrint('Error uploading image $i: $error\n$stackTrace');
-          rethrow;
-        }
+        final task = _uploadMediaFile(
+          file: imageFiles[i],
+          s3Path: 'postMedia/${profile.uid}/$postId/${_uuid.v4()}',
+          index: i,
+          uploadedMedia: uploadedMedia,
+        );
+        uploadTasks.add(task);
       }
+
+      await Future.wait(uploadTasks);
 
       final post = PostModel(
         id: postId,
@@ -946,6 +908,185 @@ class PostRemoteDataSource {
       debugPrint(
         'Error toggling repost on comment $commentId by user $uid: $error\n$stackTrace',
       );
+      rethrow;
+    }
+  }
+
+  // Helper method to upload media file to S3
+  Future<void> _uploadMediaFile({
+    required File file,
+    required String s3Path,
+    required int index,
+    required List<PostMediaModel> uploadedMedia,
+  }) async {
+    try {
+      // Determine media type from file extension
+      final extension = file.path.split('.').last.toLowerCase();
+      final isVideo = [
+        'mp4',
+        'mov',
+        'm4v',
+        'webm',
+        'mkv',
+        'avi',
+        '3gp',
+      ].contains(extension);
+      final mediaType = isVideo ? 'video' : 'image';
+
+      final url = await _s3.uploadFile(
+        file: file,
+        s3Path:
+            '$s3Path.${extension.isNotEmpty ? extension : (isVideo ? 'mp4' : 'jpg')}',
+      );
+
+      uploadedMedia.add(
+        PostMediaModel(url: url, type: mediaType, order: index),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Error uploading media file $index: $error\n$stackTrace');
+      rethrow;
+    }
+  }
+
+  // Pagination methods
+  Future<(List<PostModel>, DocumentSnapshot?)> fetchLatestPostsPage({
+    DocumentSnapshot? after,
+    int limit = 20,
+  }) async {
+    try {
+      var query = _posts
+          .orderBy('createdAt', descending: true)
+          .limit(limit + 1); // Fetch one extra to detect if there are more
+
+      if (after != null) {
+        query = query.startAfterDocument(after);
+      }
+
+      final snapshot = await query.get();
+      final hasMore = snapshot.docs.length > limit;
+      final docs = hasMore ? snapshot.docs.sublist(0, limit) : snapshot.docs;
+
+      final posts = docs.map(PostModel.fromFirestore).toList();
+      final cursor = docs.isNotEmpty ? docs.last : null;
+
+      return (posts, cursor);
+    } catch (error, stackTrace) {
+      debugPrint('Error fetching latest posts page: $error\n$stackTrace');
+      rethrow;
+    }
+  }
+
+  Future<(List<PostModel>, DocumentSnapshot?)> fetchPostsByAuthorPage({
+    required String uid,
+    DocumentSnapshot? after,
+    int limit = 20,
+  }) async {
+    try {
+      var query = _posts
+          .where('authorUid', isEqualTo: uid)
+          .orderBy('createdAt', descending: true)
+          .limit(limit + 1);
+
+      if (after != null) {
+        query = query.startAfterDocument(after);
+      }
+
+      final snapshot = await query.get();
+      final hasMore = snapshot.docs.length > limit;
+      final docs = hasMore ? snapshot.docs.sublist(0, limit) : snapshot.docs;
+
+      final posts = docs.map(PostModel.fromFirestore).toList();
+      final cursor = docs.isNotEmpty ? docs.last : null;
+
+      return (posts, cursor);
+    } catch (error, stackTrace) {
+      debugPrint('Error fetching posts by author page: $error\n$stackTrace');
+      rethrow;
+    }
+  }
+
+  Future<(List<PostModel>, DocumentSnapshot?)> fetchPostsByHashtagPage({
+    required String tag,
+    DocumentSnapshot? after,
+    int limit = 20,
+  }) async {
+    try {
+      final normalized = tag.toLowerCase();
+      var query = _posts
+          .where('hashtags', arrayContains: normalized)
+          .limit(limit + 1);
+
+      if (after != null) {
+        // Note: For hashtag queries, startAfterDocument requires the document to have
+        // a matching hashtag. This is a limitation of Firestore's query API.
+        // For now, we'll fetch from beginning and apply client-side pagination
+        final snapshot = await query.get();
+        final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
+        posts.sort(
+          (a, b) => (b.createdAt ?? DateTime.now()).compareTo(
+            a.createdAt ?? DateTime.now(),
+          ),
+        );
+        return (posts.take(limit).toList(), null);
+      }
+
+      final snapshot = await query.get();
+      final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
+      posts.sort(
+        (a, b) => (b.createdAt ?? DateTime.now()).compareTo(
+          a.createdAt ?? DateTime.now(),
+        ),
+      );
+      final cursor = posts.isNotEmpty ? snapshot.docs.last : null;
+
+      return (posts.take(limit).toList(), cursor);
+    } catch (error, stackTrace) {
+      debugPrint('Error fetching posts by hashtag page: $error\n$stackTrace');
+      rethrow;
+    }
+  }
+
+  Future<(List<PostModel>, DocumentSnapshot?)> fetchSavedPostsPage({
+    required String uid,
+    DocumentSnapshot? after,
+    int limit = 20,
+  }) async {
+    try {
+      var query = _postSaves
+          .where('uid', isEqualTo: uid)
+          .orderBy('createdAt', descending: true)
+          .limit(limit + 1);
+
+      if (after != null) {
+        query = query.startAfterDocument(after);
+      }
+
+      final snapshot = await query.get();
+      final hasMore = snapshot.docs.length > limit;
+      final docs = hasMore ? snapshot.docs.sublist(0, limit) : snapshot.docs;
+
+      // Fetch the actual post documents
+      final postIds = docs
+          .map((doc) => (doc.data()['postId'] as String?) ?? '')
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      final posts = <PostModel>[];
+      for (final postId in postIds) {
+        final postDoc = await _posts.doc(postId).get();
+        if (postDoc.exists) {
+          try {
+            posts.add(PostModel.fromFirestore(postDoc));
+          } catch (e) {
+            debugPrint('Error parsing saved post $postId: $e');
+          }
+        }
+      }
+
+      final cursor = docs.isNotEmpty ? docs.last : null;
+      return (posts, cursor);
+    } catch (error, stackTrace) {
+      debugPrint('Error fetching saved posts page: $error\n$stackTrace');
       rethrow;
     }
   }

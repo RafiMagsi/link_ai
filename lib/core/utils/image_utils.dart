@@ -15,6 +15,8 @@ abstract class ImageUtils {
   // Supported image formats
   static const Set<String> supportedFormats = {
     'image/jpeg',
+    'image/heic',
+    'image/heif',
     'image/png',
     'image/webp',
     'image/gif',
@@ -23,6 +25,8 @@ abstract class ImageUtils {
   static const Set<String> supportedExtensions = {
     'jpg',
     'jpeg',
+    'heic',
+    'heif',
     'png',
     'webp',
     'gif',
@@ -56,7 +60,7 @@ abstract class ImageUtils {
 
       return null;
     } catch (e) {
-     debugPrint('Error validating image: $e');
+      debugPrint('Error validating image: $e');
       return 'Error validating image';
     }
   }
@@ -83,7 +87,7 @@ abstract class ImageUtils {
 
       return null;
     } catch (e) {
-     debugPrint('Error validating image bytes: $e');
+      debugPrint('Error validating image bytes: $e');
       return 'Error validating image';
     }
   }
@@ -130,7 +134,7 @@ abstract class ImageUtils {
 
       return false;
     } catch (e) {
-     debugPrint('Error checking magic bytes: $e');
+      debugPrint('Error checking magic bytes: $e');
       return false;
     }
   }
@@ -152,13 +156,15 @@ abstract class ImageUtils {
       final extension = _getFileExtension(filePath).toLowerCase();
       return switch (extension) {
         'jpg' || 'jpeg' => 'image/jpeg',
+        'heic' => 'image/heic',
+        'heif' => 'image/heif',
         'png' => 'image/png',
         'gif' => 'image/gif',
         'webp' => 'image/webp',
         _ => null,
       };
     } catch (e) {
-     debugPrint('Error determining MIME type: $e');
+      debugPrint('Error determining MIME type: $e');
       return null;
     }
   }
@@ -199,7 +205,7 @@ abstract class ImageUtils {
 
       return null;
     } catch (e) {
-     debugPrint('Error validating image URL: $e');
+      debugPrint('Error validating image URL: $e');
       return 'Error validating image URL';
     }
   }
@@ -229,7 +235,7 @@ abstract class ImageUtils {
 
       return errors;
     } catch (e) {
-     debugPrint('Error validating multiple images: $e');
+      debugPrint('Error validating multiple images: $e');
       return ['Error validating images'];
     }
   }
@@ -256,7 +262,7 @@ abstract class ImageUtils {
 
       return errors;
     } catch (e) {
-     debugPrint('Error validating multiple image URLs: $e');
+      debugPrint('Error validating multiple image URLs: $e');
       return ['Error validating image URLs'];
     }
   }
@@ -271,7 +277,7 @@ abstract class ImageUtils {
       // Additional checks for avatars can be added here
       return null;
     } catch (e) {
-     debugPrint('Error validating avatar image: $e');
+      debugPrint('Error validating avatar image: $e');
       return 'Error validating avatar';
     }
   }
@@ -287,7 +293,7 @@ abstract class ImageUtils {
       }
       return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
     } catch (e) {
-     debugPrint('Error formatting file size: $e');
+      debugPrint('Error formatting file size: $e');
       return 'Unknown size';
     }
   }
@@ -298,7 +304,7 @@ abstract class ImageUtils {
       if (filePath.isEmpty) return false;
       return File(filePath).existsSync();
     } catch (e) {
-     debugPrint('Error checking file existence: $e');
+      debugPrint('Error checking file existence: $e');
       return false;
     }
   }
@@ -312,7 +318,7 @@ abstract class ImageUtils {
       if (!file.existsSync()) return 0;
       return file.lengthSync();
     } catch (e) {
-     debugPrint('Error getting file size: $e');
+      debugPrint('Error getting file size: $e');
       return 0;
     }
   }
@@ -327,7 +333,7 @@ abstract class ImageUtils {
       }
       return true;
     } catch (e) {
-     debugPrint('Error validating file path: $e');
+      debugPrint('Error validating file path: $e');
       return false;
     }
   }

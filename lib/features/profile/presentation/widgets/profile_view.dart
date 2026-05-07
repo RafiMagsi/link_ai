@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1102,7 +1103,7 @@ class _ProfileTabsHeader extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onChanged;
 
-  static const _tabs = ['Posts', 'Likes', 'Comments', 'Hashtags'];
+  static const _tabs = ['Posts', 'Gallery', 'Likes', 'Comments', 'Hashtags'];
 
   @override
   Widget build(BuildContext context) {
@@ -1208,8 +1209,9 @@ class _ProfileSelectedTabSliver extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return switch (selectedTab) {
       0 => _PostsSliver(uid: uid),
-      1 => _LikesSliver(uid: uid),
-      2 => _CommentsSliver(uid: uid),
+      1 => _GallerySliver(uid: uid),
+      2 => _LikesSliver(uid: uid),
+      3 => _CommentsSliver(uid: uid),
       _ => _HashtagsSliver(uid: uid),
     };
   }
@@ -1293,6 +1295,130 @@ class _PostsSliver extends ConsumerWidget {
       error: (error, stackTrace) => const SliverFillRemaining(
         hasScrollBody: false,
         child: Center(child: Text('Unable to load posts.')),
+      ),
+    );
+  }
+}
+
+class _GallerySliver extends ConsumerWidget {
+  const _GallerySliver({required this.uid});
+
+  final String uid;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mediaState = ref.watch(userMediaProvider(uid));
+
+    return mediaState.when(
+      data: (mediaItems) {
+        if (mediaItems.isEmpty) {
+          return const SliverFillRemaining(
+            hasScrollBody: false,
+            child: AppEmptyState(
+              title: 'No media yet',
+              subtitle: 'Images and videos will show up here.',
+              icon: Icons.image_not_supported_outlined,
+            ),
+          );
+        }
+
+        return SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 2,
+            crossAxisSpacing: 2,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final (post, mediaIndex) = mediaItems[index];
+              final media = post.media[mediaIndex];
+
+              return GestureDetector(
+                onTap: () {
+                  final detailPostId = post.detailPostId;
+                  final detailExtra = detailPostId == post.id ? post : null;
+                  context.push('/posts/$detailPostId', extra: detailExtra);
+                },
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (media.type == 'image')
+                      CachedNetworkImage(
+                        imageUrl: media.url,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          child: const Icon(Icons.broken_image_outlined),
+                        ),
+                      )
+                    else if (media.type == 'video')
+                      Container(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        child: CachedNetworkImage(
+                          imageUrl: media.url,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                          ),
+                          errorWidget: (context, url, error) => const Icon(
+                            Icons.broken_image_outlined,
+                          ),
+                        ),
+                      ),
+                    if (media.type == 'video')
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.3),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.play_circle_filled,
+                              color: Colors.white.withValues(alpha: 0.7),
+                              size: 40,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+            childCount: mediaItems.length,
+          ),
+        );
+      },
+      loading: () => SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          mainAxisSpacing: 2,
+          crossAxisSpacing: 2,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => Container(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          ),
+          childCount: 6,
+        ),
+      ),
+      error: (error, stackTrace) => const SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(child: Text('Unable to load gallery.')),
       ),
     );
   }

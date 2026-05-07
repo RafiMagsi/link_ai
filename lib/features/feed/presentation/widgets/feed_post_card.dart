@@ -13,7 +13,7 @@ import '../pages/media_gallery_page.dart';
 import 'post/post_action_row.dart';
 import 'post/post_avatar.dart';
 import 'post/post_header.dart';
-import 'post/post_media_grid.dart';
+import 'post/post_media_widget.dart';
 import 'post/post_more_menu_button.dart';
 import 'repost_header.dart';
 
@@ -162,12 +162,9 @@ class FeedPostCard extends ConsumerWidget {
                                     const SizedBox(height: 10),
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
-                                      child: PostMediaGrid(
-                                        mediaUrls: displayPost.media
-                                            .map((e) => e.url)
-                                            .toList(),
-                                        heroTagPrefix:
-                                            'post_${displayPost.id}_media_',
+                                      child: PostMediaWidget(
+                                        mediaList: displayPost.media,
+                                        postId: displayPost.id,
                                         onDoubleTap: () => ref
                                             .read(
                                               postControllerProvider.notifier,

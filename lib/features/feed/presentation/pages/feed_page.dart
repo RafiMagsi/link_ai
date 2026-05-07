@@ -13,7 +13,7 @@ import '../../data/models/post_model.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../../connect/presentation/providers/connect_providers.dart';
-import '../providers/post_providers.dart';
+import '../providers/post_providers.dart' show latestPostsProvider, connectedPostsProvider, viralPostsProvider, latestFeedProvider, connectedFeedProvider, viralFeedProvider, PaginatedPostsState, activeVideoPostIdProvider;
 import '../widgets/feed_post_card.dart';
 import 'create_post_page.dart';
 import '../../../notifications/presentation/providers/notification_providers.dart';
@@ -207,20 +207,28 @@ class _FeedTabView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final latestPosts = ref.watch(latestPostsProvider);
-    final connectedPosts = ref.watch(connectedPostsProvider);
-    final viralPosts = ref.watch(viralPostsProvider);
+    final latestState = ref.watch(latestFeedProvider);
+    final connectedPosts = ref.watch(connectedFeedProvider);
+    final viralPosts = ref.watch(viralFeedProvider);
 
     return TabBarView(
       children: [
-        _FeedList(kind: _FeedKind.latest, posts: latestPosts, scrollController: scrollController),
+        _PaginatedFeedList(
+          kind: _FeedKind.latest,
+          state: latestState,
+          scrollController: scrollController,
+        ),
         _FeedList(
           kind: _FeedKind.connected,
-          posts: connectedPosts,
+          posts: AsyncValue.data(connectedPosts),
           emptyStateText: 'Follow people to see their posts here.',
           scrollController: scrollController,
         ),
-        _FeedList(kind: _FeedKind.viral, posts: viralPosts, scrollController: scrollController),
+        _FeedList(
+          kind: _FeedKind.viral,
+          posts: AsyncValue.data(viralPosts),
+          scrollController: scrollController,
+        ),
       ],
     );
   }
@@ -462,6 +470,176 @@ class _CreatePostBottomSheetShell extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// Paginated feed list for Latest posts
+class _PaginatedFeedList extends ConsumerStatefulWidget {
+  const _PaginatedFeedList({
+    required this.kind,
+    required this.state,
+    required this.scrollController,
+  });
+
+  final _FeedKind kind;
+  final PaginatedPostsState state;
+  final ScrollController scrollController;
+
+  @override
+  ConsumerState<_PaginatedFeedList> createState() => _PaginatedFeedListState();
+}
+
+class _PaginatedFeedListState extends ConsumerState<_PaginatedFeedList> {
+  late ScrollController _scrollController;
+  DateTime _lastActiveVideoUpdate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = widget.scrollController;
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  void _updateActiveVideo() {
+    final posts = widget.state.posts;
+    if (posts.isEmpty) return;
+
+    final scrollPos = _scrollController.offset;
+    final viewportHeight = _scrollController.position.viewportDimension;
+    final centerY = scrollPos + (viewportHeight / 2);
+
+    const estimatedPostHeight = 600.0;
+    final estimatedIndex = (centerY / estimatedPostHeight).toInt().clamp(0, posts.length - 1);
+
+    if (estimatedIndex >= 0 && estimatedIndex < posts.length) {
+      final centerPost = posts[estimatedIndex];
+      ref.read(activeVideoPostIdProvider.notifier).state = centerPost.id;
+    }
+  }
+
+  void _onScroll() {
+    final now = DateTime.now();
+    if (now.difference(_lastActiveVideoUpdate).inMilliseconds > 500) {
+      _updateActiveVideo();
+      _lastActiveVideoUpdate = now;
+    }
+
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 400) {
+      ref.read(latestFeedProvider.notifier).loadMore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(latestFeedProvider.notifier).refresh();
+      },
+      child: state.isInitialLoading
+          ? const Center(child: CircularProgressIndicator.adaptive())
+          : _buildPostsList(context, state),
+    );
+  }
+
+  Widget _buildPostsList(BuildContext context, PaginatedPostsState state) {
+    final posts = state.posts;
+
+    return ListView.separated(
+      controller: _scrollController,
+      itemCount: posts.isEmpty ? 2 : posts.length + 2,
+      separatorBuilder: (context, index) => const Divider(height: 0.5),
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return const _FeedComposerEntry();
+        }
+
+        if (posts.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(AppSizes.xl),
+            child: Center(
+              child: Text(
+                'No posts yet.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: context.appColors.mutedText),
+              ),
+            ),
+          );
+        }
+
+        if (index == posts.length + 1) {
+          // Load more indicator at bottom
+          if (state.isLoadingMore) {
+            return Padding(
+              padding: const EdgeInsets.all(AppSizes.lg),
+              child: Center(
+                child: CircularProgressIndicator.adaptive(),
+              ),
+            );
+          }
+
+          if (!state.hasMore) {
+            return Padding(
+              padding: const EdgeInsets.all(AppSizes.lg),
+              child: Center(
+                child: Text(
+                  'No more posts',
+                  style: TextStyle(color: context.appColors.mutedText),
+                ),
+              ),
+            );
+          }
+
+          return const SizedBox.shrink();
+        }
+
+        final post = posts[index - 1];
+        final detailPostId = post.detailPostId;
+        final detailExtra = detailPostId == post.id ? post : null;
+
+        return FeedPostCard(
+          post: post,
+          onCommentTap: () {
+            try {
+              if (context.mounted) {
+                context.push('/posts/$detailPostId', extra: detailExtra);
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(ErrorHandler.getUserFriendlyMessage(e)),
+                  ),
+                );
+              }
+            }
+          },
+          onTap: () {
+            try {
+              if (context.mounted) {
+                context.push('/posts/$detailPostId', extra: detailExtra);
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(ErrorHandler.getUserFriendlyMessage(e)),
+                  ),
+                );
+              }
+            }
+          },
+        );
+      },
     );
   }
 }

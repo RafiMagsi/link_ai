@@ -4,6 +4,8 @@ import {createSign} from "node:crypto";
 import {
   onDocumentCreated,
 } from "firebase-functions/v2/firestore";
+import {S3Client, PutObjectCommand} from "@aws-sdk/client-s3";
+import {getSignedUrl} from "@aws-sdk/s3-request-presigner";
 
 admin.initializeApp();
 
@@ -1592,4 +1594,192 @@ export const validateGoldFeatures = onCall(async (request) => {
     allowed: isActive,
     reason: isActive ? undefined : "Subscription expired or invalid",
   };
+});
+
+/**
+ * Generates a presigned S3 upload URL for direct client-to-S3 uploads.
+ * AWS credentials are stored in Firebase Secret Manager, never exposed.
+ */
+export const generateS3UploadUrl = onCall(async (request) => {
+  const {path, contentType, idToken} = request.data as {
+    path: string;
+    contentType: string;
+    idToken?: string;
+  };
+
+  let uid = request.auth?.uid;
+
+  if (!uid && idToken && typeof idToken === "string") {
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      uid = decoded.uid;
+    } catch (error) {
+      console.error("Invalid fallback ID token for S3 upload:", error);
+    }
+  }
+
+  if (!uid) {
+    throw new HttpsError(
+      "unauthenticated",
+      "Must be signed in to upload files."
+    );
+  }
+
+  if (!path || typeof path !== "string") {
+    throw new HttpsError(
+      "invalid-argument",
+      "path is required and must be a string"
+    );
+  }
+  if (!contentType || typeof contentType !== "string") {
+    throw new HttpsError(
+      "invalid-argument",
+      "contentType is required and must be a string"
+    );
+  }
+
+  if (!path.startsWith(`postMedia/${uid}/`) &&
+      !path.startsWith(`profileMedia/${uid}/`) &&
+      !path.startsWith(`productMedia/${uid}/`)) {
+    throw new HttpsError(
+      "permission-denied",
+      "You can only upload to your own media path."
+    );
+  }
+
+  try {
+    const region = process.env.AWS_REGION || "us-east-1";
+    const bucket = process.env.S3_BUCKET;
+    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+
+    if (!bucket || !accessKeyId || !secretAccessKey) {
+      throw new HttpsError(
+        "failed-precondition",
+        "S3 upload is not configured on the server."
+      );
+    }
+
+    const s3Client = new S3Client({
+      region,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    });
+
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: path,
+      ContentType: contentType,
+    });
+
+    const presignedUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: 300,
+    });
+    const publicUrl =
+      `https://${bucket}.s3.${region}.amazonaws.com/${path}`;
+
+    return {
+      presignedUrl,
+      publicUrl,
+    };
+  } catch (error) {
+    console.error("Error generating S3 upload URL:", error);
+    throw new HttpsError("internal", "Failed to generate upload URL");
+  }
+});
+
+export const generateS3UploadUrlHttp = onRequest({
+  invoker: "public",
+}, async (request, response) => {
+  response.set("Access-Control-Allow-Origin", "*");
+  response.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  response.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+
+  if (request.method === "OPTIONS") {
+    response.status(204).send("");
+    return;
+  }
+
+  if (request.method !== "POST") {
+    response.status(405).json({error: "Method not allowed"});
+    return;
+  }
+
+  const authHeader = request.get("Authorization") || "";
+  const bearerToken = authHeader.startsWith("Bearer ") ?
+    authHeader.substring("Bearer ".length) :
+    "";
+
+  if (!bearerToken) {
+    response.status(401).json({error: "Missing bearer token"});
+    return;
+  }
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(bearerToken);
+    const uid = decoded.uid;
+    const {path, contentType} = request.body as {
+      path?: string;
+      contentType?: string;
+    };
+
+    if (!path || typeof path !== "string") {
+      response.status(400).json({
+        error: "path is required and must be a string",
+      });
+      return;
+    }
+    if (!contentType || typeof contentType !== "string") {
+      response.status(400).json({
+        error: "contentType is required and must be a string",
+      });
+      return;
+    }
+
+    if (!path.startsWith(`postMedia/${uid}/`) &&
+        !path.startsWith(`profileMedia/${uid}/`) &&
+        !path.startsWith(`productMedia/${uid}/`)) {
+      response.status(403).json({error: "Forbidden upload path"});
+      return;
+    }
+
+    const region = process.env.AWS_REGION || "us-east-1";
+    const bucket = process.env.S3_BUCKET;
+    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+
+    if (!bucket || !accessKeyId || !secretAccessKey) {
+      response.status(500).json({error: "S3 upload is not configured"});
+      return;
+    }
+
+    const s3Client = new S3Client({
+      region,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    });
+
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: path,
+      ContentType: contentType,
+    });
+
+    const presignedUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: 300,
+    });
+    const publicUrl = `https://${bucket}.s3.${region}.amazonaws.com/${path}`;
+
+    response.status(200).json({
+      presignedUrl,
+      publicUrl,
+    });
+  } catch (error) {
+    console.error("Error generating S3 upload URL via HTTP:", error);
+    response.status(401).json({error: "Unauthenticated"});
+  }
 });
