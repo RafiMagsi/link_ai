@@ -29,7 +29,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>AI Links needs access to your photo library so you can upload a profile avatar.</string>
+	<string>AI Links needs access to your photo library so you can attach images and videos to posts.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>AI Links needs camera access so you can capture photos for your posts.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>AI Links may use the microphone when recording videos from the camera.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

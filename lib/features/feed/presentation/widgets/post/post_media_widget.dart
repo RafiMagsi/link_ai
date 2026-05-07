@@ -103,6 +103,8 @@ class _VideoPlayerWidgetState extends ConsumerState<_VideoPlayerWidget> {
   bool _isPlaying = false;
   bool _wasAutoPlaying = false;
 
+  static const double _fallbackAspectRatio = 4 / 5;
+
   @override
   void initState() {
     super.initState();
@@ -151,8 +153,8 @@ class _VideoPlayerWidgetState extends ConsumerState<_VideoPlayerWidget> {
     });
 
     if (!_isInitialized) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+      return _buildFramedVideo(
+        context,
         child: Container(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Center(
@@ -162,8 +164,8 @@ class _VideoPlayerWidgetState extends ConsumerState<_VideoPlayerWidget> {
       );
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+    return _buildFramedVideo(
+      context,
       child: GestureDetector(
         onTap: () {
           setState(() {
@@ -178,9 +180,18 @@ class _VideoPlayerWidgetState extends ConsumerState<_VideoPlayerWidget> {
         },
         onDoubleTap: widget.onDoubleTap,
         child: Stack(
+          fit: StackFit.expand,
           alignment: Alignment.center,
           children: [
-            VideoPlayer(_controller),
+            FittedBox(
+              fit: BoxFit.cover,
+              clipBehavior: Clip.hardEdge,
+              child: SizedBox(
+                width: _controller.value.size.width,
+                height: _controller.value.size.height,
+                child: VideoPlayer(_controller),
+              ),
+            ),
             if (!_isPlaying)
               Container(
                 decoration: BoxDecoration(
@@ -222,6 +233,21 @@ class _VideoPlayerWidgetState extends ConsumerState<_VideoPlayerWidget> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFramedVideo(BuildContext context, {required Widget child}) {
+    final aspectRatio = _isInitialized &&
+            _controller.value.aspectRatio > 0
+        ? _controller.value.aspectRatio
+        : _fallbackAspectRatio;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+      child: AspectRatio(
+        aspectRatio: aspectRatio,
+        child: child,
       ),
     );
   }

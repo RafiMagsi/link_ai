@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../../core/config/app_limits_provider.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
@@ -578,32 +579,44 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
   Future<void> createPost({
     required String text,
-    required List<File> imageFiles,
+    required List<File> mediaFiles,
     required PostIntent postIntent,
   }) async {
     state = const AsyncLoading();
 
     try {
+      final limits = _ref.read(appLimitsProvider);
+
       // Validate input
       if (text.trim().isEmpty) {
         throw ValidationError('Post text cannot be empty');
       }
 
-      // Validate image files
-      const maxImageSize = 5 * 1024 * 1024; // 5MB per image
-      const maxTotalSize = 20 * 1024 * 1024; // 20MB total
+      // Validate media files
+      final maxImageSize = limits.imageMaxBytes;
+      final maxVideoSize = limits.videoMaxBytes;
+      final maxTotalSize = (limits.imageMaxBytes * limits.postMaxMediaItems) +
+          limits.videoMaxBytes;
       int totalSize = 0;
 
-      for (final file in imageFiles) {
+      for (final file in mediaFiles) {
         final fileSize = file.lengthSync();
-        if (fileSize > maxImageSize) {
-          throw FileSizeError('Image size exceeds 5MB limit');
+        final isVideo = _isVideoFile(file.path);
+        if (isVideo && fileSize > maxVideoSize) {
+          throw FileSizeError(
+            'Video size exceeds ${(maxVideoSize / (1024 * 1024)).round()}MB limit',
+          );
+        }
+        if (!isVideo && fileSize > maxImageSize) {
+          throw FileSizeError(
+            'Image size exceeds ${(maxImageSize / (1024 * 1024)).round()}MB limit',
+          );
         }
         totalSize += fileSize;
       }
 
       if (totalSize > maxTotalSize) {
-        throw FileSizeError('Total image size exceeds 20MB limit');
+        throw FileSizeError('Total media size exceeds allowed limit');
       }
 
       final profile = await _ref.read(myProfileProvider.future);
@@ -616,7 +629,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
           .createPost(
             profile: profile,
             text: text,
-            imageFiles: imageFiles,
+            mediaFiles: mediaFiles,
             postIntent: postIntent,
           )
           .timeout(
@@ -643,6 +656,17 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       debugPrint('Error creating post: $error\n$stackTrace');
       state = AsyncError(error, stackTrace);
     }
+  }
+
+  bool _isVideoFile(String path) {
+    final lower = path.toLowerCase();
+    return lower.endsWith('.mp4') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.m4v') ||
+        lower.endsWith('.webm') ||
+        lower.endsWith('.mkv') ||
+        lower.endsWith('.avi') ||
+        lower.endsWith('.3gp');
   }
 
   Future<void> toggleLike(String postId, {PostModel? post}) async {

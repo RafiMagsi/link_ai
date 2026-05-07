@@ -106,7 +106,7 @@ class PostRemoteDataSource {
   Future<void> createPost({
     required ProfileModel profile,
     required String text,
-    required List<File> imageFiles,
+    required List<File> mediaFiles,
     required PostIntent postIntent,
   }) async {
     try {
@@ -118,9 +118,9 @@ class PostRemoteDataSource {
       // Upload files in parallel using Future.wait()
       final uploadTasks = <Future<void>>[];
 
-      for (var i = 0; i < imageFiles.length; i++) {
+      for (var i = 0; i < mediaFiles.length; i++) {
         final task = _uploadMediaFile(
-          file: imageFiles[i],
+          file: mediaFiles[i],
           s3Path: 'postMedia/${profile.uid}/$postId/${_uuid.v4()}',
           index: i,
           uploadedMedia: uploadedMedia,

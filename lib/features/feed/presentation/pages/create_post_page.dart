@@ -4,10 +4,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart'
+    show PermissionStatus, openAppSettings;
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/config/app_limits.dart';
 import '../../../../core/config/app_limits_provider.dart';
+import '../../../../core/services/media_permission_service.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/app_user_avatar.dart';
 import '../../../../core/errors/error_handler.dart';
@@ -33,6 +36,7 @@ class CreatePostPage extends ConsumerStatefulWidget {
 class _CreatePostPageState extends ConsumerState<CreatePostPage> {
   final _textController = TextEditingController();
   final _imagePicker = ImagePicker();
+  final _mediaPermissionService = const MediaPermissionService();
 
   final List<File> _selectedMedia = [];
   PostIntent _selectedIntent = PostIntent.general;
@@ -52,9 +56,6 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
     if (_selectedMedia.length > limits.postMaxMediaItems) return false;
     if (!_hasAnyContent) return false;
 
-    final hasVideo = _selectedMedia.any((file) => _isVideoPath(file.path));
-    if (hasVideo) return false;
-
     return true;
   }
 
@@ -71,6 +72,8 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
       _showMessage('Maximum ${limits.postMaxMediaItems} media items allowed.');
       return;
     }
+
+    if (!await _ensurePermission(MediaPermissionTarget.galleryImages)) return;
 
     final remaining = limits.postMaxMediaItems - _selectedMedia.length;
 
@@ -118,6 +121,112 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
         'Failed to pick images: ${ErrorHandler.getUserFriendlyMessage(e)}',
       );
     }
+  }
+
+  Future<void> _pickVideo() async {
+    final limits = ref.read(appLimitsProvider);
+
+    if (_selectedMedia.length >= limits.postMaxMediaItems) {
+      _showMessage('Maximum ${limits.postMaxMediaItems} media items allowed.');
+      return;
+    }
+
+    if (!await _ensurePermission(MediaPermissionTarget.galleryVideos)) return;
+
+    try {
+      final pickedVideo = await _imagePicker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: Duration(seconds: limits.videoMaxDurationSeconds),
+      );
+
+      if (pickedVideo == null || !mounted) return;
+
+      final file = File(pickedVideo.path);
+      final sizeBytes = await file.length();
+
+      if (sizeBytes > limits.videoMaxBytes) {
+        _showMessage(
+          'Video is larger than ${_bytesToMb(limits.videoMaxBytes)} MB.',
+        );
+        return;
+      }
+
+      setState(() {
+        _selectedMedia.add(file);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(
+        'Failed to pick video: ${ErrorHandler.getUserFriendlyMessage(e)}',
+      );
+    }
+  }
+
+  Future<void> _captureImage() async {
+    final limits = ref.read(appLimitsProvider);
+
+    if (_selectedMedia.length >= limits.postMaxMediaItems) {
+      _showMessage('Maximum ${limits.postMaxMediaItems} media items allowed.');
+      return;
+    }
+
+    if (!await _ensurePermission(MediaPermissionTarget.camera)) return;
+
+    try {
+      final pickedImage = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
+
+      if (pickedImage == null || !mounted) return;
+
+      final file = File(pickedImage.path);
+      final sizeBytes = await file.length();
+
+      if (sizeBytes > limits.imageMaxBytes) {
+        _showMessage(
+          'Photo is larger than ${_bytesToMb(limits.imageMaxBytes)} MB.',
+        );
+        return;
+      }
+
+      setState(() {
+        _selectedMedia.add(file);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(
+        'Failed to open camera: ${ErrorHandler.getUserFriendlyMessage(e)}',
+      );
+    }
+  }
+
+  Future<bool> _ensurePermission(MediaPermissionTarget target) async {
+    final granted = await _mediaPermissionService.request(target);
+    if (granted) return true;
+
+    if (!mounted) return false;
+
+    final permissionLabel = switch (target) {
+      MediaPermissionTarget.galleryImages => 'photo library access',
+      MediaPermissionTarget.galleryVideos => 'video library access',
+      MediaPermissionTarget.camera => 'camera access',
+    };
+
+    final status = await _mediaPermissionService.status(target);
+
+    _showMessage(
+      status == PermissionStatus.permanentlyDenied
+          ? 'Enable $permissionLabel in Settings to continue.'
+          : 'Allow $permissionLabel to continue.',
+    );
+
+    if (status == PermissionStatus.permanentlyDenied) {
+      await openAppSettings();
+    }
+
+    return false;
   }
 
   void _removeMedia(int index) {
@@ -231,7 +340,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
       return;
     }
 
-    final imageFiles = _selectedMedia;
+    final mediaFiles = _selectedMedia;
 
     setState(() {
       _isUploading = true;
@@ -256,7 +365,7 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
           .read(postControllerProvider.notifier)
           .createPost(
             text: text,
-            imageFiles: imageFiles,
+            mediaFiles: mediaFiles,
             postIntent: _selectedIntent,
           );
 
@@ -487,16 +596,13 @@ class _CreatePostPageState extends ConsumerState<CreatePostPage> {
                       onPressed: _isUploading ? null : _pickImages,
                       icon: const Icon(Icons.image_outlined),
                     ),
-                    Tooltip(
-                      message: 'Video posts coming soon',
-                      child: IconButton(
-                        onPressed: _isUploading
-                            ? null
-                            : () {
-                                _showMessage('Video posts coming soon.');
-                              },
-                        icon: const Icon(Icons.videocam_outlined),
-                      ),
+                    IconButton(
+                      onPressed: _isUploading ? null : _pickVideo,
+                      icon: const Icon(Icons.videocam_outlined),
+                    ),
+                    IconButton(
+                      onPressed: _isUploading ? null : _captureImage,
+                      icon: const Icon(Icons.camera_alt_outlined),
                     ),
                     const Spacer(),
                     Text(

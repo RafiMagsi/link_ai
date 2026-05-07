@@ -59,6 +59,7 @@ dependencies:
   in_app_purchase: ^3.2.3
   http: ^1.1.0
   video_player: ^2.8.7
+  permission_handler: ^12.0.1
 
 dev_dependencies:
   flutter_test:
