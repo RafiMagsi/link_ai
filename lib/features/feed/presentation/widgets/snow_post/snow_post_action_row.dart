@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/post_model.dart';
+import '../../providers/post_providers.dart';
 
-class SnowPostActionRow extends StatelessWidget {
+class SnowPostActionRow extends ConsumerWidget {
   const SnowPostActionRow({
     super.key,
     required this.post,
@@ -12,152 +14,110 @@ class SnowPostActionRow extends StatelessWidget {
   final PostModel post;
   final VoidCallback onCommentTap;
 
-  List<_SnowActionData> _actions(PostType type) {
-    return switch (type) {
-      PostType.thought => const [
-          _SnowActionData(
-            icon: Icons.auto_awesome_outlined,
-            label: 'React',
-            isPrimary: true,
-          ),
-          _SnowActionData(
-            icon: Icons.mode_comment_outlined,
-            label: 'Reply',
-          ),
-          _SnowActionData(
-            icon: Icons.bookmark_border_rounded,
-            label: 'Save',
-          ),
-        ],
-      PostType.ship => const [
-          _SnowActionData(
-            icon: Icons.check_circle_outline_rounded,
-            label: 'Use this',
-            isPrimary: true,
-          ),
-          _SnowActionData(
-            icon: Icons.schedule_outlined,
-            label: 'Beta in',
-          ),
-          _SnowActionData(
-            icon: Icons.bookmark_border_rounded,
-            label: 'Save',
-          ),
-        ],
-      PostType.ask => const [
-          _SnowActionData(
-            icon: Icons.handshake_outlined,
-            label: 'Help',
-            isPrimary: true,
-          ),
-          _SnowActionData(
-            icon: Icons.mode_comment_outlined,
-            label: 'Reply',
-          ),
-          _SnowActionData(
-            icon: Icons.bookmark_border_rounded,
-            label: 'Save',
-          ),
-        ],
-      PostType.commentRepost => const [
-          _SnowActionData(
-            icon: Icons.auto_awesome_outlined,
-            label: 'React',
-            isPrimary: true,
-          ),
-          _SnowActionData(
-            icon: Icons.mode_comment_outlined,
-            label: 'Reply',
-          ),
-          _SnowActionData(
-            icon: Icons.bookmark_border_rounded,
-            label: 'Save',
-          ),
-        ],
-    };
-  }
-
-  Color _accentColor(PostType type) {
-    return switch (type) {
-      PostType.thought => const Color(0xFF7A756D),
-      PostType.ship => const Color(0xFF4F8A12),
-      PostType.ask => const Color(0xFF1D74C8),
-      PostType.commentRepost => const Color(0xFF7A756D),
-    };
-  }
-
   @override
-  Widget build(BuildContext context) {
-    final actions = _actions(post.postType);
-    final accent = _accentColor(post.postType);
-    final mutedColor = Theme.of(context)
-        .colorScheme
-        .onSurfaceVariant
-        .withValues(alpha: 0.86);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final interactionState = ref.watch(postInteractionStateProvider(post.id));
+    final liked = interactionState.asData?.value.liked ?? false;
+    final saved = interactionState.asData?.value.saved ?? false;
+    final reposted = interactionState.asData?.value.reposted ?? false;
+    final mutedColor = Theme.of(
+      context,
+    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.86);
+    final activeColor = Theme.of(context).colorScheme.primary;
 
     return SizedBox(
       height: 40,
       width: double.infinity,
       child: Row(
-        children: List.generate(actions.length, (index) {
-          final action = actions[index];
-          final color = action.isPrimary ? accent : mutedColor;
-
-          return Expanded(
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: index == 1 ? onCommentTap : () {},
-                borderRadius: BorderRadius.circular(999),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            action.icon,
-                            size: 17,
-                            color: color,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            action.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 13,
-                              fontWeight: action.isPrimary
-                                  ? FontWeight.w900
-                                  : FontWeight.w700,
-                              height: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
+        children: [
+          _SnowActionButton(
+            icon: Icons.mode_comment_outlined,
+            label: 'Reply',
+            count: post.commentsCount,
+            color: mutedColor,
+            onTap: onCommentTap,
+          ),
+          _SnowActionButton(
+            icon: reposted ? Icons.repeat_rounded : Icons.repeat_outlined,
+            label: 'Repost',
+            count: post.repostsCount,
+            color: reposted ? activeColor : mutedColor,
+            onTap: () =>
+                ref.read(postControllerProvider.notifier).toggleRepost(post.id),
+          ),
+          _SnowActionButton(
+            icon: liked ? Icons.favorite : Icons.favorite_outline,
+            label: 'Like',
+            count: post.likesCount,
+            color: liked ? activeColor : mutedColor,
+            onTap: () =>
+                ref.read(postControllerProvider.notifier).toggleLike(post.id),
+          ),
+          _SnowActionButton(
+            icon: saved ? Icons.bookmark : Icons.bookmark_border_rounded,
+            label: 'Save',
+            count: post.savesCount,
+            color: saved ? activeColor : mutedColor,
+            onTap: () =>
+                ref.read(postControllerProvider.notifier).toggleSave(post.id),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SnowActionData {
-  const _SnowActionData({
+class _SnowActionButton extends StatelessWidget {
+  const _SnowActionButton({
     required this.icon,
     required this.label,
-    this.isPrimary = false,
+    required this.count,
+    required this.color,
+    required this.onTap,
   });
 
   final IconData icon;
   final String label;
-  final bool isPrimary;
+  final int count;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 17, color: color),
+                    const SizedBox(width: 6),
+                    Text(
+                      count > 0 ? '$count' : label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

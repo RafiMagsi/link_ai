@@ -26,6 +26,7 @@ class SnowPostHeader extends StatelessWidget {
       PostType.ship => const Color(0xFF4F8A12),
       PostType.ask => const Color(0xFF1D74C8),
       PostType.commentRepost => const Color(0xFF7A756D),
+      PostType.repost => const Color(0xFF7A756D),
     };
   }
 
@@ -35,6 +36,7 @@ class SnowPostHeader extends StatelessWidget {
       PostType.ship => const Color(0xFFEAF6DD),
       PostType.ask => const Color(0xFFE7F2FF),
       PostType.commentRepost => const Color(0xFFF1EFE8),
+      PostType.repost => const Color(0xFFF1EFE8),
     };
   }
 
@@ -44,6 +46,7 @@ class SnowPostHeader extends StatelessWidget {
       PostType.ship => 'Shipped',
       PostType.ask => 'Asking',
       PostType.commentRepost => null,
+      PostType.repost => null,
     };
   }
 
@@ -53,6 +56,7 @@ class SnowPostHeader extends StatelessWidget {
       PostType.ship => Icons.rocket_launch_outlined,
       PostType.ask => Icons.help_outline_rounded,
       PostType.commentRepost => Icons.auto_awesome_outlined,
+      PostType.repost => Icons.repeat_outlined,
     };
   }
 
@@ -87,8 +91,12 @@ class SnowPostHeader extends StatelessWidget {
     final accent = _accentColor(post.postType);
     final softColor = _softColor(post.postType);
     final chipLabel = _chipLabel(post.postType);
-    final displayName = authorName.trim().isEmpty ? 'AI Builder' : authorName.trim();
-    final displayRole = authorRole.trim().isEmpty ? 'Builder' : authorRole.trim();
+    final displayName = authorName.trim().isEmpty
+        ? 'AI Builder'
+        : authorName.trim();
+    final displayRole = authorRole.trim().isEmpty
+        ? 'Builder'
+        : authorRole.trim();
     final hasAvatar = avatarUrl != null && avatarUrl!.trim().isNotEmpty;
 
     return Row(
@@ -160,10 +168,10 @@ class SnowPostHeader extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      height: 1.05,
-                      letterSpacing: -0.1,
-                    ),
+                  fontWeight: FontWeight.w900,
+                  height: 1.05,
+                  letterSpacing: -0.1,
+                ),
               ),
               const SizedBox(height: 3),
               Row(
@@ -174,13 +182,12 @@ class SnowPostHeader extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant
-                                .withValues(alpha: 0.88),
-                            fontWeight: FontWeight.w600,
-                            height: 1,
-                          ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.88),
+                        fontWeight: FontWeight.w600,
+                        height: 1,
+                      ),
                     ),
                   ),
                   Padding(
@@ -188,10 +195,9 @@ class SnowPostHeader extends StatelessWidget {
                     child: Text(
                       '•',
                       style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant
-                            .withValues(alpha: 0.55),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.55),
                         fontSize: 11,
                         height: 1,
                       ),
@@ -200,10 +206,10 @@ class SnowPostHeader extends StatelessWidget {
                   Text(
                     _timeText(post.createdAt),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: accent,
-                          fontWeight: FontWeight.w800,
-                          height: 1,
-                        ),
+                      color: accent,
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                    ),
                   ),
                   if (postIntentLabel(post.postIntent) != null) ...[
                     const SizedBox(width: 8),
@@ -213,14 +219,14 @@ class SnowPostHeader extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: postIntentColor(post.postIntent).withValues(
-                          alpha: 0.10,
-                        ),
+                        color: postIntentColor(
+                          post.postIntent,
+                        ).withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                          color: postIntentColor(post.postIntent).withValues(
-                            alpha: 0.16,
-                          ),
+                          color: postIntentColor(
+                            post.postIntent,
+                          ).withValues(alpha: 0.16),
                         ),
                       ),
                       child: Row(
@@ -265,11 +271,7 @@ class SnowPostHeader extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  _chipIcon(post.postType),
-                  size: 13,
-                  color: accent,
-                ),
+                Icon(_chipIcon(post.postType), size: 13, color: accent),
                 const SizedBox(width: 4),
                 Text(
                   chipLabel,
@@ -290,10 +292,7 @@ class SnowPostHeader extends StatelessWidget {
 }
 
 class _AvatarFallback extends StatelessWidget {
-  const _AvatarFallback({
-    required this.initials,
-    required this.color,
-  });
+  const _AvatarFallback({required this.initials, required this.color});
 
   final String initials;
   final Color color;

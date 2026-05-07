@@ -125,7 +125,8 @@ class _UserSearchResults extends ConsumerWidget {
                     if (users.isEmpty) {
                       return _EmptySearchState(
                         title: 'No users found',
-                        subtitle: 'Try a different search term or adjust filters',
+                        subtitle:
+                            'Try a different search term or adjust filters',
                       );
                     }
 
@@ -584,12 +585,14 @@ class _PostSearchResults extends ConsumerWidget {
           separatorBuilder: (context, index) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final post = posts[index];
+            final detailPostId = post.detailPostId;
+            final detailExtra = detailPostId == post.id ? post : null;
             return FeedPostCard(
               post: post,
               onCommentTap: () {
                 try {
                   if (context.mounted) {
-                    context.push('/posts/${post.id}', extra: post);
+                    context.push('/posts/$detailPostId', extra: detailExtra);
                   }
                 } catch (e) {
                   if (context.mounted) {
@@ -604,7 +607,7 @@ class _PostSearchResults extends ConsumerWidget {
               onTap: () {
                 try {
                   if (context.mounted) {
-                    context.push('/posts/${post.id}', extra: post);
+                    context.push('/posts/$detailPostId', extra: detailExtra);
                   }
                 } catch (e) {
                   if (context.mounted) {

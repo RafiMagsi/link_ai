@@ -34,11 +34,14 @@ class HashtagPage extends ConsumerWidget {
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final post = posts[index];
+              final detailPostId = post.detailPostId;
+              final detailExtra = detailPostId == post.id ? post : null;
               return FeedPostCard(
                 post: post,
-                onTap: () => context.push('/posts/${post.id}', extra: post),
+                onTap: () =>
+                    context.push('/posts/$detailPostId', extra: detailExtra),
                 onCommentTap: () =>
-                    context.push('/posts/${post.id}', extra: post),
+                    context.push('/posts/$detailPostId', extra: detailExtra),
               );
             },
           );

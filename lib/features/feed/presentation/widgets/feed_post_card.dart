@@ -32,7 +32,7 @@ class FeedPostCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUid = ref.watch(currentUserProvider)?.uid;
-    final isRepost = post.postType == PostType.commentRepost;
+    final isRepost = post.isPostRepost;
 
     // For reposts, fetch the original post data
     final originalPost = isRepost && post.quotedPostId != null
@@ -43,9 +43,13 @@ class FeedPostCard extends ConsumerWidget {
     final displayPost = originalPost ?? post;
 
     // Get author profile
-    final authorProfile = ref.watch(profileByUidProvider(displayPost.authorUid)).asData?.value;
+    final authorProfile = ref
+        .watch(profileByUidProvider(displayPost.authorUid))
+        .asData
+        ?.value;
 
-    final resolvedAvatarUrl = authorProfile?.avatarUrl ?? displayPost.authorAvatarUrl;
+    final resolvedAvatarUrl =
+        authorProfile?.avatarUrl ?? displayPost.authorAvatarUrl;
     final resolvedName = (authorProfile?.name.trim().isNotEmpty ?? false)
         ? authorProfile!.name.trim()
         : displayPost.authorName;
@@ -54,14 +58,29 @@ class FeedPostCard extends ConsumerWidget {
         : displayPost.authorRole;
 
     // Navigate to the original post author's profile
-    final profileUid = displayPost.authorUid.isNotEmpty ? displayPost.authorUid : null;
+    final profileUid = displayPost.authorUid.isNotEmpty
+        ? displayPost.authorUid
+        : null;
+    final reposterUid = post.authorUid.isNotEmpty ? post.authorUid : null;
 
     final onAvatarTap = profileUid != null
         ? () async {
-            final isSelfProfile = currentUid != null && profileUid == currentUid;
+            final isSelfProfile =
+                currentUid != null && profileUid == currentUid;
             await navigateToProfile(
               context: context,
               uid: profileUid,
+              isSelfProfile: isSelfProfile,
+            );
+          }
+        : null;
+    final onReposterTap = reposterUid != null
+        ? () async {
+            final isSelfProfile =
+                currentUid != null && reposterUid == currentUid;
+            await navigateToProfile(
+              context: context,
+              uid: reposterUid,
               isSelfProfile: isSelfProfile,
             );
           }
@@ -73,10 +92,7 @@ class FeedPostCard extends ConsumerWidget {
     final complementaryColor = _getComplementaryColor(postColor);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.md,
-        vertical: 5,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 5),
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
@@ -103,10 +119,7 @@ class FeedPostCard extends ConsumerWidget {
           child: Column(
             children: [
               if (isRepost)
-                RepostHeader(
-                  post: post,
-                  onAuthorTap: onAvatarTap,
-                ),
+                RepostHeader(post: post, onAuthorTap: onReposterTap),
               Stack(
                 children: [
                   Positioned(
@@ -148,11 +161,19 @@ class FeedPostCard extends ConsumerWidget {
                     child: InkWell(
                       onTap: onTap,
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(11, isRepost ? 0 : 11, 11, 7),
+                        padding: EdgeInsets.fromLTRB(
+                          11,
+                          isRepost ? 0 : 11,
+                          11,
+                          7,
+                        ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            PostAvatar(avatarUrl: resolvedAvatarUrl, onTap: onAvatarTap),
+                            PostAvatar(
+                              avatarUrl: resolvedAvatarUrl,
+                              onTap: onAvatarTap,
+                            ),
                             const SizedBox(width: AppSizes.md),
                             Expanded(
                               child: Column(
@@ -182,10 +203,15 @@ class FeedPostCard extends ConsumerWidget {
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
                                       child: PostMediaGrid(
-                                        mediaUrls: displayPost.media.map((e) => e.url).toList(),
-                                        heroTagPrefix: 'post_${displayPost.id}_media_',
+                                        mediaUrls: displayPost.media
+                                            .map((e) => e.url)
+                                            .toList(),
+                                        heroTagPrefix:
+                                            'post_${displayPost.id}_media_',
                                         onDoubleTap: () => ref
-                                            .read(postControllerProvider.notifier)
+                                            .read(
+                                              postControllerProvider.notifier,
+                                            )
                                             .toggleLike(displayPost.id),
                                         onTap: (index) {
                                           Navigator.of(context).push(
@@ -195,7 +221,8 @@ class FeedPostCard extends ConsumerWidget {
                                                     .map((e) => e.url)
                                                     .toList(),
                                                 initialIndex: index,
-                                                heroTagPrefix: 'post_${displayPost.id}_media_',
+                                                heroTagPrefix:
+                                                    'post_${displayPost.id}_media_',
                                               ),
                                             ),
                                           );
@@ -221,7 +248,9 @@ class FeedPostCard extends ConsumerWidget {
                         color: colorScheme.surface.withValues(alpha: 0.20),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: const Color(0xFFA78BFA).withValues(alpha: 0.20),
+                          color: const Color(
+                            0xFFA78BFA,
+                          ).withValues(alpha: 0.20),
                           width: 0.7,
                         ),
                         boxShadow: [
@@ -252,13 +281,13 @@ class FeedPostCard extends ConsumerWidget {
                           color: colorScheme.surface.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0xFFA78BFA).withValues(alpha: 0.0),
+                            color: const Color(
+                              0xFFA78BFA,
+                            ).withValues(alpha: 0.0),
                             width: 0.7,
                           ),
                         ),
-                        child: Center(
-                          child: PostMoreMenuButton(post: post),
-                        ),
+                        child: Center(child: PostMoreMenuButton(post: post)),
                       ),
                     ),
                   ),

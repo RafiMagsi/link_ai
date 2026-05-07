@@ -98,11 +98,14 @@ class _SavedPostsTab extends ConsumerWidget {
           return postState.when(
             data: (post) {
               if (post == null) return const SizedBox.shrink();
+              final detailPostId = post.detailPostId;
+              final detailExtra = detailPostId == post.id ? post : null;
               return FeedPostCard(
                 post: post,
-                onTap: () => context.push('/posts/${post.id}', extra: post),
+                onTap: () =>
+                    context.push('/posts/$detailPostId', extra: detailExtra),
                 onCommentTap: () =>
-                    context.push('/posts/${post.id}', extra: post),
+                    context.push('/posts/$detailPostId', extra: detailExtra),
               );
             },
             loading: () => const SkeletonPostCard(),
@@ -225,7 +228,9 @@ class _SavedProfilesTab extends ConsumerWidget {
       }
 
       final profilesState = ref.watch(profilesByIdsProvider(profileIds));
-      final profilesCached = profilesState.error == null ? profilesState.value : null;
+      final profilesCached = profilesState.error == null
+          ? profilesState.value
+          : null;
 
       Widget buildProfiles(List<ProfileModel> profiles) {
         if (profiles.isEmpty) {
@@ -275,7 +280,8 @@ class _SavedProfilesTab extends ConsumerWidget {
       loading: () => ListView.separated(
         padding: const EdgeInsets.all(AppSizes.lg),
         itemCount: 4,
-        separatorBuilder: (context, index) => const SizedBox(height: AppSizes.md),
+        separatorBuilder: (context, index) =>
+            const SizedBox(height: AppSizes.md),
         itemBuilder: (context, index) => const _SavedProfileSkeleton(),
       ),
       error: (error, stackTrace) =>
@@ -287,10 +293,7 @@ class _SavedProfilesTab extends ConsumerWidget {
 }
 
 class _SavedProfileCard extends ConsumerWidget {
-  const _SavedProfileCard({
-    required this.profile,
-    required this.currentUid,
-  });
+  const _SavedProfileCard({required this.profile, required this.currentUid});
 
   final ProfileModel profile;
   final String currentUid;

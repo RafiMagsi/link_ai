@@ -115,23 +115,7 @@ class _OptimisticPostCountNotifier
     final newLikesCount = isLiking
         ? post.likesCount + 1
         : (post.likesCount - 1).clamp(0, double.infinity).toInt();
-    final updated = PostModel(
-      id: post.id,
-      authorUid: post.authorUid,
-      authorName: post.authorName,
-      authorRole: post.authorRole,
-      authorAvatarUrl: post.authorAvatarUrl,
-      text: post.text,
-      hashtags: post.hashtags,
-      media: post.media,
-      likesCount: newLikesCount,
-      repostsCount: post.repostsCount,
-      commentsCount: post.commentsCount,
-      savesCount: post.savesCount,
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt,
-      colorCode: post.colorCode,
-    );
+    final updated = post.copyWith(likesCount: newLikesCount);
     state = {...state, postId: updated};
   }
 
@@ -139,23 +123,7 @@ class _OptimisticPostCountNotifier
     final newRepostsCount = isReposting
         ? post.repostsCount + 1
         : (post.repostsCount - 1).clamp(0, double.infinity).toInt();
-    final updated = PostModel(
-      id: post.id,
-      authorUid: post.authorUid,
-      authorName: post.authorName,
-      authorRole: post.authorRole,
-      authorAvatarUrl: post.authorAvatarUrl,
-      text: post.text,
-      hashtags: post.hashtags,
-      media: post.media,
-      likesCount: post.likesCount,
-      repostsCount: newRepostsCount,
-      commentsCount: post.commentsCount,
-      savesCount: post.savesCount,
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt,
-      colorCode: post.colorCode,
-    );
+    final updated = post.copyWith(repostsCount: newRepostsCount);
     state = {...state, postId: updated};
   }
 
@@ -163,23 +131,7 @@ class _OptimisticPostCountNotifier
     final newSavesCount = isSaving
         ? post.savesCount + 1
         : (post.savesCount - 1).clamp(0, double.infinity).toInt();
-    final updated = PostModel(
-      id: post.id,
-      authorUid: post.authorUid,
-      authorName: post.authorName,
-      authorRole: post.authorRole,
-      authorAvatarUrl: post.authorAvatarUrl,
-      text: post.text,
-      hashtags: post.hashtags,
-      media: post.media,
-      likesCount: post.likesCount,
-      repostsCount: post.repostsCount,
-      commentsCount: post.commentsCount,
-      savesCount: newSavesCount,
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt,
-      colorCode: post.colorCode,
-    );
+    final updated = post.copyWith(savesCount: newSavesCount);
     state = {...state, postId: updated};
   }
 

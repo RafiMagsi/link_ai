@@ -6,6 +6,8 @@ import '../../../../../core/utils/navigation_utils.dart';
 import '../../../data/models/post_model.dart';
 import '../../../../auth/presentation/providers/auth_providers.dart';
 import '../../../../profile/presentation/providers/profile_providers.dart';
+import '../../providers/post_providers.dart';
+import '../repost_header.dart';
 import 'snow_post_header.dart';
 import 'snow_post_thought_body.dart';
 import 'snow_post_ship_body.dart';
@@ -30,6 +32,7 @@ class SnowPostCard extends ConsumerWidget {
       PostType.ship => const Color(0xFF5FA51F),
       PostType.ask => const Color(0xFF2B8FE8),
       PostType.commentRepost => const Color(0xFF8B877E),
+      PostType.repost => const Color(0xFF8B877E),
     };
   }
 
@@ -39,28 +42,48 @@ class SnowPostCard extends ConsumerWidget {
       PostType.ship => const Color(0xFFEAF6DD),
       PostType.ask => const Color(0xFFE7F2FF),
       PostType.commentRepost => const Color(0xFFF1EFE8),
+      PostType.repost => const Color(0xFFF1EFE8),
     };
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUid = ref.watch(currentUserProvider)?.uid;
-    final authorProfile = post.authorUid.isEmpty
-        ? null
-        : ref.watch(profileByUidProvider(post.authorUid)).asData?.value;
+    final isRepost = post.isPostRepost;
+    final originalPost = isRepost && post.quotedPostId != null
+        ? ref.watch(postByIdProvider(post.quotedPostId!)).asData?.value
+        : null;
+    final displayPost = originalPost ?? post;
 
-    final resolvedAvatarUrl = authorProfile?.avatarUrl ?? post.authorAvatarUrl;
+    final authorProfile = displayPost.authorUid.isEmpty
+        ? null
+        : ref.watch(profileByUidProvider(displayPost.authorUid)).asData?.value;
+
+    final resolvedAvatarUrl =
+        authorProfile?.avatarUrl ?? displayPost.authorAvatarUrl;
     final resolvedName = (authorProfile?.name.trim().isNotEmpty ?? false)
         ? authorProfile!.name.trim()
-        : post.authorName;
+        : displayPost.authorName;
     final resolvedRole = (authorProfile?.role.trim().isNotEmpty ?? false)
         ? authorProfile!.role.trim()
-        : post.authorRole;
+        : displayPost.authorRole;
 
-    final onAvatarTap = post.authorUid.isEmpty
+    final onAvatarTap = displayPost.authorUid.isEmpty
         ? null
         : () async {
-            final isSelfProfile = currentUid != null && post.authorUid == currentUid;
+            final isSelfProfile =
+                currentUid != null && displayPost.authorUid == currentUid;
+            await navigateToProfile(
+              context: context,
+              uid: displayPost.authorUid,
+              isSelfProfile: isSelfProfile,
+            );
+          };
+    final onReposterTap = post.authorUid.isEmpty
+        ? null
+        : () async {
+            final isSelfProfile =
+                currentUid != null && post.authorUid == currentUid;
             await navigateToProfile(
               context: context,
               uid: post.authorUid,
@@ -68,16 +91,13 @@ class SnowPostCard extends ConsumerWidget {
             );
           };
 
-    final accentColor = _getAccentColor(post.postType);
-    final softAccentColor = _getSoftAccentColor(post.postType);
+    final accentColor = _getAccentColor(displayPost.postType);
+    final softAccentColor = _getSoftAccentColor(displayPost.postType);
     final colorScheme = Theme.of(context).colorScheme;
     final dividerColor = Theme.of(context).dividerColor;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.md,
-        vertical: 5,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 5),
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
@@ -135,8 +155,13 @@ class SnowPostCard extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            if (isRepost)
+                              RepostHeader(
+                                post: post,
+                                onAuthorTap: onReposterTap,
+                              ),
                             SnowPostHeader(
-                              post: post,
+                              post: displayPost,
                               avatarUrl: resolvedAvatarUrl,
                               authorName: resolvedName,
                               authorRole: resolvedRole,
@@ -148,20 +173,23 @@ class SnowPostCard extends ConsumerWidget {
                               switchInCurve: Curves.easeOut,
                               switchOutCurve: Curves.easeIn,
                               child: KeyedSubtree(
-                                key: ValueKey(post.postType),
-                                child: switch (post.postType) {
+                                key: ValueKey(displayPost.postType),
+                                child: switch (displayPost.postType) {
                                   PostType.thought => SnowPostThoughtBody(
-                                      post: post,
-                                    ),
+                                    post: displayPost,
+                                  ),
                                   PostType.ship => SnowPostShipBody(
-                                      post: post,
-                                    ),
+                                    post: displayPost,
+                                  ),
                                   PostType.ask => SnowPostAskBody(
-                                      post: post,
-                                    ),
+                                    post: displayPost,
+                                  ),
                                   PostType.commentRepost => SnowPostThoughtBody(
-                                      post: post,
-                                    ),
+                                    post: displayPost,
+                                  ),
+                                  PostType.repost => SnowPostThoughtBody(
+                                    post: displayPost,
+                                  ),
                                 },
                               ),
                             ),
@@ -173,7 +201,7 @@ class SnowPostCard extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             SnowPostActionRow(
-                              post: post,
+                              post: displayPost,
                               onCommentTap: onCommentTap,
                             ),
                           ],

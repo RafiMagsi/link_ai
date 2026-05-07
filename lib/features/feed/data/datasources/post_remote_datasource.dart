@@ -33,6 +33,10 @@ class PostRemoteDataSource {
     return _firestore.collection('postSaves');
   }
 
+  CollectionReference<Map<String, dynamic>> get _postReposts {
+    return _firestore.collection('postReposts');
+  }
+
   CollectionReference<Map<String, dynamic>> get _commentLikes {
     return _firestore.collection('commentLikes');
   }
@@ -399,8 +403,8 @@ class PostRemoteDataSource {
     required String uid,
   }) async {
     try {
-      final result = await _posts
-          .doc(_repostPostId(postId, uid))
+      final result = await _postReposts
+          .doc(_postRepostId(postId, uid))
           .get()
           .timeout(const Duration(seconds: 10));
       return result.exists;
@@ -523,24 +527,35 @@ class PostRemoteDataSource {
       final originalPostRef = _posts.doc(originalPost.id);
       final repostDocId = _repostPostId(originalPost.id, repostingUserUid);
       final repostPostRef = _posts.doc(repostDocId);
+      final repostEdgeId = _postRepostId(originalPost.id, repostingUserUid);
+      final repostEdgeRef = _postReposts.doc(repostEdgeId);
 
       await _firestore
           .runTransaction((transaction) async {
+            final repostEdgeSnapshot = await transaction.get(repostEdgeRef);
             final repostSnapshot = await transaction.get(repostPostRef);
             final originalSnapshot = await transaction.get(originalPostRef);
             final currentCount =
                 (originalSnapshot.data()?['repostsCount'] as int?) ?? 0;
 
-            if (repostSnapshot.exists) {
+            if (repostEdgeSnapshot.exists || repostSnapshot.exists) {
+              transaction.delete(repostEdgeRef);
               transaction.delete(repostPostRef);
               transaction.update(originalPostRef, {
                 'repostsCount': currentCount > 0 ? currentCount - 1 : 0,
                 'updatedAt': FieldValue.serverTimestamp(),
               });
             } else {
+              transaction.set(repostEdgeRef, {
+                'id': repostEdgeId,
+                'postId': originalPost.id,
+                'uid': repostingUserUid,
+                'repostPostId': repostDocId,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
               transaction.set(repostPostRef, {
                 'id': repostDocId,
-                'postType': 'commentRepost',
+                'postType': 'repost',
                 'authorUid': repostingUserUid,
                 'authorName': repostingUserName,
                 'authorRole': repostingUserRole,
@@ -553,10 +568,6 @@ class PostRemoteDataSource {
                 'commentsCount': 0,
                 'savesCount': 0,
                 'quotedPostId': originalPost.id,
-                'quotedCommentText': originalPost.text,
-                'quotedCommentAuthorName': originalPost.authorName,
-                'quotedCommentAuthorAvatarUrl': originalPost.authorAvatarUrl,
-                'quotedCommentAuthorUid': originalPost.authorUid,
                 'colorCode': PostColors.getRandomColor(),
                 'createdAt': FieldValue.serverTimestamp(),
                 'updatedAt': FieldValue.serverTimestamp(),
@@ -576,6 +587,8 @@ class PostRemoteDataSource {
   }
 
   String _repostPostId(String postId, String uid) => 'repost_${postId}_$uid';
+
+  String _postRepostId(String postId, String uid) => '${postId}_$uid';
 
   Future<void> addComment({
     required ProfileModel profile,

@@ -117,7 +117,6 @@ class FeedPage extends ConsumerWidget {
       ),
     );
   }
-
 }
 
 class _FeedTabView extends ConsumerWidget {
@@ -144,7 +143,6 @@ class _FeedTabView extends ConsumerWidget {
 }
 
 enum _FeedKind { latest, connected, viral }
-
 
 Future<void> _showCreatePostSheet(BuildContext context) async {
   await showGeneralDialog<void>(
@@ -182,9 +180,7 @@ Future<void> _showCreatePostSheet(BuildContext context) async {
                   scaleX: scaleX,
                   scaleY: scaleY,
                   alignment: Alignment.bottomCenter,
-                  child: _CreatePostBottomSheetShell(
-                    animationValue: value,
-                  ),
+                  child: _CreatePostBottomSheetShell(animationValue: value),
                 ),
               ),
             );
@@ -212,172 +208,174 @@ class _CreatePostBottomSheetShell extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Padding(
-        padding: EdgeInsets.only(
-          top: topInset,
-          bottom: keyboardHeight,
-        ),
+        padding: EdgeInsets.only(top: topInset, bottom: keyboardHeight),
         child: SizedBox(
           height: sheetHeight,
           width: double.infinity,
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(28),
-          ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              border: Border(
-                top: BorderSide(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.18),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                border: Border(
+                  top: BorderSide(
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.18),
+                  ),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 34,
+                    offset: const Offset(0, -10),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 34,
-                  offset: const Offset(0, -10),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  top: -4 + (animationValue * 18),
-                  left: -74,
-                  child: _AnimatedSheetGlow(
-                    color: const Color(0xFF60A5FA).withValues(alpha: 0.18),
-                    size: 180,
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: -4 + (animationValue * 18),
+                    left: -74,
+                    child: _AnimatedSheetGlow(
+                      color: const Color(0xFF60A5FA).withValues(alpha: 0.18),
+                      size: 180,
+                    ),
                   ),
-                ),
-                Positioned(
-                  top: -6 + (animationValue * 20),
-                  right: -74,
-                  child: _AnimatedSheetGlow(
-                    color: const Color(0xFFF9A8D4).withValues(alpha: 0.18),
-                    size: 10,
+                  Positioned(
+                    top: -6 + (animationValue * 20),
+                    right: -74,
+                    child: _AnimatedSheetGlow(
+                      color: const Color(0xFFF9A8D4).withValues(alpha: 0.18),
+                      size: 10,
+                    ),
                   ),
-                ),
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 4,
-                  child: Transform.scale(
-                    scaleX: animationValue.clamp(0.0, 1.0),
-                    alignment: Alignment.centerLeft,
-                    child: const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Color(0xFF60A5FA),
-                            Color(0xFFA78BFA),
-                            Color(0xFFF9A8D4),
-                          ],
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 4,
+                    child: Transform.scale(
+                      scaleX: animationValue.clamp(0.0, 1.0),
+                      alignment: Alignment.centerLeft,
+                      child: const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Color(0xFF60A5FA),
+                              Color(0xFFA78BFA),
+                              Color(0xFFF9A8D4),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                Column(
-                  children: [
-                    const SizedBox(height: 8),
-                    Container(
-                      width: 42,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant
-                            .withValues(alpha: 0.30),
-                        borderRadius: BorderRadius.circular(999),
+                  Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.30),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFF60A5FA),
-                                  Color(0xFFA78BFA),
-                                  Color(0xFFF9A8D4),
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSizes.md,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF60A5FA),
+                                    Color(0xFFA78BFA),
+                                    Color(0xFFF9A8D4),
+                                  ],
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.auto_awesome_rounded,
+                                color: Color(0xFF312E81),
+                                size: 15,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Create post',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w900,
+                                          height: 1,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    'Thought, ask, or ship something.',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant
+                                              .withValues(alpha: 0.82),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
                                 ],
                               ),
                             ),
-                            child: const Icon(
-                              Icons.auto_awesome_rounded,
-                              color: Color(0xFF312E81),
-                              size: 15,
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              tooltip: 'Close',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 34,
+                                minHeight: 34,
+                              ),
+                              visualDensity: VisualDensity.compact,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Create post',
-                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w900,
-                                        height: 1,
-                                      ),
-                                ),
-                                const SizedBox(height: 1),
-                                Text(
-                                  'Thought, ask, or ship something.',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant
-                                            .withValues(alpha: 0.82),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.close_rounded, size: 20),
-                            tooltip: 'Close',
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 34,
-                              minHeight: 34,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: Transform.translate(
-                        offset: Offset(0, 10 * (1 - animationValue)),
-                        child: Opacity(
-                          opacity: animationValue.clamp(0.0, 1.0),
-                          child: const ClipRect(
-                            child: CreatePostPage(  
-                              showAppBar: true,
-                              compact: true,),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: Transform.translate(
+                          offset: Offset(0, 10 * (1 - animationValue)),
+                          child: Opacity(
+                            opacity: animationValue.clamp(0.0, 1.0),
+                            child: const ClipRect(
+                              child: CreatePostPage(
+                                showAppBar: true,
+                                compact: true,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         ),
       ),
     );
@@ -433,13 +431,15 @@ class _FeedList extends ConsumerWidget {
               }
 
               final post = visiblePosts[index - 1];
+              final detailPostId = post.detailPostId;
+              final detailExtra = detailPostId == post.id ? post : null;
 
               return PostDesignSwitcher(
                 post: post,
                 onCommentTap: () {
                   try {
                     if (context.mounted) {
-                      context.push('/posts/${post.id}', extra: post);
+                      context.push('/posts/$detailPostId', extra: detailExtra);
                     }
                   } catch (e) {
                     if (context.mounted) {
@@ -454,7 +454,7 @@ class _FeedList extends ConsumerWidget {
                 onTap: () {
                   try {
                     if (context.mounted) {
-                      context.push('/posts/${post.id}', extra: post);
+                      context.push('/posts/$detailPostId', extra: detailExtra);
                     }
                   } catch (e) {
                     if (context.mounted) {
@@ -538,7 +538,9 @@ class _CreatePostFabButtonState extends State<_CreatePostFabButton>
         final progress = _controller.value;
         final pressScale = progress == 0
             ? 1.0
-            : 1.0 + (Curves.easeOutBack.transform(progress.clamp(0.0, 1.0)) * 0.055);
+            : 1.0 +
+                  (Curves.easeOutBack.transform(progress.clamp(0.0, 1.0)) *
+                      0.055);
 
         return Transform.scale(
           scale: pressScale,
@@ -590,8 +592,12 @@ class _CreatePostFabIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const color = Color(0xFF312E81);
-    final sparkleTurn = progress == 0 ? 0.0 : Curves.easeOutCubic.transform(progress) * 6.28318;
-    final glowOpacity = progress == 0 ? 0.0 : 0.45 + (Curves.easeOut.transform(progress) * 0.35);
+    final sparkleTurn = progress == 0
+        ? 0.0
+        : Curves.easeOutCubic.transform(progress) * 6.28318;
+    final glowOpacity = progress == 0
+        ? 0.0
+        : 0.45 + (Curves.easeOut.transform(progress) * 0.35);
 
     return SizedBox(
       width: 38,
@@ -601,27 +607,18 @@ class _CreatePostFabIcon extends StatelessWidget {
         children: [
           Positioned.fill(
             child: CustomPaint(
-              painter: _WaterDropPulsePainter(
-                color: color,
-                progress: progress,
-              ),
+              painter: _WaterDropPulsePainter(color: color, progress: progress),
             ),
           ),
           Positioned.fill(
-            child: CustomPaint(
-              painter: _AiComposeIconPainter(color: color),
-            ),
+            child: CustomPaint(painter: _AiComposeIconPainter(color: color)),
           ),
           Positioned(
             right: -3,
             top: -3,
             child: Transform.rotate(
               angle: sparkleTurn,
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                size: 14,
-                color: color,
-              ),
+              child: Icon(Icons.auto_awesome_rounded, size: 14, color: color),
             ),
           ),
           Positioned(
@@ -629,11 +626,7 @@ class _CreatePostFabIcon extends StatelessWidget {
             bottom: 3,
             child: Opacity(
               opacity: glowOpacity,
-              child: Icon(
-                Icons.blur_on_rounded,
-                size: 9,
-                color: color,
-              ),
+              child: Icon(Icons.blur_on_rounded, size: 9, color: color),
             ),
           ),
         ],
@@ -643,10 +636,7 @@ class _CreatePostFabIcon extends StatelessWidget {
 }
 
 class _WaterDropPulsePainter extends CustomPainter {
-  const _WaterDropPulsePainter({
-    required this.color,
-    required this.progress,
-  });
+  const _WaterDropPulsePainter({required this.color, required this.progress});
 
   final Color color;
   final double progress;
@@ -673,14 +663,15 @@ class _WaterDropPulsePainter extends CustomPainter {
     }
 
     final dropPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          color.withValues(alpha: 0.42),
-          color.withValues(alpha: 0.00),
-        ],
-      ).createShader(
-        Rect.fromCircle(center: center, radius: size.shortestSide * 0.52),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [
+              color.withValues(alpha: 0.42),
+              color.withValues(alpha: 0.00),
+            ],
+          ).createShader(
+            Rect.fromCircle(center: center, radius: size.shortestSide * 0.52),
+          );
 
     canvas.drawCircle(center, size.shortestSide * 0.45, dropPaint);
   }
@@ -692,10 +683,7 @@ class _WaterDropPulsePainter extends CustomPainter {
 }
 
 class _AnimatedSheetGlow extends StatefulWidget {
-  const _AnimatedSheetGlow({
-    required this.color,
-    required this.size,
-  });
+  const _AnimatedSheetGlow({required this.color, required this.size});
 
   final Color color;
   final double size;
@@ -729,10 +717,7 @@ class _AnimatedSheetGlowState extends State<_AnimatedSheetGlow>
       animation: _controller,
       builder: (context, child) {
         final scale = 0.92 + (_controller.value * 0.12);
-        return Transform.scale(
-          scale: scale,
-          child: child,
-        );
+        return Transform.scale(scale: scale, child: child);
       },
       child: Container(
         width: widget.size,
@@ -740,10 +725,7 @@ class _AnimatedSheetGlowState extends State<_AnimatedSheetGlow>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
-            colors: [
-              widget.color,
-              widget.color.withValues(alpha: 0),
-            ],
+            colors: [widget.color, widget.color.withValues(alpha: 0)],
           ),
         ),
       ),

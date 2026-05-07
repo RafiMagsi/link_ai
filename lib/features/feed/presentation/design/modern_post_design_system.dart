@@ -25,6 +25,7 @@ class ModernPostDesignSystem {
       PostType.ship => const Color(0xFF22C55E), // emerald
       PostType.ask => const Color(0xFF3B82F6), // blue
       PostType.commentRepost => const Color(0xFF64748B), // slate (like thought)
+      PostType.repost => const Color(0xFF64748B),
     };
   }
 
@@ -35,6 +36,7 @@ class ModernPostDesignSystem {
       PostType.ship => const Color(0xFFDCFCE7), // emerald-100
       PostType.ask => const Color(0xFFDBEAFE), // blue-100
       PostType.commentRepost => const Color(0xFFF1F5F9),
+      PostType.repost => const Color(0xFFF1F5F9),
     };
   }
 
@@ -45,6 +47,7 @@ class ModernPostDesignSystem {
       PostType.ship => 'Shipped',
       PostType.ask => 'Asking',
       PostType.commentRepost => null,
+      PostType.repost => null,
     };
   }
 
@@ -55,6 +58,7 @@ class ModernPostDesignSystem {
       PostType.ship => Icons.rocket_launch_outlined,
       PostType.ask => Icons.help_outline_rounded,
       PostType.commentRepost => Icons.repeat_outlined,
+      PostType.repost => Icons.repeat_outlined,
     };
   }
 }

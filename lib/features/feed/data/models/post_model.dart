@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-enum PostType { thought, ship, ask, commentRepost }
+enum PostType { thought, ship, ask, commentRepost, repost }
 
 enum PostIntent { general, launch, feedback, hiring, cofounder, question }
 
@@ -188,6 +188,18 @@ class PostModel {
     this.quotedPostId,
     this.bestAnswerCommentId,
   });
+
+  bool get isPostRepost {
+    return postType == PostType.repost ||
+        (postType == PostType.commentRepost &&
+            quotedPostId != null &&
+            quotedCommentId == null &&
+            text.trim().isEmpty);
+  }
+
+  String get detailPostId {
+    return isPostRepost && quotedPostId != null ? quotedPostId! : id;
+  }
 
   factory PostModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     try {
@@ -384,5 +396,66 @@ class PostModel {
     }
 
     return map;
+  }
+
+  PostModel copyWith({
+    String? id,
+    String? authorUid,
+    String? authorName,
+    String? authorRole,
+    String? authorAvatarUrl,
+    String? text,
+    List<String>? hashtags,
+    List<PostMediaModel>? media,
+    int? likesCount,
+    int? repostsCount,
+    int? commentsCount,
+    int? savesCount,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    PostType? postType,
+    ShipMeta? shipMeta,
+    AskMeta? askMeta,
+    String? quotedCommentId,
+    String? quotedCommentText,
+    String? quotedCommentAuthorName,
+    String? quotedCommentAuthorAvatarUrl,
+    String? quotedCommentAuthorUid,
+    String? quotedPostId,
+    String? bestAnswerCommentId,
+    String? colorCode,
+    PostIntent? postIntent,
+  }) {
+    return PostModel(
+      id: id ?? this.id,
+      authorUid: authorUid ?? this.authorUid,
+      authorName: authorName ?? this.authorName,
+      authorRole: authorRole ?? this.authorRole,
+      authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
+      text: text ?? this.text,
+      hashtags: hashtags ?? this.hashtags,
+      media: media ?? this.media,
+      likesCount: likesCount ?? this.likesCount,
+      repostsCount: repostsCount ?? this.repostsCount,
+      commentsCount: commentsCount ?? this.commentsCount,
+      savesCount: savesCount ?? this.savesCount,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      postType: postType ?? this.postType,
+      shipMeta: shipMeta ?? this.shipMeta,
+      askMeta: askMeta ?? this.askMeta,
+      quotedCommentId: quotedCommentId ?? this.quotedCommentId,
+      quotedCommentText: quotedCommentText ?? this.quotedCommentText,
+      quotedCommentAuthorName:
+          quotedCommentAuthorName ?? this.quotedCommentAuthorName,
+      quotedCommentAuthorAvatarUrl:
+          quotedCommentAuthorAvatarUrl ?? this.quotedCommentAuthorAvatarUrl,
+      quotedCommentAuthorUid:
+          quotedCommentAuthorUid ?? this.quotedCommentAuthorUid,
+      quotedPostId: quotedPostId ?? this.quotedPostId,
+      bestAnswerCommentId: bestAnswerCommentId ?? this.bestAnswerCommentId,
+      colorCode: colorCode ?? this.colorCode,
+      postIntent: postIntent ?? this.postIntent,
+    );
   }
 }

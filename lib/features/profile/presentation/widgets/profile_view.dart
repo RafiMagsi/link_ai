@@ -856,10 +856,8 @@ class _ProfileInfoPanel extends StatelessWidget {
                     .where((value) => value.trim().isNotEmpty)
                     .take(3)
                     .map(
-                      (value) => _MetaChip(
-                        icon: Icons.memory_outlined,
-                        label: value,
-                      ),
+                      (value) =>
+                          _MetaChip(icon: Icons.memory_outlined, label: value),
                     ),
                 ...lookingFor
                     .where((value) => value.trim().isNotEmpty)
@@ -1244,10 +1242,14 @@ class _PostsSliver extends ConsumerWidget {
         separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final post = cached[index];
+          final detailPostId = post.detailPostId;
+          final detailExtra = detailPostId == post.id ? post : null;
           return FeedPostCard(
             post: post,
-            onTap: () => context.push('/posts/${post.id}', extra: post),
-            onCommentTap: () => context.push('/posts/${post.id}', extra: post),
+            onTap: () =>
+                context.push('/posts/$detailPostId', extra: detailExtra),
+            onCommentTap: () =>
+                context.push('/posts/$detailPostId', extra: detailExtra),
           );
         },
       );
@@ -1271,11 +1273,14 @@ class _PostsSliver extends ConsumerWidget {
           separatorBuilder: (context, index) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final post = posts[index];
+            final detailPostId = post.detailPostId;
+            final detailExtra = detailPostId == post.id ? post : null;
             return FeedPostCard(
               post: post,
-              onTap: () => context.push('/posts/${post.id}', extra: post),
+              onTap: () =>
+                  context.push('/posts/$detailPostId', extra: detailExtra),
               onCommentTap: () =>
-                  context.push('/posts/${post.id}', extra: post),
+                  context.push('/posts/$detailPostId', extra: detailExtra),
             );
           },
         );
@@ -1325,11 +1330,14 @@ class _LikesSliver extends ConsumerWidget {
           return postState.when(
             data: (post) {
               if (post == null) return const SizedBox.shrink();
+              final detailPostId = post.detailPostId;
+              final detailExtra = detailPostId == post.id ? post : null;
               return FeedPostCard(
                 post: post,
-                onTap: () => context.push('/posts/${post.id}', extra: post),
+                onTap: () =>
+                    context.push('/posts/$detailPostId', extra: detailExtra),
                 onCommentTap: () =>
-                    context.push('/posts/${post.id}', extra: post),
+                    context.push('/posts/$detailPostId', extra: detailExtra),
               );
             },
             loading: () => const SkeletonPostCard(),
@@ -1362,11 +1370,14 @@ class _LikesSliver extends ConsumerWidget {
             return postState.when(
               data: (post) {
                 if (post == null) return const SizedBox.shrink();
+                final detailPostId = post.detailPostId;
+                final detailExtra = detailPostId == post.id ? post : null;
                 return FeedPostCard(
                   post: post,
-                  onTap: () => context.push('/posts/${post.id}', extra: post),
+                  onTap: () =>
+                      context.push('/posts/$detailPostId', extra: detailExtra),
                   onCommentTap: () =>
-                      context.push('/posts/${post.id}', extra: post),
+                      context.push('/posts/$detailPostId', extra: detailExtra),
                 );
               },
               loading: () => const SkeletonPostCard(),

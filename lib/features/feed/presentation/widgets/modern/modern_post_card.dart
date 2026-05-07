@@ -13,6 +13,7 @@ import '../../providers/post_providers.dart';
 import '../post/post_avatar.dart';
 import '../post/post_media_grid.dart';
 import '../post/post_more_menu_button.dart';
+import '../repost_header.dart';
 import 'modern_post_action_row.dart';
 import 'modern_post_header.dart';
 
@@ -31,25 +32,44 @@ class ModernPostCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUid = ref.watch(currentUserProvider)?.uid;
-    final authorProfile = post.authorUid.isEmpty
-        ? null
-        : ref.watch(profileByUidProvider(post.authorUid)).asData?.value;
-    final isAuthorGoldSubscriber = post.authorUid.isEmpty
-        ? false
-        : ref.watch(isGoldSubscriberByUidProvider(post.authorUid));
+    final isRepost = post.isPostRepost;
+    final originalPost = isRepost && post.quotedPostId != null
+        ? ref.watch(postByIdProvider(post.quotedPostId!)).asData?.value
+        : null;
+    final displayPost = originalPost ?? post;
 
-    final resolvedAvatarUrl = authorProfile?.avatarUrl ?? post.authorAvatarUrl;
+    final authorProfile = displayPost.authorUid.isEmpty
+        ? null
+        : ref.watch(profileByUidProvider(displayPost.authorUid)).asData?.value;
+    final isAuthorGoldSubscriber = displayPost.authorUid.isEmpty
+        ? false
+        : ref.watch(isGoldSubscriberByUidProvider(displayPost.authorUid));
+
+    final resolvedAvatarUrl =
+        authorProfile?.avatarUrl ?? displayPost.authorAvatarUrl;
     final resolvedName = (authorProfile?.name.trim().isNotEmpty ?? false)
         ? authorProfile!.name.trim()
-        : post.authorName;
+        : displayPost.authorName;
     final resolvedRole = (authorProfile?.role.trim().isNotEmpty ?? false)
         ? authorProfile!.role.trim()
-        : post.authorRole;
+        : displayPost.authorRole;
 
-    final onAvatarTap = post.authorUid.isEmpty
+    final onAvatarTap = displayPost.authorUid.isEmpty
         ? null
         : () async {
-            final isSelfProfile = currentUid != null && post.authorUid == currentUid;
+            final isSelfProfile =
+                currentUid != null && displayPost.authorUid == currentUid;
+            await navigateToProfile(
+              context: context,
+              uid: displayPost.authorUid,
+              isSelfProfile: isSelfProfile,
+            );
+          };
+    final onReposterTap = post.authorUid.isEmpty
+        ? null
+        : () async {
+            final isSelfProfile =
+                currentUid != null && post.authorUid == currentUid;
             await navigateToProfile(
               context: context,
               uid: post.authorUid,
@@ -57,17 +77,18 @@ class ModernPostCard extends ConsumerWidget {
             );
           };
 
-    final accentColor = ModernPostDesignSystem.getAccentColor(post.postType);
+    final accentColor = ModernPostDesignSystem.getAccentColor(
+      displayPost.postType,
+    );
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.md,
-        vertical: 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 8),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(ModernPostDesignSystem.cardBorderRadius),
+          borderRadius: BorderRadius.circular(
+            ModernPostDesignSystem.cardBorderRadius,
+          ),
           color: colorScheme.surface,
           border: Border.all(
             color: colorScheme.outline.withValues(alpha: 0.12),
@@ -81,20 +102,28 @@ class ModernPostCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (isRepost)
+                  RepostHeader(post: post, onAuthorTap: onReposterTap),
                 // Top accent bar
                 Container(
                   height: ModernPostDesignSystem.accentBarWidth,
                   decoration: BoxDecoration(
                     color: accentColor,
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(ModernPostDesignSystem.cardBorderRadius),
-                      topRight: Radius.circular(ModernPostDesignSystem.cardBorderRadius),
+                      topLeft: Radius.circular(
+                        ModernPostDesignSystem.cardBorderRadius,
+                      ),
+                      topRight: Radius.circular(
+                        ModernPostDesignSystem.cardBorderRadius,
+                      ),
                     ),
                   ),
                 ),
                 // Main content
                 Padding(
-                  padding: const EdgeInsets.all(ModernPostDesignSystem.cardPadding),
+                  padding: const EdgeInsets.all(
+                    ModernPostDesignSystem.cardPadding,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -102,11 +131,14 @@ class ModernPostCard extends ConsumerWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          PostAvatar(avatarUrl: resolvedAvatarUrl, onTap: onAvatarTap),
+                          PostAvatar(
+                            avatarUrl: resolvedAvatarUrl,
+                            onTap: onAvatarTap,
+                          ),
                           const SizedBox(width: AppSizes.md),
                           Expanded(
                             child: ModernPostHeader(
-                              post: post,
+                              post: displayPost,
                               authorNameOverride: resolvedName,
                               authorRoleOverride: resolvedRole,
                               isGoldSubscriber: isAuthorGoldSubscriber,
@@ -123,11 +155,11 @@ class ModernPostCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: ModernPostDesignSystem.contentGap),
                       // Post text
-                      if (post.text.trim().isNotEmpty)
+                      if (displayPost.text.trim().isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(right: 4),
                           child: HashtagText(
-                            text: post.text,
+                            text: displayPost.text,
                             style: TextStyle(
                               fontSize: ModernPostDesignSystem.postTextSize,
                               fontWeight: ModernPostDesignSystem.postTextWeight,
@@ -137,16 +169,21 @@ class ModernPostCard extends ConsumerWidget {
                           ),
                         ),
                       // Media
-                      if (post.media.isNotEmpty) ...[
-                        const SizedBox(height: ModernPostDesignSystem.contentGap),
+                      if (displayPost.media.isNotEmpty) ...[
+                        const SizedBox(
+                          height: ModernPostDesignSystem.contentGap,
+                        ),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: PostMediaGrid(
-                            mediaUrls: post.media.map((e) => e.url).toList(),
-                            heroTagPrefix: 'modern_post_${post.id}_media_',
+                            mediaUrls: displayPost.media
+                                .map((e) => e.url)
+                                .toList(),
+                            heroTagPrefix:
+                                'modern_post_${displayPost.id}_media_',
                             onDoubleTap: () => ref
                                 .read(postControllerProvider.notifier)
-                                .toggleLike(post.id),
+                                .toggleLike(displayPost.id),
                             onTap: (index) {
                               // Navigate to media gallery
                             },
@@ -155,10 +192,12 @@ class ModernPostCard extends ConsumerWidget {
                       ],
                       const SizedBox(height: ModernPostDesignSystem.contentGap),
                       // Quoted comment (for commentRepost type)
-                      if (post.postType == PostType.commentRepost &&
+                      if (displayPost.postType == PostType.commentRepost &&
                           post.quotedCommentText != null) ...[
                         Container(
-                          padding: const EdgeInsets.all(ModernPostDesignSystem.cardPadding),
+                          padding: const EdgeInsets.all(
+                            ModernPostDesignSystem.cardPadding,
+                          ),
                           decoration: BoxDecoration(
                             border: Border.all(
                               color: colorScheme.outline.withValues(alpha: 0.2),
@@ -186,7 +225,9 @@ class ModernPostCard extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        const SizedBox(height: ModernPostDesignSystem.contentGap),
+                        const SizedBox(
+                          height: ModernPostDesignSystem.contentGap,
+                        ),
                       ],
                     ],
                   ),
@@ -199,7 +240,7 @@ class ModernPostCard extends ConsumerWidget {
                 ),
                 // Action row
                 ModernPostActionRow(
-                  post: post,
+                  post: displayPost,
                   onCommentTap: onCommentTap,
                 ),
               ],
