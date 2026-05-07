@@ -122,6 +122,9 @@ class PostCommentModel {
     List<PostCommentModel>? replies,
     bool? isBestAnswer,
     int? repliesCount,
+    int? likesCount,
+    int? repostsCount,
+    int? savesCount,
   }) {
     return PostCommentModel(
       id: id,
@@ -134,9 +137,9 @@ class PostCommentModel {
       createdAtClient: createdAtClient,
       parentCommentId: parentCommentId,
       replies: replies ?? this.replies,
-      likesCount: likesCount,
-      repostsCount: repostsCount,
-      savesCount: savesCount,
+      likesCount: likesCount ?? this.likesCount,
+      repostsCount: repostsCount ?? this.repostsCount,
+      savesCount: savesCount ?? this.savesCount,
       repliesCount: repliesCount ?? this.repliesCount,
       isBestAnswer: isBestAnswer ?? this.isBestAnswer,
     );

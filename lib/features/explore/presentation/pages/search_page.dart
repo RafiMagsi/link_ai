@@ -587,38 +587,27 @@ class _PostSearchResults extends ConsumerWidget {
             final post = posts[index];
             final detailPostId = post.detailPostId;
             final detailExtra = detailPostId == post.id ? post : null;
+
+            void navigateToPost() {
+              try {
+                if (context.mounted) {
+                  context.push('/posts/$detailPostId', extra: detailExtra);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ErrorHandler.getUserFriendlyMessage(e)),
+                    ),
+                  );
+                }
+              }
+            }
+
             return FeedPostCard(
               post: post,
-              onCommentTap: () {
-                try {
-                  if (context.mounted) {
-                    context.push('/posts/$detailPostId', extra: detailExtra);
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(ErrorHandler.getUserFriendlyMessage(e)),
-                      ),
-                    );
-                  }
-                }
-              },
-              onTap: () {
-                try {
-                  if (context.mounted) {
-                    context.push('/posts/$detailPostId', extra: detailExtra);
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(ErrorHandler.getUserFriendlyMessage(e)),
-                      ),
-                    );
-                  }
-                }
-              },
+              onCommentTap: () {},
+              onTap: navigateToPost,
             );
           },
         );

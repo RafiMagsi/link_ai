@@ -26,66 +26,6 @@ class FeedPage extends ConsumerWidget {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'Feed',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Latest'),
-              Tab(text: 'Following'),
-              Tab(text: 'Viral'),
-            ],
-          ),
-          actions: [
-            IconButton(
-              onPressed: () => context.push('/search'),
-              icon: const Icon(Icons.search),
-            ),
-            Consumer(
-              builder: (context, ref, _) {
-                final unreadState = ref.watch(unreadNotificationsCountProvider);
-                final unreadCount = unreadState.asData?.value ?? 0;
-
-                return Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    IconButton(
-                      onPressed: () => context.push('/notifications'),
-                      icon: const Icon(Icons.notifications_none),
-                    ),
-                    if (unreadCount > 0)
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.error,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 18,
-                            minHeight: 18,
-                          ),
-                          child: Text(
-                            unreadCount > 99 ? '99+' : unreadCount.toString(),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onError,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
         floatingActionButton: _CreatePostFabButton(
           onOpen: () async {
             try {
@@ -113,7 +53,102 @@ class FeedPage extends ConsumerWidget {
             }
           },
         ),
-        body: _FeedTabView(),
+        body: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            final statusBarHeight = MediaQuery.of(context).viewPadding.top;
+            final bgColor = Theme.of(context).scaffoldBackgroundColor;
+
+            return [
+              SliverAppBar(
+                floating: true,
+                snap: true,
+                pinned: false,
+                elevation: 0,
+                backgroundColor: bgColor,
+                scrolledUnderElevation: 0,
+                expandedHeight: 112 + statusBarHeight,
+                collapsedHeight: 48 + statusBarHeight,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Container(
+                    color: bgColor,
+                    padding: EdgeInsets.only(top: statusBarHeight),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Feed',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  collapseMode: CollapseMode.parallax,
+                ),
+                leadingWidth: 0,
+                automaticallyImplyLeading: false,
+                actions: [
+                  IconButton(
+                    onPressed: () => context.push('/search'),
+                    icon: const Icon(Icons.search),
+                  ),
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final unreadState = ref.watch(unreadNotificationsCountProvider);
+                      final unreadCount = unreadState.asData?.value ?? 0;
+
+                      return Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          IconButton(
+                            onPressed: () => context.push('/notifications'),
+                            icon: const Icon(Icons.notifications_none),
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: 8,
+                              top: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.error,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                child: Text(
+                                  unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onError,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _TabBarDelegate(
+                  statusBarHeight: statusBarHeight,
+                  backgroundColor: bgColor,
+                ),
+              ),
+            ];
+          },
+          body: _FeedTabView(),
+        ),
       ),
     );
   }
@@ -871,5 +906,48 @@ class _FeedComposerEntry extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+class _TabBarDelegate extends SliverPersistentHeaderDelegate {
+  final double statusBarHeight;
+  final Color backgroundColor;
+
+  _TabBarDelegate({
+    required this.statusBarHeight,
+    required this.backgroundColor,
+  });
+
+  @override
+  double get minExtent => 48 + statusBarHeight;
+
+  @override
+  double get maxExtent => 48 + statusBarHeight;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: backgroundColor,
+      child: Column(
+        children: [
+          SizedBox(height: statusBarHeight),
+          const Expanded(
+            child: TabBar(
+              tabs: [
+                Tab(text: 'Latest'),
+                Tab(text: 'Connected'),
+                Tab(text: 'Viral'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_TabBarDelegate oldDelegate) {
+    return statusBarHeight != oldDelegate.statusBarHeight ||
+        backgroundColor != oldDelegate.backgroundColor;
   }
 }

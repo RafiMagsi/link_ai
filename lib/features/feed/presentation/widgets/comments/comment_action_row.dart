@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/models/post_comment_model.dart';
 import '../../providers/post_providers.dart';
 import '../post/post_action_button.dart';
 
@@ -36,30 +37,54 @@ class CommentActionRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final interactionState = ref.watch(
-      commentInteractionStateProvider(commentId),
-    );
-    final optimisticState = ref.watch(
-      optimisticCommentInteractionProvider(commentId),
-    );
+    // Watch only individual optimistic providers, not the combined state
+    final optimisticLiked = ref.watch(optimisticCommentLikeProvider(commentId));
+    final optimisticSaved = ref.watch(optimisticCommentSaveProvider(commentId));
+    final optimisticReposted = ref.watch(optimisticCommentRepostProvider(commentId));
+
+    final optimisticCounts = ref.watch(optimisticCommentCountProvider);
 
     late bool isLiked;
     late bool isSaved;
     late bool isReposted;
 
-    if (optimisticState != null) {
-      isLiked = optimisticState.liked;
-      isSaved = optimisticState.saved;
-      isReposted = optimisticState.reposted;
-    } else if (interactionState.asData case final asyncData?) {
-      isLiked = asyncData.value.liked;
-      isSaved = asyncData.value.saved;
-      isReposted = asyncData.value.reposted;
+    // Determine actual state - only read combined provider if all optimistic states are null
+    if (optimisticLiked != null || optimisticSaved != null || optimisticReposted != null) {
+      // Use optimistic values where available, read from combined provider for the rest
+      final realState = ref.watch(
+        commentInteractionStateProvider((postId: postId, commentId: commentId)),
+      ).asData?.value;
+      isLiked = optimisticLiked ?? realState?.liked ?? false;
+      isSaved = optimisticSaved ?? realState?.saved ?? false;
+      isReposted = optimisticReposted ?? realState?.reposted ?? false;
     } else {
-      isLiked = false;
-      isSaved = false;
-      isReposted = false;
+      // No optimistic state, read from combined provider
+      final realState = ref.watch(
+        commentInteractionStateProvider((postId: postId, commentId: commentId)),
+      ).asData?.value;
+      isLiked = realState?.liked ?? false;
+      isSaved = realState?.saved ?? false;
+      isReposted = realState?.reposted ?? false;
     }
+
+    // Build comment model for optimistic updates
+    final comment = PostCommentModel(
+      id: commentId,
+      postId: postId,
+      authorUid: commentAuthorUid,
+      authorName: commentAuthorName,
+      authorAvatarUrl: commentAuthorAvatarUrl,
+      text: commentText,
+      createdAt: null,
+      createdAtClient: null,
+      likesCount: likesCount,
+      repostsCount: repostsCount,
+      savesCount: savesCount,
+      repliesCount: repliesCount,
+    );
+
+    // Use optimistic counts if available
+    final displayComment = optimisticCounts[commentId] ?? comment;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -68,14 +93,14 @@ class CommentActionRow extends ConsumerWidget {
             icon: Icons.chat_bubble_outline,
             activeIcon: Icons.chat_bubble,
             active: false,
-            count: repliesCount,
+            count: displayComment.repliesCount,
             onTap: onCommentTap ?? onReplyTap ?? () {},
           ),
           PostActionButton(
             icon: Icons.repeat,
             activeIcon: Icons.repeat,
             active: isReposted,
-            count: repostsCount,
+            count: displayComment.repostsCount,
             onTap: () {
               ref
                   .read(postControllerProvider.notifier)
@@ -86,6 +111,7 @@ class CommentActionRow extends ConsumerWidget {
                     commentAuthorUid: commentAuthorUid,
                     commentAuthorName: commentAuthorName,
                     commentAuthorAvatarUrl: commentAuthorAvatarUrl,
+                    comment: comment,
                   );
             },
           ),
@@ -93,22 +119,30 @@ class CommentActionRow extends ConsumerWidget {
             icon: Icons.favorite_border,
             activeIcon: Icons.favorite,
             active: isLiked,
-            count: likesCount,
+            count: displayComment.likesCount,
             onTap: () {
               ref
                   .read(postControllerProvider.notifier)
-                  .toggleCommentLike(postId: postId, commentId: commentId);
+                  .toggleCommentLike(
+                    postId: postId,
+                    commentId: commentId,
+                    comment: comment,
+                  );
             },
           ),
           PostActionButton(
             icon: Icons.bookmark_border,
             activeIcon: Icons.bookmark,
             active: isSaved,
-            count: savesCount,
+            count: displayComment.savesCount,
             onTap: () {
               ref
                   .read(postControllerProvider.notifier)
-                  .toggleCommentSave(postId: postId, commentId: commentId);
+                  .toggleCommentSave(
+                    postId: postId,
+                    commentId: commentId,
+                    comment: comment,
+                  );
             },
           ),
         ],

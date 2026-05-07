@@ -112,26 +112,32 @@ class _OptimisticPostCountNotifier
   _OptimisticPostCountNotifier() : super({});
 
   void updateLikeCount(String postId, PostModel post, bool isLiking) {
+    // Use existing optimistic post if available to preserve other count changes
+    final basePost = state[postId] ?? post;
     final newLikesCount = isLiking
-        ? post.likesCount + 1
-        : (post.likesCount - 1).clamp(0, double.infinity).toInt();
-    final updated = post.copyWith(likesCount: newLikesCount);
+        ? basePost.likesCount + 1
+        : (basePost.likesCount - 1).clamp(0, double.infinity).toInt();
+    final updated = basePost.copyWith(likesCount: newLikesCount);
     state = {...state, postId: updated};
   }
 
   void updateRepostCount(String postId, PostModel post, bool isReposting) {
+    // Use existing optimistic post if available to preserve other count changes
+    final basePost = state[postId] ?? post;
     final newRepostsCount = isReposting
-        ? post.repostsCount + 1
-        : (post.repostsCount - 1).clamp(0, double.infinity).toInt();
-    final updated = post.copyWith(repostsCount: newRepostsCount);
+        ? basePost.repostsCount + 1
+        : (basePost.repostsCount - 1).clamp(0, double.infinity).toInt();
+    final updated = basePost.copyWith(repostsCount: newRepostsCount);
     state = {...state, postId: updated};
   }
 
   void updateSaveCount(String postId, PostModel post, bool isSaving) {
+    // Use existing optimistic post if available to preserve other count changes
+    final basePost = state[postId] ?? post;
     final newSavesCount = isSaving
-        ? post.savesCount + 1
-        : (post.savesCount - 1).clamp(0, double.infinity).toInt();
-    final updated = post.copyWith(savesCount: newSavesCount);
+        ? basePost.savesCount + 1
+        : (basePost.savesCount - 1).clamp(0, double.infinity).toInt();
+    final updated = basePost.copyWith(savesCount: newSavesCount);
     state = {...state, postId: updated};
   }
 
@@ -146,6 +152,54 @@ final optimisticPostCountProvider =
     StateNotifierProvider<_OptimisticPostCountNotifier, Map<String, PostModel>>(
       (ref) {
         return _OptimisticPostCountNotifier();
+      },
+    );
+
+class _OptimisticCommentCountNotifier
+    extends StateNotifier<Map<String, PostCommentModel>> {
+  _OptimisticCommentCountNotifier() : super({});
+
+  void updateLikeCount(String commentId, PostCommentModel comment, bool isLiking) {
+    // Use existing optimistic comment if available to preserve other count changes
+    final baseComment = state[commentId] ?? comment;
+    final newLikesCount = isLiking
+        ? baseComment.likesCount + 1
+        : (baseComment.likesCount - 1).clamp(0, double.infinity).toInt();
+    final updated = baseComment.copyWith(likesCount: newLikesCount);
+    state = {...state, commentId: updated};
+  }
+
+  void updateRepostCount(String commentId, PostCommentModel comment, bool isReposting) {
+    // Use existing optimistic comment if available to preserve other count changes
+    final baseComment = state[commentId] ?? comment;
+    final newRepostsCount = isReposting
+        ? baseComment.repostsCount + 1
+        : (baseComment.repostsCount - 1).clamp(0, double.infinity).toInt();
+    final updated = baseComment.copyWith(repostsCount: newRepostsCount);
+    state = {...state, commentId: updated};
+  }
+
+  void updateSaveCount(String commentId, PostCommentModel comment, bool isSaving) {
+    // Use existing optimistic comment if available to preserve other count changes
+    final baseComment = state[commentId] ?? comment;
+    final newSavesCount = isSaving
+        ? baseComment.savesCount + 1
+        : (baseComment.savesCount - 1).clamp(0, double.infinity).toInt();
+    final updated = baseComment.copyWith(savesCount: newSavesCount);
+    state = {...state, commentId: updated};
+  }
+
+  void reset(String commentId) {
+    final newState = Map<String, PostCommentModel>.from(state);
+    newState.remove(commentId);
+    state = newState;
+  }
+}
+
+final optimisticCommentCountProvider =
+    StateNotifierProvider<_OptimisticCommentCountNotifier, Map<String, PostCommentModel>>(
+      (ref) {
+        return _OptimisticCommentCountNotifier();
       },
     );
 
@@ -176,27 +230,33 @@ final postCommentsProvider =
           );
     });
 
-class _OptimisticInteractionNotifier
-    extends StateNotifier<PostInteractionState?> {
-  _OptimisticInteractionNotifier() : super(null);
+class _OptimisticBoolNotifier extends StateNotifier<bool?> {
+  _OptimisticBoolNotifier() : super(null);
 
-  void setOptimistic(PostInteractionState state) {
-    this.state = state;
+  void set(bool value) {
+    state = value;
   }
 
-  void resetOptimistic() {
+  void reset() {
     state = null;
   }
 }
 
-final optimisticInteractionProvider =
-    StateNotifierProvider.family<
-      _OptimisticInteractionNotifier,
-      PostInteractionState?,
-      String
-    >((ref, postId) {
-      return _OptimisticInteractionNotifier();
-    });
+// Separate optimistic providers for each action to prevent state conflicts
+final optimisticLikeProvider =
+    StateNotifierProvider.family<_OptimisticBoolNotifier, bool?, String>(
+      (ref, postId) => _OptimisticBoolNotifier(),
+    );
+
+final optimisticSaveProvider =
+    StateNotifierProvider.family<_OptimisticBoolNotifier, bool?, String>(
+      (ref, postId) => _OptimisticBoolNotifier(),
+    );
+
+final optimisticRepostProvider =
+    StateNotifierProvider.family<_OptimisticBoolNotifier, bool?, String>(
+      (ref, postId) => _OptimisticBoolNotifier(),
+    );
 
 final postInteractionStateProvider =
     FutureProvider.family<PostInteractionState, String>((ref, postId) async {
@@ -210,14 +270,30 @@ final postInteractionStateProvider =
         );
       }
 
-      // Check for optimistic state first (scoped to this post)
-      final optimisticState = ref.watch(optimisticInteractionProvider(postId));
-      if (optimisticState != null) {
-        return optimisticState;
+      // Check for optimistic state first for each action independently
+      final optimisticLiked = ref.watch(optimisticLikeProvider(postId));
+      final optimisticSaved = ref.watch(optimisticSaveProvider(postId));
+      final optimisticReposted = ref.watch(optimisticRepostProvider(postId));
+
+      // If all are null, fetch from backend
+      if (optimisticLiked == null && optimisticSaved == null && optimisticReposted == null) {
+        final dataSource = ref.watch(postRemoteDataSourceProvider);
+
+        final results = await Future.wait([
+          dataSource.hasLiked(postId: postId, uid: user.uid),
+          dataSource.hasReposted(postId: postId, uid: user.uid),
+          dataSource.hasSaved(postId: postId, uid: user.uid),
+        ]);
+
+        return PostInteractionState(
+          liked: results[0],
+          reposted: results[1],
+          saved: results[2],
+        );
       }
 
+      // Fetch all from backend to get baseline
       final dataSource = ref.watch(postRemoteDataSourceProvider);
-
       final results = await Future.wait([
         dataSource.hasLiked(postId: postId, uid: user.uid),
         dataSource.hasReposted(postId: postId, uid: user.uid),
@@ -225,9 +301,9 @@ final postInteractionStateProvider =
       ]);
 
       return PostInteractionState(
-        liked: results[0],
-        reposted: results[1],
-        saved: results[2],
+        liked: optimisticLiked ?? results[0],
+        reposted: optimisticReposted ?? results[1],
+        saved: optimisticSaved ?? results[2],
       );
     });
 
@@ -292,53 +368,76 @@ class CommentInteractionState {
   }
 }
 
-class _OptimisticCommentInteractionNotifier
-    extends StateNotifier<CommentInteractionState?> {
-  _OptimisticCommentInteractionNotifier() : super(null);
+// Separate optimistic providers for comments
+final optimisticCommentLikeProvider =
+    StateNotifierProvider.family<_OptimisticBoolNotifier, bool?, String>(
+      (ref, commentId) => _OptimisticBoolNotifier(),
+    );
 
-  void setOptimistic(CommentInteractionState state) {
-    this.state = state;
-  }
+final optimisticCommentSaveProvider =
+    StateNotifierProvider.family<_OptimisticBoolNotifier, bool?, String>(
+      (ref, commentId) => _OptimisticBoolNotifier(),
+    );
 
-  void resetOptimistic() {
-    state = null;
-  }
-}
-
-final optimisticCommentInteractionProvider =
-    StateNotifierProvider.family<
-      _OptimisticCommentInteractionNotifier,
-      CommentInteractionState?,
-      String
-    >((ref, commentId) {
-      return _OptimisticCommentInteractionNotifier();
-    });
+final optimisticCommentRepostProvider =
+    StateNotifierProvider.family<_OptimisticBoolNotifier, bool?, String>(
+      (ref, commentId) => _OptimisticBoolNotifier(),
+    );
 
 final commentInteractionStateProvider =
-    FutureProvider.family<CommentInteractionState, String>((
-      ref,
-      commentId,
-    ) async {
-      final user = ref.watch(currentUserProvider);
+    FutureProvider.family<CommentInteractionState, ({String postId, String commentId})>((
+  ref,
+  params,
+) async {
+  final user = ref.watch(currentUserProvider);
 
-      if (user == null) {
-        return const CommentInteractionState(
-          liked: false,
-          reposted: false,
-          saved: false,
-        );
-      }
+  if (user == null) {
+    return const CommentInteractionState(
+      liked: false,
+      reposted: false,
+      saved: false,
+    );
+  }
 
-      // Check for optimistic state first (scoped to this comment)
-      final optimisticState = ref.watch(
-        optimisticCommentInteractionProvider(commentId),
-      );
-      if (optimisticState != null) {
-        return optimisticState;
-      }
+  final postId = params.postId;
+  final commentId = params.commentId;
 
-      return CommentInteractionState.initial();
-    });
+  // Check for optimistic state first for each action independently
+  final optimisticLiked = ref.watch(optimisticCommentLikeProvider(commentId));
+  final optimisticSaved = ref.watch(optimisticCommentSaveProvider(commentId));
+  final optimisticReposted = ref.watch(optimisticCommentRepostProvider(commentId));
+
+  // If all are null, fetch from backend
+  if (optimisticLiked == null && optimisticSaved == null && optimisticReposted == null) {
+    final dataSource = ref.watch(postRemoteDataSourceProvider);
+
+    final results = await Future.wait<bool>([
+      dataSource.hasLikedComment(postId: postId, commentId: commentId, uid: user.uid),
+      dataSource.hasRepostedComment(postId: postId, commentId: commentId, uid: user.uid),
+      dataSource.hasSavedComment(postId: postId, commentId: commentId, uid: user.uid),
+    ]);
+
+    return CommentInteractionState(
+      liked: results[0],
+      reposted: results[1],
+      saved: results[2],
+    );
+  }
+
+  // Fetch all from backend to get baseline
+  final dataSource = ref.watch(postRemoteDataSourceProvider);
+  final results = await Future.wait<bool>([
+    dataSource.hasLikedComment(postId: postId, commentId: commentId, uid: user.uid),
+    dataSource.hasRepostedComment(postId: postId, commentId: commentId, uid: user.uid),
+    dataSource.hasSavedComment(postId: postId, commentId: commentId, uid: user.uid),
+  ]);
+
+  return CommentInteractionState(
+    liked: optimisticLiked ?? results[0],
+    reposted: optimisticReposted ?? results[1],
+    saved: optimisticSaved ?? results[2],
+  );
+});
 
 class PostController extends StateNotifier<AsyncValue<void>> {
   PostController(this._ref, this._postRemoteDataSource)
@@ -416,7 +515,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  Future<void> toggleLike(String postId) async {
+  Future<void> toggleLike(String postId, {PostModel? post}) async {
     final user = _ref.read(currentUserProvider);
     if (user == null) {
       state = AsyncError(
@@ -427,48 +526,53 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
 
     try {
-      // Get current states to toggle
-      final currentInteractionState = await _ref.read(
-        postInteractionStateProvider(postId).future,
-      );
-      final currentPost = _ref.read(postByIdProvider(postId)).asData?.value;
+      // Read current state synchronously (from cache)
+      final currentInteractionState = _ref.read(
+        postInteractionStateProvider(postId),
+      ).asData?.value;
+
+      if (currentInteractionState == null) {
+        throw Exception('Interaction state not found.');
+      }
+
       final newLiked = !currentInteractionState.liked;
 
-      // Optimistic update - immediately update UI (scoped to this post)
-      final optimisticInteractionState = currentInteractionState.copyWith(
-        liked: newLiked,
-      );
+      // ✅ OPTIMISTIC UPDATE - immediately update UI (before any async operations)
+      // Update only the like state, leaving save/repost independent
       _ref
-          .read(optimisticInteractionProvider(postId).notifier)
-          .setOptimistic(optimisticInteractionState);
+          .read(optimisticLikeProvider(postId).notifier)
+          .set(newLiked);
 
-      // Also update post count optimistically
+      // Use provided post or try to get from cache
+      var currentPost = post ?? _ref.read(postByIdProvider(postId)).asData?.value;
+      currentPost ??= await _ref.read(postByIdProvider(postId).future);
+
+      // Update count optimistically if post data is available
       if (currentPost != null) {
         _ref
             .read(optimisticPostCountProvider.notifier)
             .updateLikeCount(postId, currentPost, newLiked);
       }
 
-      // Make API call in background
+      // Make API call in background (doesn't block UI)
       await _postRemoteDataSource
           .toggleLike(postId: postId, uid: user.uid)
           .timeout(const Duration(seconds: 10));
 
       // On success, keep optimistic state - let Firestore update naturally
-      // This prevents UI flashing/reverting while data syncs
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling like: $error\n$stackTrace');
-      // Only revert optimistic updates on error
+      // Only revert like state on error, leaving save/repost untouched
       _ref
-          .read(optimisticInteractionProvider(postId).notifier)
-          .resetOptimistic();
+          .read(optimisticLikeProvider(postId).notifier)
+          .reset();
       _ref.read(optimisticPostCountProvider.notifier).reset(postId);
       state = AsyncError(error, stackTrace);
     }
   }
 
-  Future<void> toggleRepost(String postId) async {
+  Future<void> toggleRepost(String postId, {PostModel? post}) async {
     final user = _ref.read(currentUserProvider);
     if (user == null) {
       state = AsyncError(
@@ -479,33 +583,46 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
 
     try {
-      final currentInteractionState = await _ref.read(
-        postInteractionStateProvider(postId).future,
-      );
-      final currentPost = _ref.read(postByIdProvider(postId)).asData?.value;
-      final myProfile = await _ref.read(myProfileProvider.future);
+      // Read current state synchronously (from cache)
+      final currentInteractionState = _ref.read(
+        postInteractionStateProvider(postId),
+      ).asData?.value;
 
-      if (currentPost == null) {
-        throw Exception('Post not found.');
+      if (currentInteractionState == null) {
+        throw Exception('Interaction state not found.');
       }
+
+      final newReposted = !currentInteractionState.reposted;
+
+      // ✅ OPTIMISTIC UPDATE - immediately update UI (before any async operations)
+      // Update only the repost state, leaving like/save independent
+      _ref
+          .read(optimisticRepostProvider(postId).notifier)
+          .set(newReposted);
+
+      // Use provided post or try to get from cache
+      var currentPost = post ?? _ref.read(postByIdProvider(postId)).asData?.value;
+      currentPost ??= await _ref.read(postByIdProvider(postId).future);
+
+      // Update count optimistically if post data is available
+      if (currentPost != null) {
+        _ref
+            .read(optimisticPostCountProvider.notifier)
+            .updateRepostCount(postId, currentPost, newReposted);
+      }
+
+      // Fetch profile data asynchronously in background
+      final myProfile = await _ref.read(myProfileProvider.future);
 
       if (myProfile == null) {
         throw Exception('Profile not found. Please log in again.');
       }
 
-      final newReposted = !currentInteractionState.reposted;
+      if (currentPost == null) {
+        throw Exception('Post not found.');
+      }
 
-      final optimisticInteractionState = currentInteractionState.copyWith(
-        reposted: newReposted,
-      );
-      _ref
-          .read(optimisticInteractionProvider(postId).notifier)
-          .setOptimistic(optimisticInteractionState);
-
-      _ref
-          .read(optimisticPostCountProvider.notifier)
-          .updateRepostCount(postId, currentPost, newReposted);
-
+      // Make API call in background (doesn't block UI)
       await _postRemoteDataSource
           .toggleRepostOfPost(
             originalPost: currentPost,
@@ -519,9 +636,10 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling repost: $error\n$stackTrace');
+      // Only revert repost state on error, leaving like/save untouched
       _ref
-          .read(optimisticInteractionProvider(postId).notifier)
-          .resetOptimistic();
+          .read(optimisticRepostProvider(postId).notifier)
+          .reset();
       _ref.read(optimisticPostCountProvider.notifier).reset(postId);
       state = AsyncError(error, stackTrace);
     }
@@ -531,7 +649,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     await toggleRepost(postId);
   }
 
-  Future<void> toggleSave(String postId) async {
+  Future<void> toggleSave(String postId, {PostModel? post}) async {
     final user = _ref.read(currentUserProvider);
     if (user == null) {
       state = AsyncError(
@@ -542,25 +660,35 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
 
     try {
-      final currentInteractionState = await _ref.read(
-        postInteractionStateProvider(postId).future,
-      );
-      final currentPost = _ref.read(postByIdProvider(postId)).asData?.value;
+      // Read current state synchronously (from cache)
+      final currentInteractionState = _ref.read(
+        postInteractionStateProvider(postId),
+      ).asData?.value;
+
+      if (currentInteractionState == null) {
+        throw Exception('Interaction state not found.');
+      }
+
       final newSaved = !currentInteractionState.saved;
 
-      final optimisticInteractionState = currentInteractionState.copyWith(
-        saved: newSaved,
-      );
+      // ✅ OPTIMISTIC UPDATE - immediately update UI (before any async operations)
+      // Update only the save state, leaving like/repost independent
       _ref
-          .read(optimisticInteractionProvider(postId).notifier)
-          .setOptimistic(optimisticInteractionState);
+          .read(optimisticSaveProvider(postId).notifier)
+          .set(newSaved);
 
+      // Use provided post or try to get from cache
+      var currentPost = post ?? _ref.read(postByIdProvider(postId)).asData?.value;
+      currentPost ??= await _ref.read(postByIdProvider(postId).future);
+
+      // Update count optimistically if post data is available
       if (currentPost != null) {
         _ref
             .read(optimisticPostCountProvider.notifier)
             .updateSaveCount(postId, currentPost, newSaved);
       }
 
+      // Make API call in background (doesn't block UI)
       await _postRemoteDataSource
           .toggleSave(postId: postId, uid: user.uid)
           .timeout(const Duration(seconds: 10));
@@ -569,9 +697,10 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling save: $error\n$stackTrace');
+      // Only revert save state on error, leaving like/repost untouched
       _ref
-          .read(optimisticInteractionProvider(postId).notifier)
-          .resetOptimistic();
+          .read(optimisticSaveProvider(postId).notifier)
+          .reset();
       _ref.read(optimisticPostCountProvider.notifier).reset(postId);
       state = AsyncError(error, stackTrace);
     }
@@ -718,6 +847,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
   Future<void> toggleCommentLike({
     required String postId,
     required String commentId,
+    PostCommentModel? comment,
   }) async {
     final user = _ref.read(currentUserProvider);
     if (user == null) {
@@ -729,18 +859,31 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
 
     try {
-      final currentInteractionState = await _ref.read(
-        commentInteractionStateProvider(commentId).future,
-      );
+      // Read current state synchronously (from cache)
+      final currentInteractionState = _ref.read(
+        commentInteractionStateProvider((postId: postId, commentId: commentId)),
+      ).asData?.value;
+
+      if (currentInteractionState == null) {
+        throw Exception('Interaction state not found.');
+      }
+
       final newLiked = !currentInteractionState.liked;
 
-      final optimisticInteractionState = currentInteractionState.copyWith(
-        liked: newLiked,
-      );
+      // ✅ OPTIMISTIC UPDATE - immediately update UI (before any async operations)
+      // Update only the like state, leaving save/repost independent
       _ref
-          .read(optimisticCommentInteractionProvider(commentId).notifier)
-          .setOptimistic(optimisticInteractionState);
+          .read(optimisticCommentLikeProvider(commentId).notifier)
+          .set(newLiked);
 
+      // Update count optimistically if comment data is available
+      if (comment != null) {
+        _ref
+            .read(optimisticCommentCountProvider.notifier)
+            .updateLikeCount(commentId, comment, newLiked);
+      }
+
+      // Make API call in background (doesn't block UI)
       await _postRemoteDataSource
           .toggleCommentLike(
             postId: postId,
@@ -752,9 +895,11 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling comment like: $error\n$stackTrace');
+      // Only revert like state on error, leaving save/repost untouched
       _ref
-          .read(optimisticCommentInteractionProvider(commentId).notifier)
-          .resetOptimistic();
+          .read(optimisticCommentLikeProvider(commentId).notifier)
+          .reset();
+      _ref.read(optimisticCommentCountProvider.notifier).reset(commentId);
       state = AsyncError(error, stackTrace);
     }
   }
@@ -762,6 +907,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
   Future<void> toggleCommentSave({
     required String postId,
     required String commentId,
+    PostCommentModel? comment,
   }) async {
     final user = _ref.read(currentUserProvider);
     if (user == null) {
@@ -773,18 +919,31 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
 
     try {
-      final currentInteractionState = await _ref.read(
-        commentInteractionStateProvider(commentId).future,
-      );
+      // Read current state synchronously (from cache)
+      final currentInteractionState = _ref.read(
+        commentInteractionStateProvider((postId: postId, commentId: commentId)),
+      ).asData?.value;
+
+      if (currentInteractionState == null) {
+        throw Exception('Interaction state not found.');
+      }
+
       final newSaved = !currentInteractionState.saved;
 
-      final optimisticInteractionState = currentInteractionState.copyWith(
-        saved: newSaved,
-      );
+      // ✅ OPTIMISTIC UPDATE - immediately update UI (before any async operations)
+      // Update only the save state, leaving like/repost independent
       _ref
-          .read(optimisticCommentInteractionProvider(commentId).notifier)
-          .setOptimistic(optimisticInteractionState);
+          .read(optimisticCommentSaveProvider(commentId).notifier)
+          .set(newSaved);
 
+      // Update count optimistically if comment data is available
+      if (comment != null) {
+        _ref
+            .read(optimisticCommentCountProvider.notifier)
+            .updateSaveCount(commentId, comment, newSaved);
+      }
+
+      // Make API call in background (doesn't block UI)
       await _postRemoteDataSource
           .toggleCommentSave(
             postId: postId,
@@ -796,9 +955,11 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling comment save: $error\n$stackTrace');
+      // Only revert save state on error, leaving like/repost untouched
       _ref
-          .read(optimisticCommentInteractionProvider(commentId).notifier)
-          .resetOptimistic();
+          .read(optimisticCommentSaveProvider(commentId).notifier)
+          .reset();
+      _ref.read(optimisticCommentCountProvider.notifier).reset(commentId);
       state = AsyncError(error, stackTrace);
     }
   }
@@ -810,20 +971,49 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     required String commentAuthorUid,
     required String commentAuthorName,
     required String? commentAuthorAvatarUrl,
+    PostCommentModel? comment,
   }) async {
-    state = const AsyncLoading();
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      state = AsyncError(
+        Exception('You must be logged in to perform this action.'),
+        StackTrace.current,
+      );
+      return;
+    }
 
     try {
-      final user = _ref.read(currentUserProvider);
-      if (user == null) {
-        throw Exception('You must be logged in to perform this action.');
+      // Read current state synchronously (from cache)
+      final currentInteractionState = _ref.read(
+        commentInteractionStateProvider((postId: postId, commentId: commentId)),
+      ).asData?.value;
+
+      if (currentInteractionState == null) {
+        throw Exception('Interaction state not found.');
       }
 
+      final newReposted = !currentInteractionState.reposted;
+
+      // ✅ OPTIMISTIC UPDATE - immediately update UI (before any async operations)
+      // Update only the repost state, leaving like/save independent
+      _ref
+          .read(optimisticCommentRepostProvider(commentId).notifier)
+          .set(newReposted);
+
+      // Update count optimistically if comment data is available
+      if (comment != null) {
+        _ref
+            .read(optimisticCommentCountProvider.notifier)
+            .updateRepostCount(commentId, comment, newReposted);
+      }
+
+      // Fetch profile data asynchronously in background
       final profile = await _ref.read(myProfileProvider.future);
       if (profile == null) {
         throw Exception('Profile not found. Please log in again.');
       }
 
+      // Make API call in background (doesn't block UI)
       await _postRemoteDataSource
           .toggleCommentRepost(
             postId: postId,
@@ -841,6 +1031,11 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       debugPrint('Error toggling comment repost: $error\n$stackTrace');
+      // Only revert repost state on error, leaving like/save untouched
+      _ref
+          .read(optimisticCommentRepostProvider(commentId).notifier)
+          .reset();
+      _ref.read(optimisticCommentCountProvider.notifier).reset(commentId);
       state = AsyncError(error, stackTrace);
     }
   }

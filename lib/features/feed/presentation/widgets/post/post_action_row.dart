@@ -18,11 +18,34 @@ class PostActionRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final interactionState = ref.watch(postInteractionStateProvider(post.id));
+    // Watch only individual optimistic providers, not the combined state
+    final optimisticLiked = ref.watch(optimisticLikeProvider(post.id));
+    final optimisticSaved = ref.watch(optimisticSaveProvider(post.id));
+    final optimisticReposted = ref.watch(optimisticRepostProvider(post.id));
 
-    final liked = interactionState.asData?.value.liked ?? false;
-    final saved = interactionState.asData?.value.saved ?? false;
-    final reposted = interactionState.asData?.value.reposted ?? false;
+    final optimisticCounts = ref.watch(optimisticPostCountProvider);
+
+    // Determine actual state - only read combined provider if all optimistic states are null
+    late bool liked;
+    late bool saved;
+    late bool reposted;
+
+    if (optimisticLiked != null || optimisticSaved != null || optimisticReposted != null) {
+      // Use optimistic values where available, read from combined provider for the rest
+      final realState = ref.watch(postInteractionStateProvider(post.id)).asData?.value;
+      liked = optimisticLiked ?? realState?.liked ?? false;
+      saved = optimisticSaved ?? realState?.saved ?? false;
+      reposted = optimisticReposted ?? realState?.reposted ?? false;
+    } else {
+      // No optimistic state, read from combined provider
+      final realState = ref.watch(postInteractionStateProvider(post.id)).asData?.value;
+      liked = realState?.liked ?? false;
+      saved = realState?.saved ?? false;
+      reposted = realState?.reposted ?? false;
+    }
+
+    // Use optimistic count if available, otherwise use post count
+    final displayPost = optimisticCounts[post.id] ?? post;
 
     return Padding(
       padding: const EdgeInsetsDirectional.only(end: AppSizes.lg),
@@ -33,32 +56,32 @@ class PostActionRow extends ConsumerWidget {
             icon: Icons.chat_bubble_outline,
             activeIcon: Icons.chat_bubble,
             active: false,
-            count: post.commentsCount,
+            count: displayPost.commentsCount,
             onTap: onCommentTap,
           ),
           PostActionButton(
             icon: Icons.repeat,
             activeIcon: Icons.repeat,
             active: reposted,
-            count: post.repostsCount,
+            count: displayPost.repostsCount,
             onTap: () =>
-                ref.read(postControllerProvider.notifier).toggleRepost(post.id),
+                ref.read(postControllerProvider.notifier).toggleRepost(post.id, post: post),
           ),
           PostActionButton(
             icon: Icons.favorite_border,
             activeIcon: Icons.favorite,
             active: liked,
-            count: post.likesCount,
+            count: displayPost.likesCount,
             onTap: () =>
-                ref.read(postControllerProvider.notifier).toggleLike(post.id),
+                ref.read(postControllerProvider.notifier).toggleLike(post.id, post: post),
           ),
           PostActionButton(
             icon: Icons.bookmark_border,
             activeIcon: Icons.bookmark,
             active: saved,
-            count: post.savesCount,
+            count: displayPost.savesCount,
             onTap: () =>
-                ref.read(postControllerProvider.notifier).toggleSave(post.id),
+                ref.read(postControllerProvider.notifier).toggleSave(post.id, post: post),
           ),
         ],
       ),
