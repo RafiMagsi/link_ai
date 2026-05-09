@@ -1,0 +1,19 @@
+{
+  "name": "ailinks-video-transcoder",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "FFmpeg video transcoder for HLS streaming",
+  "main": "transcodeWorker.js",
+  "scripts": {
+    "start": "node transcodeWorker.js",
+    "dev": "node --watch transcodeWorker.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1693.0",
+    "dotenv": "^17.4.2",
+    "firebase-admin": "^13.9.0"
+  }
+}

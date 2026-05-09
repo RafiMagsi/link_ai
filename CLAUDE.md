@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+# Developer Instructions
+1. Don't commit code or stage code, user will do himself
+2. Don't create documents, if really need it ask user before creating document
+3. Keep the summary compact
+3. Keep token usage compact don't print too much in the context window
+4. Keep context compact by less outputs
+
 ## Project Overview
 
 **LinkAI** is a professional networking app for AI builders (founders, freelancers, learners). Users create profiles, share projects ("builds"), discover connections, send requests, and potentially collaborate. The app emphasizes quality introductions over noisy social feeds.

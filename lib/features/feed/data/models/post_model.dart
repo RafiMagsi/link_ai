@@ -72,12 +72,16 @@ class PostMediaModel {
   final String type;
   final int order;
   final String? thumbnailUrl;
+  final String? hlsUrl;
+  final String status;
 
   const PostMediaModel({
     required this.url,
     required this.type,
     required this.order,
     this.thumbnailUrl,
+    this.hlsUrl,
+    this.status = 'ready',
   });
 
   factory PostMediaModel.fromMap(Map<String, dynamic> map) {
@@ -87,6 +91,8 @@ class PostMediaModel {
       final type = (map['type'] as String?)?.trim() ?? 'image';
       final order = _safeParseInt(map['order']);
       final thumbnailUrl = (map['thumbnailUrl'] as String?)?.trim();
+      final hlsUrl = (map['hlsUrl'] as String?)?.trim();
+      final status = (map['status'] as String?)?.trim() ?? 'ready';
 
       // Validate URL format
       if (url.isNotEmpty && !_isValidUrl(url)) {
@@ -98,6 +104,8 @@ class PostMediaModel {
         type: type,
         order: order,
         thumbnailUrl: thumbnailUrl?.isEmpty == true ? null : thumbnailUrl,
+        hlsUrl: hlsUrl?.isEmpty == true ? null : hlsUrl,
+        status: status,
       );
     } catch (e) {
       debugPrint('Error parsing PostMediaModel from map: $e');
@@ -137,6 +145,8 @@ class PostMediaModel {
         'type': type,
         'order': order,
         'thumbnailUrl': thumbnailUrl,
+        'hlsUrl': hlsUrl,
+        'status': status,
       };
     } catch (e) {
       debugPrint('Error converting PostMediaModel to map: $e');

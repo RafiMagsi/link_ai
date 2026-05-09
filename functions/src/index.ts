@@ -22,6 +22,7 @@ const AWS_ACCESS_KEY_ID_SECRET = defineSecret("AWS_ACCESS_KEY_ID");
 const AWS_SECRET_ACCESS_KEY_SECRET = defineSecret("AWS_SECRET_ACCESS_KEY");
 const AWS_REGION_SECRET = defineSecret("AWS_REGION");
 const S3_BUCKET_SECRET = defineSecret("S3_BUCKET");
+const CLOUDFRONT_DOMAIN_SECRET = defineSecret("CLOUDFRONT_DOMAIN");
 
 type AppleTransactionPayload = {
   bundleId?: string;
@@ -1821,3 +1822,242 @@ export const generateS3UploadUrlHttp = onRequest({
     response.status(401).json({error: "Unauthenticated"});
   }
 });
+
+// ============================================================================
+// HLS VIDEO TRANSCODING INTEGRATION
+// ============================================================================
+
+/**
+ * Triggers when a post is created. If post contains video media,
+ * enqueues videos for HLS transcoding.
+ */
+export const onPostCreated = onDocumentCreated(
+  "posts/{postId}",
+  async (event) => {
+    const post = event.data?.data();
+    const postId = event.params.postId;
+
+    if (!post || !post.media || !Array.isArray(post.media)) {
+      return;
+    }
+
+    // Find videos in media
+    const videosToTranscode = post.media
+      .map((media, index) => ({
+        media,
+        index,
+      }))
+      .filter(({media}) => media.type === "video" && media.url);
+
+    if (videosToTranscode.length === 0) {
+      return;
+    }
+
+    try {
+      const s3Config = getS3Config();
+      const cloudFrontDomain = CLOUDFRONT_DOMAIN_SECRET.value().trim();
+
+      if (!cloudFrontDomain) {
+        console.warn(
+          "CLOUDFRONT_DOMAIN not configured, skipping HLS transcoding"
+        );
+        return;
+      }
+
+      console.log(
+        `Post ${postId} has ${videosToTranscode.length} video(s) to transcode`
+      );
+
+      // Enqueue each video for transcoding
+      for (const {media, index} of videosToTranscode) {
+        const videoId = `${postId}_${index}`;
+
+        // Extract S3 bucket and key from media URL
+        const mediaUrl = media.url;
+        let s3Key = mediaUrl;
+
+        // If URL is full S3 path, extract just the key
+        if (mediaUrl.includes("s3.") && mediaUrl.includes(".amazonaws.com")) {
+          const urlParts = mediaUrl.split("/");
+          s3Key = urlParts.slice(4).join("/");
+        }
+
+        await db.collection("videoTranscodeQueue").doc(videoId).set({
+          postId,
+          mediaIndex: index,
+          videoId,
+          s3InputKey: s3Key,
+          bucket: s3Config.bucket,
+          region: s3Config.region,
+          cloudFrontDomain,
+          status: "pending",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        console.log(`Enqueued video ${videoId} for HLS transcoding`);
+      }
+
+      // Update post media status to "processing"
+      const updatedMedia = post.media.map((m, idx) => {
+        const shouldProcess = videosToTranscode.some((v) => v.index === idx);
+        return shouldProcess ? {...m, status: "processing"} : m;
+      });
+
+      if (event.data) {
+        await event.data.ref.update({media: updatedMedia});
+        console.log(`Updated post ${postId} media status to processing`);
+      }
+    } catch (error) {
+      console.error(`Error enqueuing videos for post ${postId}:`, error);
+    }
+  }
+);
+
+/**
+ * Updates a post's media with HLS URL and marks as ready.
+ * @param {string} postId - The post document ID
+ * @param {number} mediaIndex - Index of media array to update
+ * @param {string} hlsUrl - CloudFront HLS master.m3u8 URL
+ * @param {string|undefined} thumbnailUrl - Optional thumbnail URL
+ * @return {Promise<void>}
+ */
+async function updatePostWithHlsUrl(
+  postId: string,
+  mediaIndex: number,
+  hlsUrl: string,
+  thumbnailUrl?: string
+): Promise<void> {
+  try {
+    await db.runTransaction(async (transaction) => {
+      const postRef = db.collection("posts").doc(postId);
+      const postDoc = await transaction.get(postRef);
+      const post = postDoc.data();
+
+      if (post && post.media && post.media[mediaIndex]) {
+        post.media[mediaIndex].hlsUrl = hlsUrl;
+        post.media[mediaIndex].status = "ready";
+        if (thumbnailUrl) {
+          post.media[mediaIndex].thumbnailUrl = thumbnailUrl;
+        }
+        transaction.update(postRef, {media: post.media});
+      }
+    });
+
+    console.log(
+      `Updated post ${postId} media[${mediaIndex}] with HLS URL`
+    );
+  } catch (error) {
+    console.error(
+      `Error updating post ${postId} with HLS URL:`,
+      error
+    );
+    throw error;
+  }
+}
+
+/**
+ * Marks a video transcode job as failed.
+ * @param {string} videoId - Video ID in queue
+ * @param {string} postId - Post document ID
+ * @param {number} mediaIndex - Index of media array
+ * @param {string} error - Error message
+ * @return {Promise<void>}
+ */
+async function markTranscodeJobFailed(
+  videoId: string,
+  postId: string,
+  mediaIndex: number,
+  error: string
+): Promise<void> {
+  try {
+    // Update queue
+    await db
+      .collection("videoTranscodeQueue")
+      .doc(videoId)
+      .update({
+        status: "failed",
+        error,
+        failedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+    // Update post media status
+    await db.runTransaction(async (transaction) => {
+      const postRef = db.collection("posts").doc(postId);
+      const postDoc = await transaction.get(postRef);
+      const post = postDoc.data();
+
+      if (post && post.media && post.media[mediaIndex]) {
+        post.media[mediaIndex].status = "failed";
+        transaction.update(postRef, {media: post.media});
+      }
+    });
+
+    console.log(`Marked video ${videoId} as failed: ${error}`);
+  } catch (err) {
+    console.error(
+      `Error marking transcode job ${videoId} as failed:`,
+      err
+    );
+  }
+}
+
+interface TranscodeJob {
+  docId: string;
+  postId: string;
+  mediaIndex: number;
+  videoId: string;
+  s3InputKey: string;
+  bucket: string;
+  region: string;
+  cloudFrontDomain: string;
+  status: string;
+}
+
+/**
+ * Gets the next pending video transcode job from the queue.
+ * Returns null if queue is empty.
+ * @return {Promise<TranscodeJob|null>}
+ */
+async function getNextTranscodeJob(): Promise<TranscodeJob | null> {
+  try {
+    const snapshot = await db
+      .collection("videoTranscodeQueue")
+      .where("status", "==", "pending")
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return null;
+    }
+
+    return {
+      docId: snapshot.docs[0].id,
+      ...snapshot.docs[0].data(),
+    } as TranscodeJob;
+  } catch (error) {
+    console.error("Error getting next transcode job:", error);
+    return null;
+  }
+}
+
+/**
+ * Creates a public CloudFront URL for HLS video.
+ * @param {string} cloudFrontDomain - CloudFront distribution domain
+ * @param {string} s3Key - S3 object key
+ * @return {string} Full CloudFront URL
+ */
+function createCloudFrontUrl(
+  cloudFrontDomain: string,
+  s3Key: string
+): string {
+  const path = s3Key.startsWith("/") ? s3Key : `/${s3Key}`;
+  return `https://${cloudFrontDomain}${path}`;
+}
+
+// Export helper functions for external workers (optional)
+export {
+  updatePostWithHlsUrl,
+  markTranscodeJobFailed,
+  getNextTranscodeJob,
+  createCloudFrontUrl,
+};

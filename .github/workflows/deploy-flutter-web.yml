@@ -1,0 +1,43 @@
+name: Deploy Flutter Web to ailinks.dropticks.com
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'web/**'
+      - '.github/workflows/deploy-flutter-web.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build web
+        run: flutter build web --release --dart-define=FLAVOR=production
+
+      - name: Deploy to Hetzner server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          port: ${{ secrets.HETZNER_PORT }}
+          source: 'build/web/*'
+          target: '/home/rafiadmin/web/ailinks.dropticks.com/public_html'
+          rm: true
+
+      - name: Notify deployment success
+        run: |
+          echo "✅ Flutter web deployed to https://ailinks.dropticks.com"

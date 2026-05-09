@@ -1,0 +1,62 @@
+name: Deploy FFmpeg Worker to ailinks.dropticks.com
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/video-transcoder/**'
+      - '.github/workflows/deploy-ffmpeg-worker.yml'
+
+jobs:
+  deploy-worker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy worker to Hetzner server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          port: ${{ secrets.HETZNER_PORT }}
+          script: |
+            set -e
+
+            WORKER_DIR="/home/rafiadmin/web/ailinks.dropticks.com/video-transcoder"
+
+            # Create directory if not exists
+            mkdir -p $WORKER_DIR
+            cd $WORKER_DIR
+
+            # Download latest code from repo
+            cd /tmp
+            rm -rf link_ai_deploy || true
+            git clone --branch main --depth 1 https://github.com/${{ github.repository }}.git link_ai_deploy
+
+            # Copy worker files
+            cp -r /tmp/link_ai_deploy/functions/video-transcoder/* $WORKER_DIR/
+
+            # Verify Node.js and npm
+            node --version
+            npm --version
+
+            # Install/update dependencies
+            npm install
+
+            # Create logs directory
+            mkdir -p logs
+
+            # Restart worker with PM2 using ecosystem config
+            if pm2 list | grep -q "ffmpeg-worker"; then
+              echo "Restarting existing ffmpeg-worker..."
+              pm2 restart ecosystem.config.cjs
+            else
+              echo "Starting ffmpeg-worker..."
+              pm2 start ecosystem.config.cjs
+              pm2 save
+            fi
+
+            echo "✅ FFmpeg worker deployed successfully"
+            pm2 status

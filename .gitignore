@@ -101,3 +101,17 @@ ios/Runner/GoogleService-Info.plist
 # (Optional) ignore these files anywhere in the repo
 **/google-services.json
 **/GoogleService-Info.plist
+
+# Environment and credentials (video-transcoder)
+**/.env
+**/.env.local
+**/.env.*.local
+**/firebase-service-account.json
+**/firebase-service-account*.json
+**/ecosystem.config.cjs
+**/ecosystem.config.js
+
+# Video transcoder logs and cache
+**/video-transcoder/logs/
+**/video-transcoder/.pm2/
+**/video-transcoder/node_modules/

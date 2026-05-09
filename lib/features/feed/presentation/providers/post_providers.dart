@@ -16,6 +16,9 @@ import '../../data/models/post_comment_model.dart';
 import '../../data/models/post_model.dart';
 import '../../../../core/services/s3_upload_service.dart';
 
+// Re-export from video_providers for convenience
+export '../../../video/presentation/providers/video_providers.dart' show activeVideoPostIdProvider;
+
 // Pagination state class
 class PaginatedPostsState {
   final List<PostModel> posts;
