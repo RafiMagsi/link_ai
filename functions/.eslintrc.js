@@ -21,6 +21,7 @@ module.exports = {
     "/lib/**/*", // Ignore built files.
     "/generated/**/*", // Ignore generated files.
     "/scripts/**/*", // Ignore local scripts (not deployed).
+    "/video-transcoder/**/*", // Ignore separate Node.js project.
   ],
   plugins: [
     "@typescript-eslint",
