@@ -139,9 +139,9 @@ async function transcodeVideo(job) {
     console.log(`Transcoding ${videoId}...`);
     const ffmpegCmd = `ffmpeg -i "${inputFile}" \\
       -filter_complex "[0:v]split=3[v1][v2][v3];[v1]scale=-2:360[v1out];[v2]scale=-2:480[v2out];[v3]scale=-2:720[v3out]" \\
-      -map "[v1out]" -map 0:a -c:v:0 h264 -b:v:0 800k -c:a:0 aac -b:a:0 96k \\
-      -map "[v2out]" -map 0:a -c:v:1 h264 -b:v:1 1400k -c:a:1 aac -b:a:1 128k \\
-      -map "[v3out]" -map 0:a -c:v:2 h264 -b:v:2 2800k -c:a:2 aac -b:a:2 128k \\
+      -map "[v1out]" -map 0:a? -c:v:0 h264 -b:v:0 800k -c:a:0 aac -b:a:0 96k \\
+      -map "[v2out]" -map 0:a? -c:v:1 h264 -b:v:1 1400k -c:a:1 aac -b:a:1 128k \\
+      -map "[v3out]" -map 0:a? -c:v:2 h264 -b:v:2 2800k -c:a:2 aac -b:a:2 128k \\
       -f hls \\
       -hls_time 3 \\
       -hls_playlist_type vod \\
