@@ -137,19 +137,48 @@ async function transcodeVideo(job) {
 
     // Step 2: Transcode with FFmpeg
     console.log(`Transcoding ${videoId}...`);
-    const ffmpegCmd = `ffmpeg -i "${inputFile}" \\
-      -filter_complex "[0:v]split=3[v1][v2][v3];[v1]scale=-2:360[v1out];[v2]scale=-2:480[v2out];[v3]scale=-2:720[v3out]" \\
-      -map "[v1out]" -map 0:a? -c:v:0 h264 -b:v:0 800k -c:a:0 aac -b:a:0 96k \\
-      -map "[v2out]" -map 0:a? -c:v:1 h264 -b:v:1 1400k -c:a:1 aac -b:a:1 128k \\
-      -map "[v3out]" -map 0:a? -c:v:2 h264 -b:v:2 2800k -c:a:2 aac -b:a:2 128k \\
-      -f hls \\
-      -hls_time 3 \\
-      -hls_playlist_type vod \\
-      -var_stream_map "v:0,a:0 v:1,a:1 v:2,a:2" \\
-      -master_pl_name master.m3u8 \\
-      -hls_segment_filename "${outputDir}/v%v/segment_%03d.ts" \\
-      "${outputDir}/v%v/prog_index.m3u8" 2>&1`;
 
+    // Detect if video has audio stream
+    const probeCmd = `ffprobe -v error -select_streams a:0 -show_entries stream=codec_type -of default=noprint_wrappers=1:nokey=1:noinvert_match=1 "${inputFile}"`;
+    let hasAudio = false;
+    try {
+      const probeResult = await execAsync(probeCmd);
+      hasAudio = probeResult.stdout.toLowerCase().includes("audio");
+    } catch {
+      hasAudio = false;
+    }
+
+    // Build FFmpeg command based on audio availability
+    let ffmpegCmd;
+    if (hasAudio) {
+      ffmpegCmd = `ffmpeg -i "${inputFile}" \\
+        -filter_complex "[0:v]split=3[v1][v2][v3];[v1]scale=-2:360[v1out];[v2]scale=-2:480[v2out];[v3]scale=-2:720[v3out]" \\
+        -map "[v1out]" -map 0:a -c:v:0 h264 -b:v:0 800k -c:a:0 aac -b:a:0 96k \\
+        -map "[v2out]" -map 0:a -c:v:1 h264 -b:v:1 1400k -c:a:1 aac -b:a:1 128k \\
+        -map "[v3out]" -map 0:a -c:v:2 h264 -b:v:2 2800k -c:a:2 aac -b:a:2 128k \\
+        -f hls \\
+        -hls_time 3 \\
+        -hls_playlist_type vod \\
+        -var_stream_map "v:0,a:0 v:1,a:1 v:2,a:2" \\
+        -master_pl_name master.m3u8 \\
+        -hls_segment_filename "${outputDir}/v%v/segment_%03d.ts" \\
+        "${outputDir}/v%v/prog_index.m3u8" 2>&1`;
+    } else {
+      ffmpegCmd = `ffmpeg -i "${inputFile}" \\
+        -filter_complex "[0:v]split=3[v1][v2][v3];[v1]scale=-2:360[v1out];[v2]scale=-2:480[v2out];[v3]scale=-2:720[v3out]" \\
+        -map "[v1out]" -c:v:0 h264 -b:v:0 800k \\
+        -map "[v2out]" -c:v:1 h264 -b:v:1 1400k \\
+        -map "[v3out]" -c:v:2 h264 -b:v:2 2800k \\
+        -f hls \\
+        -hls_time 3 \\
+        -hls_playlist_type vod \\
+        -var_stream_map "v:0 v:1 v:2" \\
+        -master_pl_name master.m3u8 \\
+        -hls_segment_filename "${outputDir}/v%v/segment_%03d.ts" \\
+        "${outputDir}/v%v/prog_index.m3u8" 2>&1`;
+    }
+
+    console.log(`Video has audio: ${hasAudio}`);
     await execAsync(ffmpegCmd);
 
     // Step 3: Upload HLS to S3
