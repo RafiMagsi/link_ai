@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://ailinks.dropticks.com", "http://localhost:*"],
+    "method": ["GET", "HEAD", "OPTIONS"],
+    "responseHeader": ["Content-Type", "Cache-Control"],
+    "maxAgeSeconds": 3600
+  }
+]

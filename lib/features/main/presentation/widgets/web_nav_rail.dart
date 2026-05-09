@@ -27,89 +27,92 @@ class WebNavRail extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDesktop = AppResponsive.isDesktop(context);
-    final width = AppResponsive.navRailWidth(context);
     final unreadMessageCount =
         ref.watch(unreadMessagesCountProvider).asData?.value ?? 0;
 
     return Container(
-      width: width,
       color: Theme.of(context).colorScheme.surface,
-      child: Column(
-        children: [
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'AI',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-              child: Column(
-                children: List.generate(_navItems.length, (index) {
-                  final item = _navItems[index];
-                  final isSelected = index == currentIndex;
-
-                  // Special handling for Messages badge
-                  Widget icon = Icon(isSelected ? item.selectedIcon : item.icon);
-                  if (index == 2 && unreadMessageCount > 0) {
-                    icon = Badge(
-                      isLabelVisible: true,
-                      label: Text(unreadMessageCount > 99 ? '99+' : '$unreadMessageCount'),
-                      child: icon,
-                    );
-                  }
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: InkWell(
-                      onTap: () => onTap(index),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          color: isSelected
-                              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                              : Colors.transparent,
-                        ),
-                        child: isDesktop
-                            ? Row(
-                                children: [
-                                  icon,
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      item.label,
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                            fontWeight:
-                                                isSelected ? FontWeight.w600 : FontWeight.normal,
-                                          ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Center(child: icon),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: double.infinity,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'AI',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
-                    ),
-                  );
-                }),
+                ),
               ),
             ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: SizedBox(
-                width: double.infinity,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: List.generate(_navItems.length, (index) {
+                    final item = _navItems[index];
+                    final isSelected = index == currentIndex;
+
+                    // Special handling for Messages badge
+                    Widget icon = Icon(isSelected ? item.selectedIcon : item.icon);
+                    if (index == 2 && unreadMessageCount > 0) {
+                      icon = Badge(
+                        isLabelVisible: true,
+                        label: Text(unreadMessageCount > 99 ? '99+' : '$unreadMessageCount'),
+                        child: icon,
+                      );
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: InkWell(
+                        onTap: () => onTap(index),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                                : Colors.transparent,
+                          ),
+                          child: isDesktop
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    icon,
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        item.label,
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                              fontWeight:
+                                                  isSelected ? FontWeight.w600 : FontWeight.normal,
+                                            ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Center(child: icon),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
                 child: ElevatedButton(
                   onPressed: onCreatePost,
                   style: ElevatedButton.styleFrom(
@@ -124,8 +127,8 @@ class WebNavRail extends ConsumerWidget {
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

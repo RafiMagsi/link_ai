@@ -33,7 +33,12 @@ class NotificationRemoteDataSource {
 
   Future<String?> getToken() async {
     try {
-      if (Platform.isIOS || Platform.isMacOS) {
+      // Skip FCM token on web platform
+      if (kIsWeb) {
+        return null;
+      }
+
+      if (!kIsWeb && (Platform.isIOS || Platform.isMacOS)) {
         final apnsToken = await _waitForApnsToken();
 
         if (apnsToken == null) {
@@ -80,9 +85,11 @@ class NotificationRemoteDataSource {
 
   Future<void> saveToken({required String uid, required String token}) async {
     try {
-      final platform = Platform.isIOS
+      final platform = kIsWeb
+          ? 'web'
+          : !kIsWeb && Platform.isIOS
           ? 'ios'
-          : Platform.isAndroid
+          : !kIsWeb && Platform.isAndroid
           ? 'android'
           : 'unknown';
 

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 enum MediaPermissionTarget { galleryImages, galleryVideos, camera }
@@ -24,7 +25,12 @@ class MediaPermissionService {
   }
 
   Permission permissionFor(MediaPermissionTarget target) {
-    if (Platform.isIOS) {
+    if (kIsWeb) {
+      // Web doesn't require specific permissions, return a default
+      return Permission.photos;
+    }
+
+    if (!kIsWeb && Platform.isIOS) {
       switch (target) {
         case MediaPermissionTarget.galleryImages:
         case MediaPermissionTarget.galleryVideos:
@@ -34,7 +40,7 @@ class MediaPermissionService {
       }
     }
 
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       switch (target) {
         case MediaPermissionTarget.galleryImages:
           return Permission.photos;
