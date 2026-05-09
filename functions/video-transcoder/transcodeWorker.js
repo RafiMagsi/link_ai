@@ -1,5 +1,4 @@
 import "dotenv/config";
-import * as admin from "firebase-admin";
 import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
@@ -9,40 +8,53 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-function initializeFirebase() {
-  const serviceAccountPath = path.join(
-    __dirname,
-    "firebase-service-account.json",
-  );
+let db;
+let admin;
 
-  if (!fs.existsSync(serviceAccountPath)) {
-    throw new Error(
-      `Missing firebase-service-account.json at ${serviceAccountPath}`,
+async function initializeFirebase() {
+  try {
+    admin = await import("firebase-admin");
+
+    const serviceAccountPath = path.join(
+      __dirname,
+      "firebase-service-account.json",
     );
-  }
 
-  const serviceAccount = JSON.parse(
-    fs.readFileSync(serviceAccountPath, "utf8"),
-  );
+    if (!fs.existsSync(serviceAccountPath)) {
+      throw new Error(
+        `Missing firebase-service-account.json at ${serviceAccountPath}`,
+      );
+    }
 
-  if (
-    !serviceAccount.project_id ||
-    !serviceAccount.client_email ||
-    !serviceAccount.private_key
-  ) {
-    throw new Error(
-      "firebase-service-account.json is missing project_id, client_email, or private_key",
+    const serviceAccount = JSON.parse(
+      fs.readFileSync(serviceAccountPath, "utf8"),
     );
-  }
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
+    if (
+      !serviceAccount.project_id ||
+      !serviceAccount.client_email ||
+      !serviceAccount.private_key
+    ) {
+      throw new Error(
+        "firebase-service-account.json is missing project_id, client_email, or private_key",
+      );
+    }
+
+    console.log("Initializing Firebase with project:", serviceAccount.project_id);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+
+    db = admin.firestore();
+    console.log("✓ Firebase initialized successfully");
+  } catch (error) {
+    console.error("✗ Firebase initialization failed:", error.message);
+    throw error;
+  }
 }
 
-initializeFirebase();
+await initializeFirebase();
 
-const db = admin.firestore();
 const execAsync = promisify(exec);
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
