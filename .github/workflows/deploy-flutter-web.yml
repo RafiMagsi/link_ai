@@ -58,6 +58,27 @@ jobs:
           target: '/home/rafiadmin/web/ailinks.dropticks.com/public_html'
           rm: true
 
+      - name: Cleanup and organize files on server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          port: ${{ secrets.HETZNER_PORT }}
+          script: |
+            cd /home/rafiadmin/web/ailinks.dropticks.com/public_html
+
+            # If files are in build/web/ subdirectory, move them up
+            if [ -d "build/web" ]; then
+              echo "Moving files from build/web/ to public_html/"
+              mv build/web/* .
+              rm -rf build/
+              echo "✅ Files organized"
+            fi
+
+            # List contents to verify
+            ls -la | head -20
+
       - name: Notify deployment success
         run: |
           echo "✅ Flutter web deployed to https://ailinks.dropticks.com"
