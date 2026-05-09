@@ -1,10 +1,10 @@
 import "dotenv/config";
 import admin from "firebase-admin";
+import AWS from "aws-sdk";
 import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
 import * as path from "path";
-import * as AWS from "aws-sdk";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
