@@ -28,15 +28,17 @@ jobs:
 
             # Create directory if not exists
             mkdir -p $WORKER_DIR
-            cd $WORKER_DIR
 
             # Download latest code from repo
             cd /tmp
             rm -rf link_ai_deploy || true
             git clone --branch main --depth 1 https://github.com/${{ github.repository }}.git link_ai_deploy
 
-            # Copy worker files
+            # Copy worker files to deployment directory
             cp -r /tmp/link_ai_deploy/functions/video-transcoder/* $WORKER_DIR/
+
+            # Navigate to worker directory
+            cd $WORKER_DIR
 
             # Verify Node.js and npm
             node --version

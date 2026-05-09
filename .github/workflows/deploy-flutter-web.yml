@@ -21,6 +21,28 @@ jobs:
         with:
           flutter-version: '3.x'
 
+      - name: Setup Node.js for Firebase CLI
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Generate Firebase options
+        run: |
+          flutterfire configure \
+            --project=link-ai-0749 \
+            --platforms=web \
+            --ios=false \
+            --android=false \
+            --macos=false \
+            --windows=false \
+            --linux=false \
+            --overwrite
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
       - name: Get dependencies
         run: flutter pub get
 
