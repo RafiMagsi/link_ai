@@ -157,7 +157,7 @@ async function transcodeVideo(job) {
         -map "[v2out]" -map 0:a -c:v:1 h264 -b:v:1 1400k -c:a:1 aac -b:a:1 128k \\
         -map "[v3out]" -map 0:a -c:v:2 h264 -b:v:2 2800k -c:a:2 aac -b:a:2 128k \\
         -f hls \\
-        -hls_time 3 \\
+        -hls_time 2 \\
         -hls_playlist_type vod \\
         -var_stream_map "v:0,a:0 v:1,a:1 v:2,a:2" \\
         -master_pl_name master.m3u8 \\
@@ -170,7 +170,7 @@ async function transcodeVideo(job) {
         -map "[v2out]" -c:v:1 h264 -b:v:1 1400k \\
         -map "[v3out]" -c:v:2 h264 -b:v:2 2800k \\
         -f hls \\
-        -hls_time 3 \\
+        -hls_time 2 \\
         -hls_playlist_type vod \\
         -var_stream_map "v:0 v:1 v:2" \\
         -master_pl_name master.m3u8 \\

@@ -42,9 +42,28 @@ class FeedVideoPreloadManager {
     _initializing.add(url);
 
     try {
-      await controller.initialize();
-      await controller.setLooping(true);
-      await controller.setVolume(0);
+      // Fast initialization with minimal buffering
+      // Don't wait for full initialization, start with timeout
+      final initFuture = controller.initialize();
+
+      // Set timeout - start playback even if still loading
+      await Future.any([
+        initFuture,
+        Future.delayed(const Duration(milliseconds: 500)),
+      ]).catchError((_) {
+        // Ignore timeout, continue anyway
+      });
+
+      // Apply fast buffering settings
+      await Future.wait([
+        controller.setLooping(true),
+        controller.setVolume(0),
+        if (controller.value.isInitialized)
+          controller.play().then((_) => controller.pause()),
+      ]).catchError((_) {
+        // Ignore errors during initialization
+        return [];
+      });
     } catch (error, stackTrace) {
       debugPrint('Video preload failed: $url\n$error\n$stackTrace');
       await disposeUrl(url);
