@@ -36,6 +36,9 @@ jobs:
 
             # Copy worker files to deployment directory, including dotfiles like .env
             rsync -av --delete \
+              --filter='P .env' \
+              --filter='P firebase-service-account.json' \
+              --filter='P ecosystem.config.cjs' \
               --exclude logs \
               --exclude node_modules \
               /tmp/link_ai_deploy/functions/video-transcoder/ \
