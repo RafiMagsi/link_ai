@@ -1832,7 +1832,16 @@ export const generateS3UploadUrlHttp = onRequest({
  * enqueues videos for HLS transcoding.
  */
 export const onPostCreated = onDocumentCreated(
-  "posts/{postId}",
+  {
+    document: "posts/{postId}",
+    secrets: [
+      AWS_ACCESS_KEY_ID_SECRET,
+      AWS_SECRET_ACCESS_KEY_SECRET,
+      AWS_REGION_SECRET,
+      S3_BUCKET_SECRET,
+      CLOUDFRONT_DOMAIN_SECRET,
+    ],
+  },
   async (event) => {
     const post = event.data?.data();
     const postId = event.params.postId;
@@ -1877,9 +1886,16 @@ export const onPostCreated = onDocumentCreated(
         let s3Key = mediaUrl;
 
         // If URL is full S3 path, extract just the key
-        if (mediaUrl.includes("s3.") && mediaUrl.includes(".amazonaws.com")) {
-          const urlParts = mediaUrl.split("/");
-          s3Key = urlParts.slice(4).join("/");
+        if (mediaUrl.includes("s3") && mediaUrl.includes("amazonaws.com")) {
+          try {
+            const url = new URL(mediaUrl);
+            // pathname: /postMedia/uid/postId/filename.mp4
+            s3Key = url.pathname.substring(1); // Remove leading /
+          } catch {
+            // Fallback to manual parsing if URL constructor fails
+            const urlParts = mediaUrl.split("/");
+            s3Key = urlParts.slice(4).join("/");
+          }
         }
 
         await db.collection("videoTranscodeQueue").doc(videoId).set({
