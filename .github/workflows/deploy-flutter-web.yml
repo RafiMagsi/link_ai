@@ -45,7 +45,7 @@ jobs:
         run: flutter pub get
 
       - name: Build web
-        run: flutter build web --release --dart-define=FLAVOR=production
+        run: flutter build web --release -O4 --dart-define=FLAVOR=production
 
       - name: Deploy to Hetzner server
         uses: appleboy/scp-action@master
