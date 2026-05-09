@@ -159,18 +159,13 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
 
       if (!mounted) return;
 
-      await controller.setLooping(true);
-      await controller.setVolume(1);
+      // Just add listener and mark as ready - don't change controller state
       controller.addListener(_handleTick);
 
       setState(() {
         _controller = controller;
         _isReady = true;
       });
-
-      if (widget.isActive) {
-        await controller.play();
-      }
     } catch (error) {
       if (mounted) {
         debugPrint('Short video init failed: $error');
@@ -181,7 +176,9 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
   @override
   void didUpdateWidget(covariant _ShortVideoPageItem oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Pause/play on visibility changes (when swiping between videos)
     if (!_isReady || _controller == null) return;
+    if (oldWidget.isActive == widget.isActive) return;
 
     if (widget.isActive && !_controller!.value.isPlaying) {
       _controller!.play();

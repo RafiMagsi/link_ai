@@ -113,9 +113,8 @@ class _FeedHlsVideoPlayerState extends State<FeedHlsVideoPlayer> {
 
     if (shouldPlay) {
       _manager.play(_videoUrl);
-    } else {
-      _manager.pause(_videoUrl);
     }
+    // Don't pause when invisible - controller might be used by ShortVideoViewerPage
   }
 
   @override
