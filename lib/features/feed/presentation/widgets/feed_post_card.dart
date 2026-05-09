@@ -7,10 +7,9 @@ import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/widgets/hashtag_text.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
+import '../../../video/presentation/pages/short_video_viewer_page.dart';
 import '../../data/models/post_model.dart';
 import '../providers/post_providers.dart';
-import '../pages/media_gallery_page.dart';
-import '../../../video/presentation/pages/short_video_viewer_page.dart';
 import 'post/post_action_row.dart';
 import 'post/post_avatar.dart';
 import 'post/post_header.dart';
@@ -166,36 +165,13 @@ class FeedPostCard extends ConsumerWidget {
                                       child: PostMediaWidget(
                                         mediaList: displayPost.media,
                                         postId: displayPost.id,
-                                        onDoubleTap: () => ref
-                                            .read(
-                                              postControllerProvider.notifier,
-                                            )
-                                            .toggleLike(displayPost.id),
-                                        onTap: (index) {
-                                          final selected =
-                                              displayPost.media[index];
-                                          if (selected.type == 'video') {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    ShortVideoViewerPage(
-                                                      initialPost: displayPost,
-                                                    ),
-                                              ),
-                                            );
-                                            return;
-                                          }
-
+                                        onVideoTap: () {
                                           Navigator.of(context).push(
                                             MaterialPageRoute(
-                                              builder: (_) => MediaGalleryPage(
-                                                mediaUrls: displayPost.media
-                                                    .map((e) => e.url)
-                                                    .toList(),
-                                                initialIndex: index,
-                                                heroTagPrefix:
-                                                    'post_${displayPost.id}_media_',
-                                              ),
+                                              builder: (_) =>
+                                                  ShortVideoViewerPage(
+                                                    initialPost: displayPost,
+                                                  ),
                                             ),
                                           );
                                         },
