@@ -41,9 +41,6 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
-      - name: Get dependencies
-        run: flutter pub get
-
       - name: Build web
         run: flutter build web --release -O4 --dart-define=FLAVOR=production
 
