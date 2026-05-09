@@ -68,10 +68,32 @@ final latestPostsProvider = StreamProvider<List<PostModel>>((ref) {
   return ref.watch(postRemoteDataSourceProvider).watchLatestPosts();
 });
 
+final shortVideoFeedProvider = Provider.family<List<PostModel>, PostModel>((
+  ref,
+  initialPost,
+) {
+  final latestPosts = ref.watch(latestPostsProvider).asData?.value ?? const [];
+  final videoPosts = latestPosts
+      .where((post) => post.media.any((media) => media.type == 'video'))
+      .toList();
+
+  final containsInitial = videoPosts.any((post) => post.id == initialPost.id);
+  final merged = containsInitial ? videoPosts : [initialPost, ...videoPosts];
+
+  merged.sort((a, b) {
+    final aTime = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final bTime = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    return bTime.compareTo(aTime);
+  });
+
+  final unique = <String>{};
+  return merged.where((post) => unique.add(post.id)).toList();
+});
+
 // Pagination notifier for Latest posts
 class LatestFeedNotifier extends StateNotifier<PaginatedPostsState> {
   LatestFeedNotifier(this._ds)
-      : super(const PaginatedPostsState(posts: [], isInitialLoading: true)) {
+    : super(const PaginatedPostsState(posts: [], isInitialLoading: true)) {
     loadInitial();
   }
 
@@ -97,7 +119,9 @@ class LatestFeedNotifier extends StateNotifier<PaginatedPostsState> {
 
     try {
       state = state.copyWith(isLoadingMore: true, error: null);
-      final (newPosts, cursor) = await _ds.fetchLatestPostsPage(after: state.cursor);
+      final (newPosts, cursor) = await _ds.fetchLatestPostsPage(
+        after: state.cursor,
+      );
       if (newPosts.isEmpty) {
         state = state.copyWith(hasMore: false, isLoadingMore: false);
       } else {
@@ -120,9 +144,9 @@ class LatestFeedNotifier extends StateNotifier<PaginatedPostsState> {
 
 final latestFeedProvider =
     StateNotifierProvider<LatestFeedNotifier, PaginatedPostsState>((ref) {
-  final ds = ref.watch(postRemoteDataSourceProvider);
-  return LatestFeedNotifier(ds);
-});
+      final ds = ref.watch(postRemoteDataSourceProvider);
+      return LatestFeedNotifier(ds);
+    });
 
 // Connected posts derive from latest paginated posts
 final connectedFeedProvider = Provider<List<PostModel>>((ref) {
@@ -178,7 +202,9 @@ final connectedPostsProvider = StreamProvider<List<PostModel>>((ref) {
 final viralFeedProvider = Provider<List<PostModel>>((ref) {
   final latestState = ref.watch(latestFeedProvider);
   final sorted = latestState.posts.toList()
-    ..sort((a, b) => _calculateViralScore(b).compareTo(_calculateViralScore(a)));
+    ..sort(
+      (a, b) => _calculateViralScore(b).compareTo(_calculateViralScore(a)),
+    );
   return sorted;
 });
 
@@ -290,7 +316,11 @@ class _OptimisticCommentCountNotifier
     extends StateNotifier<Map<String, PostCommentModel>> {
   _OptimisticCommentCountNotifier() : super({});
 
-  void updateLikeCount(String commentId, PostCommentModel comment, bool isLiking) {
+  void updateLikeCount(
+    String commentId,
+    PostCommentModel comment,
+    bool isLiking,
+  ) {
     // Use existing optimistic comment if available to preserve other count changes
     final baseComment = state[commentId] ?? comment;
     final newLikesCount = isLiking
@@ -300,7 +330,11 @@ class _OptimisticCommentCountNotifier
     state = {...state, commentId: updated};
   }
 
-  void updateRepostCount(String commentId, PostCommentModel comment, bool isReposting) {
+  void updateRepostCount(
+    String commentId,
+    PostCommentModel comment,
+    bool isReposting,
+  ) {
     // Use existing optimistic comment if available to preserve other count changes
     final baseComment = state[commentId] ?? comment;
     final newRepostsCount = isReposting
@@ -310,7 +344,11 @@ class _OptimisticCommentCountNotifier
     state = {...state, commentId: updated};
   }
 
-  void updateSaveCount(String commentId, PostCommentModel comment, bool isSaving) {
+  void updateSaveCount(
+    String commentId,
+    PostCommentModel comment,
+    bool isSaving,
+  ) {
     // Use existing optimistic comment if available to preserve other count changes
     final baseComment = state[commentId] ?? comment;
     final newSavesCount = isSaving
@@ -328,11 +366,12 @@ class _OptimisticCommentCountNotifier
 }
 
 final optimisticCommentCountProvider =
-    StateNotifierProvider<_OptimisticCommentCountNotifier, Map<String, PostCommentModel>>(
-      (ref) {
-        return _OptimisticCommentCountNotifier();
-      },
-    );
+    StateNotifierProvider<
+      _OptimisticCommentCountNotifier,
+      Map<String, PostCommentModel>
+    >((ref) {
+      return _OptimisticCommentCountNotifier();
+    });
 
 final postByIdProvider = StreamProvider.family<PostModel?, String>((
   ref,
@@ -407,7 +446,9 @@ final postInteractionStateProvider =
       final optimisticReposted = ref.watch(optimisticRepostProvider(postId));
 
       // If all are null, fetch from backend
-      if (optimisticLiked == null && optimisticSaved == null && optimisticReposted == null) {
+      if (optimisticLiked == null &&
+          optimisticSaved == null &&
+          optimisticReposted == null) {
         final dataSource = ref.watch(postRemoteDataSourceProvider);
 
         final results = await Future.wait([
@@ -516,59 +557,91 @@ final optimisticCommentRepostProvider =
     );
 
 final commentInteractionStateProvider =
-    FutureProvider.family<CommentInteractionState, ({String postId, String commentId})>((
-  ref,
-  params,
-) async {
-  final user = ref.watch(currentUserProvider);
+    FutureProvider.family<
+      CommentInteractionState,
+      ({String postId, String commentId})
+    >((ref, params) async {
+      final user = ref.watch(currentUserProvider);
 
-  if (user == null) {
-    return const CommentInteractionState(
-      liked: false,
-      reposted: false,
-      saved: false,
-    );
-  }
+      if (user == null) {
+        return const CommentInteractionState(
+          liked: false,
+          reposted: false,
+          saved: false,
+        );
+      }
 
-  final postId = params.postId;
-  final commentId = params.commentId;
+      final postId = params.postId;
+      final commentId = params.commentId;
 
-  // Check for optimistic state first for each action independently
-  final optimisticLiked = ref.watch(optimisticCommentLikeProvider(commentId));
-  final optimisticSaved = ref.watch(optimisticCommentSaveProvider(commentId));
-  final optimisticReposted = ref.watch(optimisticCommentRepostProvider(commentId));
+      // Check for optimistic state first for each action independently
+      final optimisticLiked = ref.watch(
+        optimisticCommentLikeProvider(commentId),
+      );
+      final optimisticSaved = ref.watch(
+        optimisticCommentSaveProvider(commentId),
+      );
+      final optimisticReposted = ref.watch(
+        optimisticCommentRepostProvider(commentId),
+      );
 
-  // If all are null, fetch from backend
-  if (optimisticLiked == null && optimisticSaved == null && optimisticReposted == null) {
-    final dataSource = ref.watch(postRemoteDataSourceProvider);
+      // If all are null, fetch from backend
+      if (optimisticLiked == null &&
+          optimisticSaved == null &&
+          optimisticReposted == null) {
+        final dataSource = ref.watch(postRemoteDataSourceProvider);
 
-    final results = await Future.wait<bool>([
-      dataSource.hasLikedComment(postId: postId, commentId: commentId, uid: user.uid),
-      dataSource.hasRepostedComment(postId: postId, commentId: commentId, uid: user.uid),
-      dataSource.hasSavedComment(postId: postId, commentId: commentId, uid: user.uid),
-    ]);
+        final results = await Future.wait<bool>([
+          dataSource.hasLikedComment(
+            postId: postId,
+            commentId: commentId,
+            uid: user.uid,
+          ),
+          dataSource.hasRepostedComment(
+            postId: postId,
+            commentId: commentId,
+            uid: user.uid,
+          ),
+          dataSource.hasSavedComment(
+            postId: postId,
+            commentId: commentId,
+            uid: user.uid,
+          ),
+        ]);
 
-    return CommentInteractionState(
-      liked: results[0],
-      reposted: results[1],
-      saved: results[2],
-    );
-  }
+        return CommentInteractionState(
+          liked: results[0],
+          reposted: results[1],
+          saved: results[2],
+        );
+      }
 
-  // Fetch all from backend to get baseline
-  final dataSource = ref.watch(postRemoteDataSourceProvider);
-  final results = await Future.wait<bool>([
-    dataSource.hasLikedComment(postId: postId, commentId: commentId, uid: user.uid),
-    dataSource.hasRepostedComment(postId: postId, commentId: commentId, uid: user.uid),
-    dataSource.hasSavedComment(postId: postId, commentId: commentId, uid: user.uid),
-  ]);
+      // Fetch all from backend to get baseline
+      final dataSource = ref.watch(postRemoteDataSourceProvider);
+      final results = await Future.wait<bool>([
+        dataSource.hasLikedComment(
+          postId: postId,
+          commentId: commentId,
+          uid: user.uid,
+        ),
+        dataSource.hasRepostedComment(
+          postId: postId,
+          commentId: commentId,
+          uid: user.uid,
+        ),
+        dataSource.hasSavedComment(
+          postId: postId,
+          commentId: commentId,
+          uid: user.uid,
+        ),
+      ]);
 
-  return CommentInteractionState(
-    liked: optimisticLiked ?? results[0],
-    reposted: optimisticReposted ?? results[1],
-    saved: optimisticSaved ?? results[2],
-  );
-});
+      return CommentInteractionState(
+        liked: optimisticLiked ?? results[0],
+        reposted: optimisticReposted ?? results[1],
+        saved: optimisticSaved ?? results[2],
+      );
+    });
 
 class PostController extends StateNotifier<AsyncValue<void>> {
   PostController(this._ref, this._postRemoteDataSource)
@@ -595,7 +668,8 @@ class PostController extends StateNotifier<AsyncValue<void>> {
       // Validate media files
       final maxImageSize = limits.imageMaxBytes;
       final maxVideoSize = limits.videoMaxBytes;
-      final maxTotalSize = (limits.imageMaxBytes * limits.postMaxMediaItems) +
+      final maxTotalSize =
+          (limits.imageMaxBytes * limits.postMaxMediaItems) +
           limits.videoMaxBytes;
       int totalSize = 0;
 
@@ -681,9 +755,10 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
     try {
       // Read current state synchronously (from cache)
-      final currentInteractionState = _ref.read(
-        postInteractionStateProvider(postId),
-      ).asData?.value;
+      final currentInteractionState = _ref
+          .read(postInteractionStateProvider(postId))
+          .asData
+          ?.value;
 
       if (currentInteractionState == null) {
         throw Exception('Interaction state not found.');
@@ -693,12 +768,11 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
       // ✅ OPTIMISTIC UPDATE - immediately update UI (before any async operations)
       // Update only the like state, leaving save/repost independent
-      _ref
-          .read(optimisticLikeProvider(postId).notifier)
-          .set(newLiked);
+      _ref.read(optimisticLikeProvider(postId).notifier).set(newLiked);
 
       // Use provided post or try to get from cache
-      var currentPost = post ?? _ref.read(postByIdProvider(postId)).asData?.value;
+      var currentPost =
+          post ?? _ref.read(postByIdProvider(postId)).asData?.value;
       currentPost ??= await _ref.read(postByIdProvider(postId).future);
 
       // Update count optimistically if post data is available
@@ -718,9 +792,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     } catch (error, stackTrace) {
       debugPrint('Error toggling like: $error\n$stackTrace');
       // Only revert like state on error, leaving save/repost untouched
-      _ref
-          .read(optimisticLikeProvider(postId).notifier)
-          .reset();
+      _ref.read(optimisticLikeProvider(postId).notifier).reset();
       _ref.read(optimisticPostCountProvider.notifier).reset(postId);
       state = AsyncError(error, stackTrace);
     }
@@ -738,9 +810,10 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
     try {
       // Read current state synchronously (from cache)
-      final currentInteractionState = _ref.read(
-        postInteractionStateProvider(postId),
-      ).asData?.value;
+      final currentInteractionState = _ref
+          .read(postInteractionStateProvider(postId))
+          .asData
+          ?.value;
 
       if (currentInteractionState == null) {
         throw Exception('Interaction state not found.');
@@ -750,12 +823,11 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
       // ✅ OPTIMISTIC UPDATE - immediately update UI (before any async operations)
       // Update only the repost state, leaving like/save independent
-      _ref
-          .read(optimisticRepostProvider(postId).notifier)
-          .set(newReposted);
+      _ref.read(optimisticRepostProvider(postId).notifier).set(newReposted);
 
       // Use provided post or try to get from cache
-      var currentPost = post ?? _ref.read(postByIdProvider(postId)).asData?.value;
+      var currentPost =
+          post ?? _ref.read(postByIdProvider(postId)).asData?.value;
       currentPost ??= await _ref.read(postByIdProvider(postId).future);
 
       // Update count optimistically if post data is available
@@ -791,9 +863,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     } catch (error, stackTrace) {
       debugPrint('Error toggling repost: $error\n$stackTrace');
       // Only revert repost state on error, leaving like/save untouched
-      _ref
-          .read(optimisticRepostProvider(postId).notifier)
-          .reset();
+      _ref.read(optimisticRepostProvider(postId).notifier).reset();
       _ref.read(optimisticPostCountProvider.notifier).reset(postId);
       state = AsyncError(error, stackTrace);
     }
@@ -815,9 +885,10 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
     try {
       // Read current state synchronously (from cache)
-      final currentInteractionState = _ref.read(
-        postInteractionStateProvider(postId),
-      ).asData?.value;
+      final currentInteractionState = _ref
+          .read(postInteractionStateProvider(postId))
+          .asData
+          ?.value;
 
       if (currentInteractionState == null) {
         throw Exception('Interaction state not found.');
@@ -827,12 +898,11 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
       // ✅ OPTIMISTIC UPDATE - immediately update UI (before any async operations)
       // Update only the save state, leaving like/repost independent
-      _ref
-          .read(optimisticSaveProvider(postId).notifier)
-          .set(newSaved);
+      _ref.read(optimisticSaveProvider(postId).notifier).set(newSaved);
 
       // Use provided post or try to get from cache
-      var currentPost = post ?? _ref.read(postByIdProvider(postId)).asData?.value;
+      var currentPost =
+          post ?? _ref.read(postByIdProvider(postId)).asData?.value;
       currentPost ??= await _ref.read(postByIdProvider(postId).future);
 
       // Update count optimistically if post data is available
@@ -852,9 +922,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     } catch (error, stackTrace) {
       debugPrint('Error toggling save: $error\n$stackTrace');
       // Only revert save state on error, leaving like/repost untouched
-      _ref
-          .read(optimisticSaveProvider(postId).notifier)
-          .reset();
+      _ref.read(optimisticSaveProvider(postId).notifier).reset();
       _ref.read(optimisticPostCountProvider.notifier).reset(postId);
       state = AsyncError(error, stackTrace);
     }
@@ -1014,9 +1082,15 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
     try {
       // Read current state synchronously (from cache)
-      final currentInteractionState = _ref.read(
-        commentInteractionStateProvider((postId: postId, commentId: commentId)),
-      ).asData?.value;
+      final currentInteractionState = _ref
+          .read(
+            commentInteractionStateProvider((
+              postId: postId,
+              commentId: commentId,
+            )),
+          )
+          .asData
+          ?.value;
 
       if (currentInteractionState == null) {
         throw Exception('Interaction state not found.');
@@ -1050,9 +1124,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     } catch (error, stackTrace) {
       debugPrint('Error toggling comment like: $error\n$stackTrace');
       // Only revert like state on error, leaving save/repost untouched
-      _ref
-          .read(optimisticCommentLikeProvider(commentId).notifier)
-          .reset();
+      _ref.read(optimisticCommentLikeProvider(commentId).notifier).reset();
       _ref.read(optimisticCommentCountProvider.notifier).reset(commentId);
       state = AsyncError(error, stackTrace);
     }
@@ -1074,9 +1146,15 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
     try {
       // Read current state synchronously (from cache)
-      final currentInteractionState = _ref.read(
-        commentInteractionStateProvider((postId: postId, commentId: commentId)),
-      ).asData?.value;
+      final currentInteractionState = _ref
+          .read(
+            commentInteractionStateProvider((
+              postId: postId,
+              commentId: commentId,
+            )),
+          )
+          .asData
+          ?.value;
 
       if (currentInteractionState == null) {
         throw Exception('Interaction state not found.');
@@ -1110,9 +1188,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     } catch (error, stackTrace) {
       debugPrint('Error toggling comment save: $error\n$stackTrace');
       // Only revert save state on error, leaving like/repost untouched
-      _ref
-          .read(optimisticCommentSaveProvider(commentId).notifier)
-          .reset();
+      _ref.read(optimisticCommentSaveProvider(commentId).notifier).reset();
       _ref.read(optimisticCommentCountProvider.notifier).reset(commentId);
       state = AsyncError(error, stackTrace);
     }
@@ -1138,9 +1214,15 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
     try {
       // Read current state synchronously (from cache)
-      final currentInteractionState = _ref.read(
-        commentInteractionStateProvider((postId: postId, commentId: commentId)),
-      ).asData?.value;
+      final currentInteractionState = _ref
+          .read(
+            commentInteractionStateProvider((
+              postId: postId,
+              commentId: commentId,
+            )),
+          )
+          .asData
+          ?.value;
 
       if (currentInteractionState == null) {
         throw Exception('Interaction state not found.');
@@ -1186,33 +1268,30 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     } catch (error, stackTrace) {
       debugPrint('Error toggling comment repost: $error\n$stackTrace');
       // Only revert repost state on error, leaving like/save untouched
-      _ref
-          .read(optimisticCommentRepostProvider(commentId).notifier)
-          .reset();
+      _ref.read(optimisticCommentRepostProvider(commentId).notifier).reset();
       _ref.read(optimisticCommentCountProvider.notifier).reset(commentId);
       state = AsyncError(error, stackTrace);
     }
   }
 }
 
-/// Holds the postId of the currently auto-playing video in the feed.
-final activeVideoPostIdProvider = StateProvider<String?>((ref) => null);
-
 /// Provides all media items from a user's posts, sorted by creation date (newest first).
-final userMediaProvider = FutureProvider.family<
-    List<(PostModel post, int mediaIndex)>,
-    String>((ref, uid) async {
-  final postsState = ref.watch(postsByAuthorProvider(uid));
-  final posts = postsState.asData?.value ?? [];
+final userMediaProvider =
+    FutureProvider.family<List<(PostModel post, int mediaIndex)>, String>((
+      ref,
+      uid,
+    ) async {
+      final postsState = ref.watch(postsByAuthorProvider(uid));
+      final posts = postsState.asData?.value ?? [];
 
-  final mediaItems = <(PostModel post, int mediaIndex)>[];
-  for (final post in posts) {
-    if (post.media.isNotEmpty) {
-      for (int i = 0; i < post.media.length; i++) {
-        mediaItems.add((post, i));
+      final mediaItems = <(PostModel post, int mediaIndex)>[];
+      for (final post in posts) {
+        if (post.media.isNotEmpty) {
+          for (int i = 0; i < post.media.length; i++) {
+            mediaItems.add((post, i));
+          }
+        }
       }
-    }
-  }
 
-  return mediaItems;
-});
+      return mediaItems;
+    });

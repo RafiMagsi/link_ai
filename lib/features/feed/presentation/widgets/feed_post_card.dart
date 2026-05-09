@@ -10,6 +10,7 @@ import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../data/models/post_model.dart';
 import '../providers/post_providers.dart';
 import '../pages/media_gallery_page.dart';
+import '../../../video/presentation/pages/short_video_viewer_page.dart';
 import 'post/post_action_row.dart';
 import 'post/post_avatar.dart';
 import 'post/post_header.dart';
@@ -171,6 +172,20 @@ class FeedPostCard extends ConsumerWidget {
                                             )
                                             .toggleLike(displayPost.id),
                                         onTap: (index) {
+                                          final selected =
+                                              displayPost.media[index];
+                                          if (selected.type == 'video') {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    ShortVideoViewerPage(
+                                                      initialPost: displayPost,
+                                                    ),
+                                              ),
+                                            );
+                                            return;
+                                          }
+
                                           Navigator.of(context).push(
                                             MaterialPageRoute(
                                               builder: (_) => MediaGalleryPage(
@@ -256,5 +271,4 @@ class FeedPostCard extends ConsumerWidget {
       ),
     );
   }
-
 }

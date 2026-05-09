@@ -65,6 +65,8 @@ app.*.map.json
 **/Flutter/flutter_export_environment.sh
 **/xcuserdata/
 **/*.xcuserstate
+ios/build/
+**/DerivedData/
 
 # Release artifacts
 *.apk

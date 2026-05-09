@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 import '../../../../core/constants/post_colors.dart';
 import '../../../../core/errors/error_handler.dart';
@@ -932,6 +933,14 @@ class PostRemoteDataSource {
         '3gp',
       ].contains(extension);
       final mediaType = isVideo ? 'video' : 'image';
+      String? thumbnailUrl;
+
+      if (isVideo) {
+        thumbnailUrl = await _generateAndUploadVideoThumbnail(
+          videoFile: file,
+          s3Path: s3Path,
+        );
+      }
 
       final url = await _s3.uploadFile(
         file: file,
@@ -940,12 +949,50 @@ class PostRemoteDataSource {
       );
 
       uploadedMedia.add(
-        PostMediaModel(url: url, type: mediaType, order: index),
+        PostMediaModel(
+          url: url,
+          type: mediaType,
+          order: index,
+          thumbnailUrl: thumbnailUrl,
+        ),
       );
     } catch (error, stackTrace) {
       debugPrint('Error uploading media file $index: $error\n$stackTrace');
       rethrow;
     }
+  }
+
+  Future<String?> _generateAndUploadVideoThumbnail({
+    required File videoFile,
+    required String s3Path,
+  }) async {
+    try {
+      final bytes = await VideoThumbnail.thumbnailData(
+        video: videoFile.path,
+        imageFormat: ImageFormat.JPEG,
+        maxWidth: 720,
+        quality: 70,
+        timeMs: 500,
+      );
+
+      if (bytes == null || bytes.isEmpty) return null;
+
+      final tempFile = await _writeTempThumbnail(bytes);
+      return await _s3.uploadFile(
+        file: tempFile,
+        s3Path: '${s3Path}_thumb.jpg',
+      );
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Error generating video thumbnail for $s3Path: $error\n$stackTrace',
+      );
+      return null;
+    }
+  }
+
+  Future<File> _writeTempThumbnail(Uint8List bytes) async {
+    final file = File('${Directory.systemTemp.path}/${_uuid.v4()}_thumb.jpg');
+    return file.writeAsBytes(bytes, flush: true);
   }
 
   // Pagination methods

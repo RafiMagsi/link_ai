@@ -35,6 +35,7 @@ class PostMediaWidget extends ConsumerWidget {
           media: media,
           postId: postId,
           onDoubleTap: onDoubleTap,
+          onTap: onTap == null ? null : () => onTap!.call(0),
         );
       }
       return GestureDetector(
@@ -44,11 +45,7 @@ class PostMediaWidget extends ConsumerWidget {
     }
 
     // Multiple media items - grid layout
-    return _MediaGrid(
-      mediaList: mediaList,
-      postId: postId,
-      onTap: onTap,
-    );
+    return _MediaGrid(mediaList: mediaList, postId: postId, onTap: onTap);
   }
 }
 
@@ -67,15 +64,11 @@ class _ImageWidget extends StatelessWidget {
         filterQuality: FilterQuality.high,
         placeholder: (context, url) => Container(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: const Center(
-            child: CircularProgressIndicator.adaptive(),
-          ),
+          child: const Center(child: CircularProgressIndicator.adaptive()),
         ),
         errorWidget: (context, url, error) => Container(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: const Center(
-            child: Icon(Icons.broken_image_outlined),
-          ),
+          child: const Center(child: Icon(Icons.broken_image_outlined)),
         ),
       ),
     );
@@ -87,11 +80,13 @@ class _VideoPlayerWidget extends ConsumerStatefulWidget {
     required this.media,
     required this.postId,
     this.onDoubleTap,
+    this.onTap,
   });
 
   final PostMediaModel media;
   final String postId;
   final VoidCallback? onDoubleTap;
+  final VoidCallback? onTap;
 
   @override
   ConsumerState<_VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
@@ -108,21 +103,29 @@ class _VideoPlayerWidgetState extends ConsumerState<_VideoPlayerWidget> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.networkUrl(
-      Uri.parse(widget.media.url),
-    )..initialize().then((_) {
-      setState(() {
-        _isInitialized = true;
-      });
-    }).catchError((error) {
-      debugPrint('Error initializing video: $error');
-    });
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.media.url))
+      ..addListener(_handleTick)
+      ..initialize()
+          .then((_) {
+            setState(() {
+              _isInitialized = true;
+            });
+          })
+          .catchError((error) {
+            debugPrint('Error initializing video: $error');
+          });
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_handleTick);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _handleTick() {
+    if (!mounted || !_isInitialized) return;
+    setState(() {});
   }
 
   void _setAutoPlayState(bool shouldAutoPlay) {
@@ -155,11 +158,12 @@ class _VideoPlayerWidgetState extends ConsumerState<_VideoPlayerWidget> {
     if (!_isInitialized) {
       return _buildFramedVideo(
         context,
-        child: Container(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: const Center(
-            child: CircularProgressIndicator.adaptive(),
-          ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _VideoPlaceholder(thumbnailUrl: widget.media.thumbnailUrl),
+            const Center(child: CircularProgressIndicator.adaptive()),
+          ],
         ),
       );
     }
@@ -167,17 +171,7 @@ class _VideoPlayerWidgetState extends ConsumerState<_VideoPlayerWidget> {
     return _buildFramedVideo(
       context,
       child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _isPlaying = !_isPlaying;
-            _wasAutoPlaying = false;
-            if (_isPlaying) {
-              _controller.play();
-            } else {
-              _controller.pause();
-            }
-          });
-        },
+        onTap: widget.onTap,
         onDoubleTap: widget.onDoubleTap,
         child: Stack(
           fit: StackFit.expand,
@@ -238,27 +232,19 @@ class _VideoPlayerWidgetState extends ConsumerState<_VideoPlayerWidget> {
   }
 
   Widget _buildFramedVideo(BuildContext context, {required Widget child}) {
-    final aspectRatio = _isInitialized &&
-            _controller.value.aspectRatio > 0
+    final aspectRatio = _isInitialized && _controller.value.aspectRatio > 0
         ? _controller.value.aspectRatio
         : _fallbackAspectRatio;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-      child: AspectRatio(
-        aspectRatio: aspectRatio,
-        child: child,
-      ),
+      child: AspectRatio(aspectRatio: aspectRatio, child: child),
     );
   }
 }
 
 class _MediaGrid extends StatelessWidget {
-  const _MediaGrid({
-    required this.mediaList,
-    required this.postId,
-    this.onTap,
-  });
+  const _MediaGrid({required this.mediaList, required this.postId, this.onTap});
 
   final List<PostMediaModel> mediaList;
   final String postId;
@@ -277,18 +263,15 @@ class _MediaGrid extends StatelessWidget {
         childAspectRatio: 1.0,
         mainAxisSpacing: 2,
         crossAxisSpacing: 2,
-        children: List.generate(
-          mediaList.length,
-          (index) {
-            final media = mediaList[index];
-            return GestureDetector(
-              onTap: () => onTap?.call(index),
-              child: media.type == 'video'
-                  ? _VideoThumbnail(media: media)
-                  : _ImageGridItem(url: media.url),
-            );
-          },
-        ),
+        children: List.generate(mediaList.length, (index) {
+          final media = mediaList[index];
+          return GestureDetector(
+            onTap: () => onTap?.call(index),
+            child: media.type == 'video'
+                ? _VideoThumbnail(media: media)
+                : _ImageGridItem(url: media.url),
+          );
+        }),
       ),
     );
   }
@@ -323,6 +306,28 @@ class _VideoThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (media.thumbnailUrl != null && media.thumbnailUrl!.isNotEmpty) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          CachedNetworkImage(
+            imageUrl: media.thumbnailUrl!,
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.high,
+            placeholder: (context, url) => Container(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            ),
+            errorWidget: (context, url, error) => _buildFallback(context),
+          ),
+          _buildBadge(),
+        ],
+      );
+    }
+
+    return _buildFallback(context);
+  }
+
+  Widget _buildFallback(BuildContext context) {
     return Container(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Stack(
@@ -333,27 +338,58 @@ class _VideoThumbnail extends StatelessWidget {
             size: 48,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-          Positioned(
-            bottom: 4,
-            right: 4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: const Text(
-                'VIDEO',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
+          _buildBadge(),
         ],
       ),
+    );
+  }
+
+  Widget _buildBadge() {
+    return Positioned(
+      bottom: 4,
+      right: 4,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(2),
+        ),
+        child: const Text(
+          'VIDEO',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VideoPlaceholder extends StatelessWidget {
+  const _VideoPlaceholder({required this.thumbnailUrl});
+
+  final String? thumbnailUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    if (thumbnailUrl != null && thumbnailUrl!.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: thumbnailUrl!,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.high,
+        placeholder: (context, url) => Container(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        ),
+      );
+    }
+
+    return Container(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
     );
   }
 }
