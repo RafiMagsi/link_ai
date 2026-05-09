@@ -47,18 +47,12 @@ jobs:
       - name: Build web
         run: flutter build web --release -O4 --dart-define=FLAVOR=production
 
-      - name: Deploy to Hetzner server
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          port: ${{ secrets.HETZNER_PORT }}
-          source: 'build/web/*'
-          target: '/home/rafiadmin/web/ailinks.dropticks.com/public_html'
-          rm: true
+      - name: Verify build output
+        run: |
+          echo "Build output contents:"
+          ls -la build/web/ | head -20
 
-      - name: Cleanup and organize files on server
+      - name: Deploy to Hetzner server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HETZNER_HOST }}
@@ -66,18 +60,49 @@ jobs:
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_PORT }}
           script: |
-            cd /home/rafiadmin/web/ailinks.dropticks.com/public_html
+            set -e
+            DEPLOY_DIR="/home/rafiadmin/web/ailinks.dropticks.com/public_html"
 
-            # If files are in build/web/ subdirectory, move them up
-            if [ -d "build/web" ]; then
-              echo "Moving files from build/web/ to public_html/"
-              mv build/web/* .
-              rm -rf build/
-              echo "✅ Files organized"
+            echo "Creating backup..."
+            mkdir -p "$DEPLOY_DIR.backup"
+            cp -r "$DEPLOY_DIR"/* "$DEPLOY_DIR.backup/" 2>/dev/null || true
+
+            echo "Clearing deployment directory..."
+            rm -rf "$DEPLOY_DIR"/*
+
+            echo "Ready for file transfer..."
+
+      - name: Copy files via SCP
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          port: ${{ secrets.HETZNER_PORT }}
+          source: 'build/web/'
+          target: '/home/rafiadmin/web/ailinks.dropticks.com/public_html'
+          strip_components: 2
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          port: ${{ secrets.HETZNER_PORT }}
+          script: |
+            DEPLOY_DIR="/home/rafiadmin/web/ailinks.dropticks.com/public_html"
+
+            echo "✅ Deployment directory contents:"
+            ls -la "$DEPLOY_DIR" | head -20
+
+            if [ -f "$DEPLOY_DIR/index.html" ]; then
+              echo "✅ index.html found - deployment successful!"
+              echo "✅ Flutter web deployed to https://ailinks.dropticks.com"
+            else
+              echo "❌ ERROR: index.html not found in public_html"
+              exit 1
             fi
-
-            # List contents to verify
-            ls -la | head -20
 
       - name: Notify deployment success
         run: |
