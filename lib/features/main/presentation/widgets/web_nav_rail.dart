@@ -31,7 +31,15 @@ class WebNavRail extends ConsumerWidget {
         ref.watch(unreadMessagesCountProvider).asData?.value ?? 0;
 
     return Container(
-      color: Theme.of(context).colorScheme.surface,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          right: BorderSide(
+            color: Theme.of(context).dividerColor,
+            width: 0.8,
+          ),
+        ),
+      ),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: double.infinity,
@@ -42,18 +50,22 @@ class WebNavRail extends ConsumerWidget {
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'AI',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    'AI',
+                    textAlign: TextAlign.right,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
                 ),
               ),
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: List.generate(_navItems.length, (index) {
@@ -61,7 +73,10 @@ class WebNavRail extends ConsumerWidget {
                     final isSelected = index == currentIndex;
 
                     // Special handling for Messages badge
-                    Widget icon = Icon(isSelected ? item.selectedIcon : item.icon);
+                    Widget icon = Icon(
+                      isSelected ? item.selectedIcon : item.icon,
+                      size: 24,
+                    );
                     if (index == 2 && unreadMessageCount > 0) {
                       icon = Badge(
                         isLabelVisible: true,
@@ -71,34 +86,37 @@ class WebNavRail extends ConsumerWidget {
                     }
 
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       child: InkWell(
                         onTap: () => onTap(index),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                             color: isSelected
-                                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
                                 : Colors.transparent,
                           ),
                           child: isDesktop
                               ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    icon,
-                                    const SizedBox(width: 12),
-                                    Expanded(
+                                    Flexible(
                                       child: Text(
                                         item.label,
                                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                               fontWeight:
-                                                  isSelected ? FontWeight.w600 : FontWeight.normal,
+                                                  isSelected ? FontWeight.w700 : FontWeight.w500,
+                                              letterSpacing: 0.3,
                                             ),
                                         overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.right,
                                       ),
                                     ),
+                                    const SizedBox(width: 14),
+                                    icon,
                                   ],
                                 )
                               : Center(child: icon),
@@ -112,13 +130,13 @@ class WebNavRail extends ConsumerWidget {
             SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                 child: ElevatedButton(
                   onPressed: onCreatePost,
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(
-                      horizontal: isDesktop ? 16 : 8,
-                      vertical: 12,
+                      horizontal: isDesktop ? 20 : 12,
+                      vertical: 14,
                     ),
                   ),
                   child: isDesktop

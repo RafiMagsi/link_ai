@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/constants/post_colors.dart';
@@ -7,7 +8,6 @@ import '../../../../core/utils/navigation_utils.dart';
 import '../../../../core/widgets/hashtag_text.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
-import '../../../video/presentation/pages/short_video_viewer_page.dart';
 import '../../data/models/post_model.dart';
 import '../providers/post_providers.dart';
 import 'post/post_action_row.dart';
@@ -166,14 +166,7 @@ class FeedPostCard extends ConsumerWidget {
                                         mediaList: displayPost.media,
                                         postId: displayPost.id,
                                         onVideoTap: () {
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  ShortVideoViewerPage(
-                                                    initialPost: displayPost,
-                                                  ),
-                                            ),
-                                          );
+                                          context.push('/videos/short/${displayPost.id}', extra: displayPost);
                                         },
                                       ),
                                     ),

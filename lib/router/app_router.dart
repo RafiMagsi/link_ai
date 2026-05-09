@@ -20,6 +20,7 @@ import '../features/feed/presentation/pages/feed_page.dart';
 import '../features/feed/presentation/pages/create_post_page.dart';
 import '../features/feed/presentation/pages/post_detail_page.dart';
 import '../features/feed/presentation/pages/comment_detail_page.dart';
+import '../features/video/presentation/pages/short_video_viewer_page.dart';
 import '../features/main/presentation/pages/main_shell_page.dart';
 import '../features/notifications/presentation/pages/notifications_page.dart';
 import '../features/messaging/presentation/pages/inbox_page.dart';
@@ -175,6 +176,146 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               child: const ProfilePage(),
             ),
           ),
+          GoRoute(
+            path: '/posts/create',
+            name: 'create-post',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: const CreatePostPage(),
+            ),
+          ),
+          GoRoute(
+            path: '/posts/:postId',
+            name: 'post-detail',
+            pageBuilder: (context, state) {
+              try {
+                final postId = state.pathParameters['postId'];
+                if (postId == null || postId.isEmpty) {
+                  return NoTransitionPage(
+                    child: Scaffold(
+                      body: Center(child: Text('Invalid post ID.')),
+                    ),
+                  );
+                }
+                final initialPost = state.extra is PostModel
+                    ? state.extra as PostModel
+                    : null;
+                return NoTransitionPage(
+                  child: PostDetailPage(postId: postId, initialPost: initialPost),
+                );
+              } catch (e) {
+                return NoTransitionPage(
+                  child: Scaffold(
+                    body: Center(child: Text('Error loading post: $e')),
+                  ),
+                );
+              }
+            },
+          ),
+          GoRoute(
+            path: '/posts/:postId/comments/:commentId',
+            name: 'comment-detail',
+            pageBuilder: (context, state) {
+              try {
+                final postId = state.pathParameters['postId'];
+                final commentId = state.pathParameters['commentId'];
+                if (postId == null || postId.isEmpty || commentId == null || commentId.isEmpty) {
+                  return NoTransitionPage(
+                    child: Scaffold(
+                      body: Center(child: Text('Invalid post or comment ID.')),
+                    ),
+                  );
+                }
+                final initialComment = state.extra is PostCommentModel
+                    ? state.extra as PostCommentModel
+                    : null;
+                return NoTransitionPage(
+                  child: CommentDetailPage(
+                    postId: postId,
+                    commentId: commentId,
+                    initialComment: initialComment,
+                  ),
+                );
+              } catch (e) {
+                return NoTransitionPage(
+                  child: Scaffold(
+                    body: Center(child: Text('Error loading comment: $e')),
+                  ),
+                );
+              }
+            },
+          ),
+          GoRoute(
+            path: '/hashtags/:tag',
+            name: 'hashtag',
+            pageBuilder: (context, state) {
+              try {
+                final tag = state.pathParameters['tag'];
+                if (tag == null || tag.isEmpty) {
+                  return NoTransitionPage(
+                    child: Scaffold(
+                      body: Center(child: Text('Invalid hashtag.')),
+                    ),
+                  );
+                }
+                return NoTransitionPage(
+                  child: HashtagPage(tag: tag),
+                );
+              } catch (e) {
+                return NoTransitionPage(
+                  child: Scaffold(
+                    body: Center(child: Text('Error loading hashtag: $e')),
+                  ),
+                );
+              }
+            },
+          ),
+          GoRoute(
+            path: '/search',
+            name: 'search',
+            pageBuilder: (context, state) {
+              final tab = state.uri.queryParameters['tab'];
+              return NoTransitionPage(
+                child: SearchPage(initialTab: tab),
+              );
+            },
+          ),
+          GoRoute(
+            path: '/videos/short/:postId',
+            name: 'short-video',
+            pageBuilder: (context, state) {
+              try {
+                final postId = state.pathParameters['postId'];
+                if (postId == null || postId.isEmpty) {
+                  return NoTransitionPage(
+                    child: Scaffold(
+                      body: Center(child: Text('Invalid post ID.')),
+                    ),
+                  );
+                }
+                final initialPost = state.extra is PostModel
+                    ? state.extra as PostModel
+                    : null;
+
+                if (initialPost == null) {
+                  return NoTransitionPage(
+                    child: Scaffold(
+                      body: Center(child: Text('Post data not available.')),
+                    ),
+                  );
+                }
+
+                return NoTransitionPage(
+                  child: ShortVideoViewerPage(initialPost: initialPost),
+                );
+              } catch (e) {
+                return NoTransitionPage(
+                  child: Scaffold(
+                    body: Center(child: Text('Error loading video: $e')),
+                  ),
+                );
+              }
+            },
+          ),
         ],
       ),
       GoRoute(
@@ -240,87 +381,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/admin/reports',
         name: 'admin-reports',
         builder: (context, state) => const AdminReportsPage(),
-      ),
-      GoRoute(
-        path: '/posts/create',
-        name: 'create-post',
-        builder: (context, state) => const CreatePostPage(),
-      ),
-      GoRoute(
-        path: '/posts/:postId',
-        name: 'post-detail',
-        builder: (context, state) {
-          try {
-            final postId = state.pathParameters['postId'];
-            if (postId == null || postId.isEmpty) {
-              return const Scaffold(
-                body: Center(child: Text('Invalid post ID.')),
-              );
-            }
-            final initialPost = state.extra is PostModel
-                ? state.extra as PostModel
-                : null;
-            return PostDetailPage(postId: postId, initialPost: initialPost);
-          } catch (e) {
-            return Scaffold(
-              body: Center(child: Text('Error loading post: $e')),
-            );
-          }
-        },
-      ),
-      GoRoute(
-        path: '/posts/:postId/comments/:commentId',
-        name: 'comment-detail',
-        builder: (context, state) {
-          try {
-            final postId = state.pathParameters['postId'];
-            final commentId = state.pathParameters['commentId'];
-            if (postId == null || postId.isEmpty || commentId == null || commentId.isEmpty) {
-              return const Scaffold(
-                body: Center(child: Text('Invalid post or comment ID.')),
-              );
-            }
-            final initialComment = state.extra is PostCommentModel
-                ? state.extra as PostCommentModel
-                : null;
-            return CommentDetailPage(
-              postId: postId,
-              commentId: commentId,
-              initialComment: initialComment,
-            );
-          } catch (e) {
-            return Scaffold(
-              body: Center(child: Text('Error loading comment: $e')),
-            );
-          }
-        },
-      ),
-      GoRoute(
-        path: '/hashtags/:tag',
-        name: 'hashtag',
-        builder: (context, state) {
-          try {
-            final tag = state.pathParameters['tag'];
-            if (tag == null || tag.isEmpty) {
-              return const Scaffold(
-                body: Center(child: Text('Invalid hashtag.')),
-              );
-            }
-            return HashtagPage(tag: tag);
-          } catch (e) {
-            return Scaffold(
-              body: Center(child: Text('Error loading hashtag: $e')),
-            );
-          }
-        },
-      ),
-      GoRoute(
-        path: '/search',
-        name: 'search',
-        builder: (context, state) {
-          final tab = state.uri.queryParameters['tab'];
-          return SearchPage(initialTab: tab);
-        },
       ),
       GoRoute(
         path: '/network',

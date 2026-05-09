@@ -30,6 +30,7 @@ class _FeedHlsVideoPlayerState extends State<FeedHlsVideoPlayer> {
   bool _isLoading = true;
   bool _hasError = false;
   bool _isVisible = false;
+  bool _isMuted = true;
 
   FeedVideoPreloadManager get _manager => FeedVideoPreloadManager.instance;
 
@@ -106,15 +107,28 @@ class _FeedHlsVideoPlayerState extends State<FeedHlsVideoPlayer> {
   }
 
   void _syncPlayback() {
-    final shouldPlay = widget.isActive && _isVisible;
     final controller = _controller;
 
     if (controller == null || !controller.value.isInitialized) return;
+
+    // For feed view: keep playing when active (visibility changes don't stop playback)
+    // For full view: respect visibility for active state
+    final shouldPlay = widget.isFeedView ? widget.isActive : (widget.isActive && _isVisible);
 
     if (shouldPlay) {
       _manager.play(_videoUrl);
     }
     // Don't pause when invisible - controller might be used by ShortVideoViewerPage
+  }
+
+  void _toggleMute() {
+    final controller = _controller;
+    if (controller == null) return;
+
+    setState(() {
+      _isMuted = !_isMuted;
+      controller.setVolume(_isMuted ? 0 : 1);
+    });
   }
 
   @override
@@ -130,7 +144,12 @@ class _FeedHlsVideoPlayerState extends State<FeedHlsVideoPlayer> {
 
         _isVisible = visible;
         widget.onVisibilityChanged?.call(visible);
-        _syncPlayback();
+
+        // For feed videos: only report visibility, don't sync playback
+        // (playback continues when navigating to nested pages)
+        if (!widget.isFeedView) {
+          _syncPlayback();
+        }
       },
       child: widget.isFeedView
           ? SizedBox(
@@ -148,10 +167,13 @@ class _FeedHlsVideoPlayerState extends State<FeedHlsVideoPlayer> {
             alignment: Alignment.center,
             child: const CircularProgressIndicator(strokeWidth: 2),
           ),
-        const Positioned(
+        Positioned(
           right: 10,
           bottom: 10,
-          child: _MuteBadge(),
+          child: _MuteBadge(
+            isMuted: _isMuted,
+            onToggle: _toggleMute,
+          ),
         ),
       ],
     ),
@@ -172,10 +194,13 @@ class _FeedHlsVideoPlayerState extends State<FeedHlsVideoPlayer> {
                         alignment: Alignment.center,
                         child: const CircularProgressIndicator(strokeWidth: 2),
                       ),
-                    const Positioned(
+                    Positioned(
                       right: 10,
                       bottom: 10,
-                      child: _MuteBadge(),
+                      child: _MuteBadge(
+                        isMuted: _isMuted,
+                        onToggle: _toggleMute,
+                      ),
                     ),
                   ],
                 ),
@@ -232,21 +257,34 @@ class _FeedHlsVideoPlayerState extends State<FeedHlsVideoPlayer> {
 }
 
 class _MuteBadge extends StatelessWidget {
-  const _MuteBadge();
+  const _MuteBadge({
+    required this.isMuted,
+    required this.onToggle,
+  });
+
+  final bool isMuted;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onToggle,
         borderRadius: BorderRadius.circular(999),
-      ),
-      child: const Padding(
-        padding: EdgeInsets.all(7),
-        child: Icon(
-          Icons.volume_off_rounded,
-          color: Colors.white,
-          size: 16,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(7),
+            child: Icon(
+              isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+              color: Colors.white,
+              size: 16,
+            ),
+          ),
         ),
       ),
     );

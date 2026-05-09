@@ -61,37 +61,44 @@ class MainShellPage extends StatelessWidget {
           );
         }
 
-        // Web/Tablet layout with side navigation (3 equal columns)
+        // Web/Tablet layout with side navigation (Twitter-like proportions)
         return Scaffold(
-          body: Row(
-            children: [
-              // Left navigation rail (1/3 width)
-              Expanded(
-                flex: 1,
-                child: ClipRect(
-                  child: WebNavRail(
-                    currentIndex: currentIndex,
-                    onTap: (index) => _navigateTo(context, index),
-                    onCreatePost: () => _openCreatePost(context),
-                  ),
-                ),
-              ),
-              // Center content area (1/3 width)
-              Expanded(
-                flex: 1,
-                child: ClipRect(
-                  child: child,
-                ),
-              ),
-              // Right sidebar (1/3 width, desktop only)
-              if (isDesktop)
+          body: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: Row(
+              children: [
+                // Left navigation rail (~240px)
+                if (isDesktop)
+                Expanded(flex: 1, child: SizedBox()), // Spacer
                 Expanded(
-                  flex: 1,
+                  flex: 2,
                   child: ClipRect(
-                    child: const WebRightPanel(),
+                    child: WebNavRail(
+                      currentIndex: currentIndex,
+                      onTap: (index) => _navigateTo(context, index),
+                      onCreatePost: () => _openCreatePost(context),
+                    ),
                   ),
                 ),
-            ],
+                // Center content area (~600px, wider)
+                Expanded(
+                  flex: 3,
+                  child: ClipRect(
+                    child: child,
+                  ),
+                ),
+                // Right sidebar (~320px, desktop only)
+                if (isDesktop)
+                  Expanded(
+                    flex: 2,
+                    child: ClipRect(
+                      child: const WebRightPanel(),
+                    ),
+                  ),
+                  if (isDesktop)
+                  Expanded(flex: 1, child: SizedBox()), // Spacer
+              ],
+            ),
           ),
         );
       },

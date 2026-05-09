@@ -18,6 +18,7 @@ import '../widgets/feed_post_card.dart';
 import 'create_post_page.dart';
 import '../../../notifications/presentation/providers/notification_providers.dart';
 
+
 class FeedPage extends ConsumerStatefulWidget {
   const FeedPage({super.key});
 
@@ -200,13 +201,38 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 }
 
-class _FeedTabView extends ConsumerWidget {
+class _FeedTabView extends ConsumerStatefulWidget {
   const _FeedTabView({required this.scrollController});
 
   final ScrollController scrollController;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_FeedTabView> createState() => _FeedTabViewState();
+}
+
+class _FeedTabViewState extends ConsumerState<_FeedTabView> {
+  late ScrollController _latestController;
+  late ScrollController _connectedController;
+  late ScrollController _viralController;
+
+  @override
+  void initState() {
+    super.initState();
+    _latestController = ScrollController();
+    _connectedController = ScrollController();
+    _viralController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _latestController.dispose();
+    _connectedController.dispose();
+    _viralController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final latestState = ref.watch(latestFeedProvider);
     final connectedPosts = ref.watch(connectedFeedProvider);
     final viralPosts = ref.watch(viralFeedProvider);
@@ -216,18 +242,18 @@ class _FeedTabView extends ConsumerWidget {
         _PaginatedFeedList(
           kind: _FeedKind.latest,
           state: latestState,
-          scrollController: scrollController,
+          scrollController: _latestController,
         ),
         _FeedList(
           kind: _FeedKind.connected,
           posts: AsyncValue.data(connectedPosts),
           emptyStateText: 'Follow people to see their posts here.',
-          scrollController: scrollController,
+          scrollController: _connectedController,
         ),
         _FeedList(
           kind: _FeedKind.viral,
           posts: AsyncValue.data(viralPosts),
-          scrollController: scrollController,
+          scrollController: _viralController,
         ),
       ],
     );

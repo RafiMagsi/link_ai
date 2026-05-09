@@ -14,6 +14,7 @@ class WebRightPanel extends ConsumerWidget {
         border: Border(
           left: BorderSide(
             color: Theme.of(context).dividerColor,
+            width: 0.8,
           ),
         ),
       ),
@@ -23,18 +24,18 @@ class WebRightPanel extends ConsumerWidget {
             maxWidth: double.infinity,
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _SearchBox(context: context),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
                 _SearchFilters(context: context),
-                const SizedBox(height: 32),
+                const SizedBox(height: 36),
                 _TrendingSection(ref: ref, context: context),
-                const SizedBox(height: 32),
+                const SizedBox(height: 36),
                 _PeopleToFollowSection(ref: ref, context: context),
-                const SizedBox(height: 32),
+                const SizedBox(height: 40),
                 _FooterLinks(context: context),
               ],
             ),
@@ -70,19 +71,32 @@ class _SearchBoxState extends State<_SearchBox> {
 
   @override
   Widget build(BuildContext context) {
-    return SearchBar(
-      controller: _controller,
-      leading: const Padding(
-        padding: EdgeInsets.all(8),
-        child: Icon(Icons.search),
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: Theme.of(context).dividerColor,
+          width: 0.6,
+        ),
       ),
-      hintText: 'Search',
-      onSubmitted: (query) {
-        if (query.trim().isNotEmpty) {
-          context.push('/search', extra: query);
-          _controller.clear();
-        }
-      },
+      child: SearchBar(
+        controller: _controller,
+        leading: const Padding(
+          padding: EdgeInsets.all(8),
+          child: Icon(Icons.search, size: 20),
+        ),
+        hintText: 'Search people, projects...',
+        elevation: const WidgetStatePropertyAll(0),
+        backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+        shadowColor: const WidgetStatePropertyAll(Colors.transparent),
+        onSubmitted: (query) {
+          if (query.trim().isNotEmpty) {
+            context.push('/search', extra: query);
+            _controller.clear();
+          }
+        },
+      ),
     );
   }
 }
@@ -139,12 +153,18 @@ class _FilterTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: InkWell(
         onTap: () {},
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall,
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  height: 1.4,
+                ),
+          ),
         ),
       ),
     );
@@ -170,10 +190,12 @@ class _TrendingSection extends ConsumerWidget {
         Text(
           'Trending',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: 0.3,
               ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         trendsAsync.when(
           data: (trends) {
             if (trends.isEmpty) {
@@ -191,12 +213,16 @@ class _TrendingSection extends ConsumerWidget {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: InkWell(
                     onTap: () => context.push('/hashtags/${trend.tag}'),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(context).dividerColor,
+                          width: 0.6,
+                        ),
+                        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -208,22 +234,26 @@ class _TrendingSection extends ConsumerWidget {
                                 Text(
                                   '#${trend.tag}',
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.2,
                                       ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                const SizedBox(height: 2),
                                 Text(
                                   '${trend.count} posts',
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                         color: Theme.of(context).hintColor,
+                                        fontSize: 12,
                                       ),
                                 ),
                               ],
                             ),
                           ),
+                          const SizedBox(width: 8),
                           Icon(
                             Icons.arrow_forward,
-                            size: 16,
+                            size: 18,
                             color: Theme.of(context).hintColor,
                           ),
                         ],
@@ -274,19 +304,25 @@ class _PeopleToFollowSection extends ConsumerWidget {
         Text(
           'Who to follow',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: 0.3,
               ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Column(
           children: people.map((person) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).dividerColor,
+                    width: 0.6,
+                  ),
+                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -298,30 +334,43 @@ class _PeopleToFollowSection extends ConsumerWidget {
                           Text(
                             person['name']!,
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.2,
                                 ),
                             overflow: TextOverflow.ellipsis,
                           ),
+                          const SizedBox(height: 2),
                           Text(
                             person['handle']!,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: Theme.of(context).hintColor,
+                                  fontSize: 12,
                                 ),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
                     TextButton(
                       onPressed: () {},
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.white,
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
+                          horizontal: 18,
                           vertical: 8,
                         ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                       ),
-                      child: const Text('Follow'),
+                      child: const Text(
+                        'Follow',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -355,32 +404,41 @@ class _FooterLinks extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Wrap(
-          spacing: 12,
+          spacing: 10,
           runSpacing: 8,
           children: [
             _FooterLink(label: 'Terms of Service', context: context),
-            Text('|', style: Theme.of(context).textTheme.bodySmall),
+            Text('·', style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).hintColor,
+            )),
             _FooterLink(label: 'Privacy Policy', context: context),
-            Text('|', style: Theme.of(context).textTheme.bodySmall),
+            Text('·', style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).hintColor,
+            )),
             _FooterLink(label: 'Cookie Policy', context: context),
-            Text('|', style: Theme.of(context).textTheme.bodySmall),
+            Text('·', style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).hintColor,
+            )),
             _FooterLink(label: 'Accessibility', context: context),
-            Text('|', style: Theme.of(context).textTheme.bodySmall),
-            _FooterLink(label: 'Ads info', context: context),
           ],
         ),
         const SizedBox(height: 12),
         Wrap(
-          spacing: 12,
+          spacing: 10,
           children: [
+            _FooterLink(label: 'Ads info', context: context),
+            Text('·', style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).hintColor,
+            )),
             _FooterLink(label: 'More', context: context),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Text(
           '© 2026 LinkAI',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).hintColor,
+                fontSize: 11,
               ),
         ),
       ],
@@ -397,11 +455,15 @@ class _FooterLink extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {},
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-            ),
+      borderRadius: BorderRadius.circular(3),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 3),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+        ),
       ),
     );
   }
