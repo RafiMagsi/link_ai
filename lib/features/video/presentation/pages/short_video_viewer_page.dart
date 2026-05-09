@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +7,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../../feed/data/models/post_model.dart';
 import '../../../feed/presentation/providers/post_providers.dart';
+import '../../core/managers/feed_video_preload_manager.dart';
 
 class ShortVideoViewerPage extends ConsumerStatefulWidget {
   const ShortVideoViewerPage({super.key, required this.initialPost});
@@ -142,54 +142,68 @@ class _ShortVideoPageItem extends ConsumerStatefulWidget {
 }
 
 class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
-  late final VideoPlayerController _controller;
+  VideoPlayerController? _controller;
   bool _isReady = false;
   bool _showHud = true;
 
   @override
   void initState() {
     super.initState();
-    _controller =
-        VideoPlayerController.networkUrl(Uri.parse(widget.videoMedia.url))
-          ..setLooping(true)
-          ..setVolume(1)
-          ..addListener(_handleTick)
-          ..initialize()
-              .then((_) {
-                if (!mounted) return;
-                setState(() => _isReady = true);
-                if (widget.isActive) {
-                  _controller.play();
-                }
-              })
-              .catchError((Object error) {
-                debugPrint('Short video init failed: $error');
-              });
+    _initializeVideo();
+  }
+
+  Future<void> _initializeVideo() async {
+    try {
+      final videoUrl = widget.videoMedia.hlsUrl ?? widget.videoMedia.url;
+      final controller = await FeedVideoPreloadManager.instance.getOrCreate(videoUrl);
+
+      if (!mounted) return;
+
+      await controller.setLooping(true);
+      await controller.setVolume(1);
+      controller.addListener(_handleTick);
+
+      setState(() {
+        _controller = controller;
+        _isReady = true;
+      });
+
+      if (widget.isActive) {
+        await controller.play();
+      }
+    } catch (error) {
+      if (mounted) {
+        debugPrint('Short video init failed: $error');
+      }
+    }
   }
 
   @override
   void didUpdateWidget(covariant _ShortVideoPageItem oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_isReady) return;
+    if (!_isReady || _controller == null) return;
 
-    if (widget.isActive && !_controller.value.isPlaying) {
-      _controller.play();
-    } else if (!widget.isActive && _controller.value.isPlaying) {
-      _controller.pause();
+    if (widget.isActive && !_controller!.value.isPlaying) {
+      _controller!.play();
+    } else if (!widget.isActive && _controller!.value.isPlaying) {
+      _controller!.pause();
     }
   }
 
   @override
   void dispose() {
-    _controller
-      ..removeListener(_handleTick)
-      ..dispose();
+    _controller?.removeListener(_handleTick);
     super.dispose();
   }
 
   void _handleTick() {
     if (!mounted || !_isReady) return;
-    setState(() {});
+    // Defer setState to avoid calling it during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   Future<void> _sharePost() async {
@@ -199,12 +213,12 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
   }
 
   void _togglePlayback() {
-    if (!_isReady) return;
+    if (!_isReady || _controller == null) return;
     HapticFeedback.lightImpact();
-    if (_controller.value.isPlaying) {
-      _controller.pause();
+    if (_controller!.value.isPlaying) {
+      _controller!.pause();
     } else {
-      _controller.play();
+      _controller!.play();
     }
     setState(() => _showHud = true);
   }
@@ -226,9 +240,9 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
     final liked = optimisticLiked ?? realState?.liked ?? false;
     final saved = optimisticSaved ?? realState?.saved ?? false;
     final reposted = optimisticReposted ?? realState?.reposted ?? false;
-    final progress = _isReady && _controller.value.duration.inMilliseconds > 0
-        ? (_controller.value.position.inMilliseconds /
-                  _controller.value.duration.inMilliseconds)
+    final progress = _isReady && _controller != null && _controller!.value.duration.inMilliseconds > 0
+        ? (_controller!.value.position.inMilliseconds /
+                  _controller!.value.duration.inMilliseconds)
               .clamp(0.0, 1.0)
         : 0.0;
 
@@ -241,19 +255,17 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
           onDoubleTap: () => ref
               .read(postControllerProvider.notifier)
               .toggleLike(post.id, post: post),
-          child: _isReady
+          child: _isReady && _controller != null
               ? FittedBox(
                   fit: BoxFit.cover,
                   clipBehavior: Clip.hardEdge,
                   child: SizedBox(
-                    width: _controller.value.size.width,
-                    height: _controller.value.size.height,
-                    child: VideoPlayer(_controller),
+                    width: _controller!.value.size.width,
+                    height: _controller!.value.size.height,
+                    child: VideoPlayer(_controller!),
                   ),
                 )
-              : _ShortVideoThumbnail(
-                  thumbnailUrl: widget.videoMedia.thumbnailUrl,
-                ),
+              : Container(color: Colors.black),
         ),
         if (_showHud) ...[
           Positioned(
@@ -280,55 +292,20 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
               onShare: _sharePost,
             ),
           ),
-          Positioned(
-            left: 16,
-            right: 90,
-            bottom: 28,
-            child: _ShortVideoCaption(
-              post: post,
-              isPlaying: _controller.value.isPlaying,
-              progress: progress,
-              onTogglePlayback: _togglePlayback,
+          if (_controller != null)
+            Positioned(
+              left: 16,
+              right: 90,
+              bottom: 28,
+              child: _ShortVideoCaption(
+                post: post,
+                isPlaying: _controller!.value.isPlaying,
+                progress: progress,
+                onTogglePlayback: _togglePlayback,
+              ),
             ),
-          ),
         ],
       ],
-    );
-  }
-}
-
-class _ShortVideoThumbnail extends StatelessWidget {
-  const _ShortVideoThumbnail({required this.thumbnailUrl});
-
-  final String? thumbnailUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    if (thumbnailUrl != null && thumbnailUrl!.isNotEmpty) {
-      return CachedNetworkImage(
-        imageUrl: thumbnailUrl!,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => Container(
-          color: Colors.black,
-          child: const Center(child: CircularProgressIndicator.adaptive()),
-        ),
-        errorWidget: (context, url, error) => _FallbackVideoSurface(),
-      );
-    }
-    return const _FallbackVideoSurface();
-  }
-}
-
-class _FallbackVideoSurface extends StatelessWidget {
-  const _FallbackVideoSurface();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black,
-      child: const Center(
-        child: Icon(Icons.play_circle_outline, size: 72, color: Colors.white70),
-      ),
     );
   }
 }

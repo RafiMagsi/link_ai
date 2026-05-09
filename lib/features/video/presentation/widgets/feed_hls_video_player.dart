@@ -186,57 +186,43 @@ class _FeedHlsVideoPlayerState extends State<FeedHlsVideoPlayer> {
   }
 
   Widget _buildContent() {
-  final controller = _controller;
+    final controller = _controller;
 
-  if (_hasError) {
-    return Container(
-      color: Colors.black12,
-      alignment: Alignment.center,
-      child: const Icon(Icons.error_outline_rounded),
-    );
-  }
-
-  if (controller == null || !controller.value.isInitialized) {
-    return _buildThumbnail();
-  }
-
-  final videoSize = controller.value.size;
-
-  if (videoSize.width <= 0 || videoSize.height <= 0) {
-    return Container(
-      color: Colors.black,
-      child: VideoPlayer(controller),
-    );
-  }
-
-  return Container(
-    color: Colors.black,
-    child: ClipRect(
-      child: FittedBox(
-        fit: BoxFit.cover,
+    if (_hasError) {
+      return Container(
+        color: Colors.black12,
         alignment: Alignment.center,
-        child: SizedBox(
-          width: videoSize.width,
-          height: videoSize.height,
-          child: VideoPlayer(controller),
-        ),
-      ),
-    ),
-  );
-}
-
-  Widget _buildThumbnail() {
-    final thumbnailUrl = widget.media.thumbnailUrl;
-
-    if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
-      return Image.network(
-        thumbnailUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Container(color: Colors.black12),
+        child: const Icon(Icons.error_outline_rounded),
       );
     }
 
-    return Container(color: Colors.black12);
+    if (controller == null || !controller.value.isInitialized) {
+      return Container(color: Colors.black);
+    }
+
+    final videoSize = controller.value.size;
+
+    if (videoSize.width <= 0 || videoSize.height <= 0) {
+      return Container(
+        color: Colors.black,
+        child: VideoPlayer(controller),
+      );
+    }
+
+    return Container(
+      color: Colors.black,
+      child: ClipRect(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+          child: SizedBox(
+            width: videoSize.width,
+            height: videoSize.height,
+            child: VideoPlayer(controller),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
