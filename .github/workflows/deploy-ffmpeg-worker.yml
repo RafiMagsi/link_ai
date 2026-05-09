@@ -52,7 +52,7 @@ jobs:
             npm --version
 
             # Install/update dependencies from lockfile
-            npm ci --omit=dev
+            npm ci --omit=dev --no-audit --no-fund
 
             # Create logs directory
             mkdir -p logs
