@@ -34,8 +34,12 @@ jobs:
             rm -rf link_ai_deploy || true
             git clone --branch main --depth 1 https://github.com/${{ github.repository }}.git link_ai_deploy
 
-            # Copy worker files to deployment directory
-            cp -r /tmp/link_ai_deploy/functions/video-transcoder/* $WORKER_DIR/
+            # Copy worker files to deployment directory, including dotfiles like .env
+            rsync -av --delete \
+              --exclude logs \
+              --exclude node_modules \
+              /tmp/link_ai_deploy/functions/video-transcoder/ \
+              $WORKER_DIR/
 
             # Navigate to worker directory
             cd $WORKER_DIR
@@ -44,15 +48,16 @@ jobs:
             node --version
             npm --version
 
-            # Install/update dependencies
-            npm install
+            # Install/update dependencies from lockfile
+            npm ci --omit=dev
 
             # Create logs directory
             mkdir -p logs
 
-            # Delete any old ffmpeg-worker processes
+            # Delete old worker process names
             echo "Cleaning up old processes..."
             pm2 delete ffmpeg-worker || true
+            pm2 delete video-transcode || true
 
             # Wait a moment
             sleep 2
@@ -67,4 +72,6 @@ jobs:
 
             # Verify the process started correctly
             sleep 2
-            pm2 logs ffmpeg-worker --lines 10
+            pm2 describe ffmpeg-worker
+            tail -n 20 logs/pm2-out.log || true
+            tail -n 20 logs/pm2-error.log || true

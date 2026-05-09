@@ -9,13 +9,38 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Initialize Firebase (use service account JSON)
-const serviceAccount = JSON.parse(
-  fs.readFileSync(path.join(__dirname, "firebase-service-account.json"), "utf8")
-);
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+function initializeFirebase() {
+  const serviceAccountPath = path.join(
+    __dirname,
+    "firebase-service-account.json",
+  );
+
+  if (!fs.existsSync(serviceAccountPath)) {
+    throw new Error(
+      `Missing firebase-service-account.json at ${serviceAccountPath}`,
+    );
+  }
+
+  const serviceAccount = JSON.parse(
+    fs.readFileSync(serviceAccountPath, "utf8"),
+  );
+
+  if (
+    !serviceAccount.project_id ||
+    !serviceAccount.client_email ||
+    !serviceAccount.private_key
+  ) {
+    throw new Error(
+      "firebase-service-account.json is missing project_id, client_email, or private_key",
+    );
+  }
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
+
+initializeFirebase();
 
 const db = admin.firestore();
 const execAsync = promisify(exec);
@@ -27,6 +52,17 @@ const s3 = new AWS.S3({
 
 const CLOUDFRONT_DOMAIN = process.env.CLOUDFRONT_DOMAIN;
 const TEMP_DIR = "/tmp/link-ai-transcode";
+
+if (
+  !process.env.AWS_ACCESS_KEY_ID ||
+  !process.env.AWS_SECRET_ACCESS_KEY ||
+  !process.env.AWS_REGION ||
+  !CLOUDFRONT_DOMAIN
+) {
+  throw new Error(
+    "Missing required env: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, or CLOUDFRONT_DOMAIN",
+  );
+}
 
 // Ensure temp directory exists
 if (!fs.existsSync(TEMP_DIR)) {
