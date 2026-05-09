@@ -50,15 +50,21 @@ jobs:
             # Create logs directory
             mkdir -p logs
 
-            # Restart worker with PM2 using ecosystem config
-            if pm2 list | grep -q "ffmpeg-worker"; then
-              echo "Restarting existing ffmpeg-worker..."
-              pm2 restart ecosystem.config.cjs
-            else
-              echo "Starting ffmpeg-worker..."
-              pm2 start ecosystem.config.cjs
-              pm2 save
-            fi
+            # Delete any old ffmpeg-worker processes
+            echo "Cleaning up old processes..."
+            pm2 delete ffmpeg-worker || true
+
+            # Wait a moment
+            sleep 2
+
+            # Start worker with PM2 using ecosystem config
+            echo "Starting ffmpeg-worker..."
+            pm2 start ecosystem.config.cjs
+            pm2 save
 
             echo "✅ FFmpeg worker deployed successfully"
             pm2 status
+
+            # Verify the process started correctly
+            sleep 2
+            pm2 logs ffmpeg-worker --lines 10

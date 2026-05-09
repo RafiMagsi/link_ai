@@ -26,11 +26,14 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
+      - name: Install Firebase CLI and FlutterFire CLI
+        run: |
+          npm install -g firebase-tools
+          flutter pub global activate flutterfire_cli
 
       - name: Generate Firebase options
         run: |
+          export PATH="$PATH":"$HOME/.pub-cache/bin"
           flutterfire configure \
             --project=link-ai-0749 \
             --platforms=web \
