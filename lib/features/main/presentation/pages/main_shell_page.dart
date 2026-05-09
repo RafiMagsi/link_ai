@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/utils/app_responsive.dart';
 import '../widgets/main_bottom_nav_bar.dart';
+import '../widgets/web_nav_rail.dart';
+import '../widgets/web_right_panel.dart';
 
 class MainShellPage extends StatelessWidget {
   const MainShellPage({super.key, required this.child});
 
   final Widget child;
+
+  static const _routes = ['/feed', '/explore', '/messages', '/products', '/profile'];
 
   int _getTabIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
@@ -26,21 +31,63 @@ class MainShellPage extends StatelessWidget {
     }
   }
 
+  void _navigateTo(BuildContext context, int index) {
+    if (index < _routes.length) {
+      context.replace(_routes[index]);
+    }
+  }
+
+  void _openCreatePost(BuildContext context) {
+    context.push('/posts/create');
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentIndex = _getTabIndex(context);
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: MainBottomNavBar(
-        currentIndex: currentIndex,
-        onDestinationSelected: (index) {
-          final routes = ['/feed', '/explore', '/messages', '/products', '/profile'];
-          if (index < routes.length) {
-            context.replace(routes[index]);
-          }
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 768;
+        final isDesktop = constraints.maxWidth >= 1100;
+
+        if (isMobile) {
+          // Mobile layout with bottom navigation
+          return Scaffold(
+            body: child,
+            bottomNavigationBar: MainBottomNavBar(
+              currentIndex: currentIndex,
+              onDestinationSelected: (index) => _navigateTo(context, index),
+            ),
+          );
+        }
+
+        // Web/Tablet layout with side navigation
+        return Scaffold(
+          body: Row(
+            children: [
+              // Left navigation rail
+              WebNavRail(
+                currentIndex: currentIndex,
+                onTap: (index) => _navigateTo(context, index),
+                onCreatePost: () => _openCreatePost(context),
+              ),
+              // Center content area
+              Expanded(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: AppResponsive.maxContentWidth(context),
+                    ),
+                    child: child,
+                  ),
+                ),
+              ),
+              // Right sidebar (desktop only)
+              if (isDesktop) const WebRightPanel(),
+            ],
+          ),
+        );
+      },
     );
   }
 }
