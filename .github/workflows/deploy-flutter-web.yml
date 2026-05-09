@@ -76,11 +76,10 @@ jobs:
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_PORT }}
-          source: 'build/web/'
+          source: 'build/web/*'
           target: '/home/rafiadmin/web/ailinks.dropticks.com/public_html'
-          strip_components: 2
 
-      - name: Verify deployment
+      - name: Verify and fix deployment
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HETZNER_HOST }}
@@ -88,18 +87,39 @@ jobs:
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_PORT }}
           script: |
+            set -e
             DEPLOY_DIR="/home/rafiadmin/web/ailinks.dropticks.com/public_html"
 
-            echo "✅ Deployment directory contents:"
+            echo "Checking deployment directory..."
             ls -la "$DEPLOY_DIR" | head -20
 
-            if [ -f "$DEPLOY_DIR/index.html" ]; then
-              echo "✅ index.html found - deployment successful!"
-              echo "✅ Flutter web deployed to https://ailinks.dropticks.com"
-            else
-              echo "❌ ERROR: index.html not found in public_html"
+            # If files are nested in build/web, move them up
+            if [ -d "$DEPLOY_DIR/build/web" ]; then
+              echo "Found nested build/web directory, moving files..."
+              mv "$DEPLOY_DIR/build/web"/* "$DEPLOY_DIR/"
+              rm -rf "$DEPLOY_DIR/build"
+              echo "Files moved successfully"
+            fi
+
+            # If index.html is still not at root, check for other nested paths
+            if [ ! -f "$DEPLOY_DIR/index.html" ]; then
+              echo "ERROR: index.html not found in deployment directory"
+              ls -laR "$DEPLOY_DIR"
               exit 1
             fi
+
+            echo ""
+            echo "✅ Setting permissions..."
+            chmod -R 755 "$DEPLOY_DIR"
+            chmod 644 "$DEPLOY_DIR"/*.* 2>/dev/null || true
+
+            echo ""
+            echo "✅ Verifying deployment:"
+            stat "$DEPLOY_DIR/index.html" | grep Modify
+            ls -lh "$DEPLOY_DIR/main.dart.js"
+
+            echo ""
+            echo "✅ Flutter web deployed successfully to https://ailinks.dropticks.com"
 
       - name: Notify deployment success
         run: |
