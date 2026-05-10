@@ -37,11 +37,26 @@ service cloud.firestore {
         || exists(/databases/$(database)/documents/userBlocks/$(uidB + "_" + uidA));
     }
 
+    match /{document=**}/comments/{commentId} {
+      allow read: if isSignedIn()
+        && (
+          resource.data.authorUid == request.auth.uid
+          || isAdmin()
+        );
+
+      allow create, update, delete: if false;
+    }
+
     // Explicit collectionGroup rules for comments
     match /posts/{postId}/comments/{commentId} {
-      allow read: if isVisiblePost(
+        allow read: if isVisiblePost(
         get(/databases/$(database)/documents/posts/$(postId)).data
-      );
+      )
+      || (
+        isSignedIn()
+        && resource.data.authorUid == request.auth.uid
+      )
+      || isAdmin();
     }
 
     match /profiles/{uid} {
@@ -87,8 +102,7 @@ service cloud.firestore {
         && request.resource.data.media.size() <= 4;
 
       allow update: if (
-          isSignedIn()
-          && isActiveUser(request.auth.uid)
+          isAdmin()
           && request.resource.data.diff(resource.data).changedKeys()
             .hasOnly(['likesCount', 'repostsCount', 'commentsCount', 'savesCount', 'updatedAt'])
         ) || (
@@ -119,7 +133,12 @@ service cloud.firestore {
       match /comments/{commentId} {
         allow read: if isVisiblePost(
           get(/databases/$(database)/documents/posts/$(postId)).data
-        );
+        )
+        || (
+          isSignedIn()
+          && resource.data.authorUid == request.auth.uid
+        )
+        || isAdmin();
         allow create: if isSignedIn()
           && isActiveUser(request.auth.uid)
           && request.resource.data.authorUid == request.auth.uid
@@ -130,7 +149,7 @@ service cloud.firestore {
             get(/databases/$(database)/documents/posts/$(postId)).data.authorUid
           );
 
-        allow update: if isSignedIn()
+        allow update: if isAdmin()
           && request.resource.data.diff(resource.data).changedKeys()
             .hasOnly(['likesCount', 'repostsCount', 'savesCount']);
 

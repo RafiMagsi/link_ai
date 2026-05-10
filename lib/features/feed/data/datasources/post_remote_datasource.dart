@@ -268,30 +268,14 @@ class PostRemoteDataSource {
     return _firestore
         .collectionGroup('comments')
         .where('authorUid', isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .distinct()
         .map((snapshot) {
           try {
-            final comments = snapshot.docs
+            return snapshot.docs
                 .map(PostCommentModel.fromFirestore)
                 .toList();
-            comments.sort((a, b) {
-              final aTime = a.createdAt ?? a.createdAtClient;
-              final bTime = b.createdAt ?? b.createdAtClient;
-
-              if (aTime == null && bTime == null) return 0;
-              if (aTime == null) return 1;
-              if (bTime == null) return -1;
-
-              return bTime.compareTo(aTime);
-            });
-
-            if (comments.length > limit) {
-              return comments.take(limit).toList();
-            }
-
-            return comments;
           } catch (error, stackTrace) {
             debugPrint(
               'Error parsing comments by author $uid: $error\n$stackTrace',

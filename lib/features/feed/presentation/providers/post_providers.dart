@@ -248,14 +248,14 @@ final postsByAuthorProvider = StreamProvider.family<List<PostModel>, String>((
   return ref.watch(postRemoteDataSourceProvider).watchPostsByAuthor(uid);
 });
 
-final likedPostIdsByUserProvider = StreamProvider.family<List<String>, String>((
+final likedPostIdsByUserProvider = StreamProvider.family.autoDispose<List<String>, String>((
   ref,
   uid,
 ) {
   return ref.watch(postRemoteDataSourceProvider).watchLikedPostIdsByUser(uid);
 });
 
-final savedPostIdsByUserProvider = StreamProvider.family<List<String>, String>((
+final savedPostIdsByUserProvider = StreamProvider.family.autoDispose<List<String>, String>((
   ref,
   uid,
 ) {
@@ -263,9 +263,9 @@ final savedPostIdsByUserProvider = StreamProvider.family<List<String>, String>((
 });
 
 final commentsByAuthorProvider =
-    StreamProvider.family<List<PostCommentModel>, String>((ref, uid) {
-      return ref.watch(postRemoteDataSourceProvider).watchCommentsByAuthor(uid);
-    });
+    StreamProvider.family.autoDispose<List<PostCommentModel>, String>((ref, uid) {
+  return ref.watch(postRemoteDataSourceProvider).watchCommentsByAuthor(uid);
+});
 
 class _OptimisticPostCountNotifier
     extends StateNotifier<Map<String, PostModel>> {
@@ -1317,7 +1317,7 @@ class PostController extends StateNotifier<AsyncValue<void>> {
 
 /// Provides all media items from a user's posts, sorted by creation date (newest first).
 final userMediaProvider =
-    FutureProvider.family<List<(PostModel post, int mediaIndex)>, String>((
+    FutureProvider.family.autoDispose<List<(PostModel post, int mediaIndex)>, String>((
       ref,
       uid,
     ) async {

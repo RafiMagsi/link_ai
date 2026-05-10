@@ -59,11 +59,14 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     final profileState = ref.watch(profileByUidProvider(uid));
     final postsState = ref.watch(postsByAuthorProvider(uid));
     final likesState = ref.watch(likedPostIdsByUserProvider(uid));
+    final commentsState = ref.watch(commentsByAuthorProvider(uid));
 
     final latestPostsCount = postsState.asData?.value.length;
     if (latestPostsCount != null) _cachedPostsCount = latestPostsCount;
     final latestLikesCount = likesState.asData?.value.length;
     if (latestLikesCount != null) _cachedLikesCount = latestLikesCount;
+    final latestCommentsCount = commentsState.asData?.value.length;
+    if (latestCommentsCount != null) _cachedCommentsCount = latestCommentsCount;
 
     return profileState.when(
       data: (profile) {
@@ -1560,7 +1563,12 @@ class _CommentsSliver extends ConsumerWidget {
             ),
             subtitle: const Text('On a post'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/posts/${comment.postId}'),
+            onTap: () async {
+              await Future.delayed(Duration.zero);
+              if (context.mounted) {
+                context.push('/posts/${comment.postId}');
+              }
+            },
           );
         },
       );
@@ -1588,7 +1596,12 @@ class _CommentsSliver extends ConsumerWidget {
               title: Text(c.text, maxLines: 2, overflow: TextOverflow.ellipsis),
               subtitle: const Text('On a post'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/posts/${c.postId}'),
+              onTap: () async {
+                await Future.delayed(Duration.zero);
+                if (context.mounted) {
+                  context.push('/posts/${c.postId}');
+                }
+              },
             );
           },
         );
