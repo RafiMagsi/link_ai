@@ -1069,6 +1069,43 @@ class PostController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
+  Future<void> deletePost({required String postId}) async {
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      state = AsyncError(
+        Exception("You must be logged in to delete a post."),
+        StackTrace.current,
+      );
+      return;
+    }
+
+    state = const AsyncLoading();
+
+    try {
+      await _postRemoteDataSource
+          .deletePost(postId: postId)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () =>
+                throw TimeoutException("Delete operation timed out"),
+          );
+
+      // Invalidate the post cache after deletion
+      _ref.invalidate(postByIdProvider(postId));
+
+      state = const AsyncData(null);
+    } on TimeoutException catch (error, stackTrace) {
+      debugPrint("Timeout deleting post: $error");
+      state = AsyncError(
+        Exception("Delete operation took too long. Please try again."),
+        stackTrace,
+      );
+    } catch (error, stackTrace) {
+      debugPrint("Error deleting post: $error\n$stackTrace");
+      state = AsyncError(error, stackTrace);
+    }
+  }
+
   Future<void> toggleCommentLike({
     required String postId,
     required String commentId,

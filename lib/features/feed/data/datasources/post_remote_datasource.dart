@@ -346,6 +346,39 @@ class PostRemoteDataSource {
     }
   }
 
+  Future<void> deletePost({required String postId}) async {
+    try {
+      await _firestore
+          .collection('posts')
+          .doc(postId)
+          .update({
+            'deleted': true,
+            'deletedAt': FieldValue.serverTimestamp(),
+          })
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () =>
+                throw TimeoutException('Delete submission timed out'),
+          );
+    } on FirebaseException catch (e) {
+      debugPrint(
+        'Firebase error deleting post $postId: ${e.code} - ${e.message}',
+      );
+      if (e.code == 'permission-denied') {
+        throw Exception('You do not have permission to delete this post.');
+      } else if (e.code == 'not-found') {
+        throw Exception('Post not found.');
+      }
+      rethrow;
+    } on TimeoutException catch (e) {
+      debugPrint('Timeout deleting post $postId: $e');
+      throw Exception('Delete operation took too long. Please try again.');
+    } catch (error, stackTrace) {
+      debugPrint('Error deleting post $postId: $error\n$stackTrace');
+      rethrow;
+    }
+  }
+
   Future<bool> hasLiked({required String postId, required String uid}) async {
     try {
       final doc = await _postLikes

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../core/widgets/app_bottom_sheet.dart';
+import '../../../../auth/presentation/providers/auth_providers.dart';
 import '../../../data/models/post_model.dart';
 import '../../providers/post_providers.dart';
 
@@ -27,6 +28,54 @@ class PostMoreMenuButton extends ConsumerWidget {
   Future<void> _share(BuildContext context) async {
     // TODO: Replace with share_plus when you’re ready to add it.
     await _copyLink(context);
+  }
+
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete post?"),
+        content: const Text(
+          "This action cannot be undone. Your post will be permanently deleted.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (!context.mounted) return;
+    if (confirmed != true) return;
+
+    await ref
+        .read(postControllerProvider.notifier)
+        .deletePost(postId: post.id);
+
+    if (!context.mounted) return;
+    final state = ref.read(postControllerProvider);
+    if (state.hasError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Unable to delete post.")),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Post deleted.")),
+    );
+
+    if (!context.mounted) return;
+    Navigator.of(context).pop();
   }
 
   Future<void> _report(BuildContext context, WidgetRef ref) async {
@@ -132,6 +181,9 @@ class PostMoreMenuButton extends ConsumerWidget {
           case _PostMenuAction.report:
             await _report(context, ref);
             break;
+          case _PostMenuAction.delete:
+            await _delete(context, ref);
+            break;
         }
       },
       icon: const Icon(Icons.more_horiz, size: 18),
@@ -139,24 +191,27 @@ class PostMoreMenuButton extends ConsumerWidget {
   }
 }
 
-enum _PostMenuAction { share, copyLink, report }
+enum _PostMenuAction { share, copyLink, report, delete }
 
-class _PostActionsSheet extends StatelessWidget {
+class _PostActionsSheet extends ConsumerWidget {
   const _PostActionsSheet({required this.post, required this.onSelected});
 
   final PostModel post;
   final ValueChanged<_PostMenuAction> onSelected;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final currentUser = ref.watch(currentUserProvider);
+    final isAuthor = currentUser?.uid == post.authorUid;
+
     final authorLabel = post.authorName.trim().isEmpty
-        ? 'Post'
+        ? "Post"
         : post.authorName;
     final authorInitial = authorLabel.substring(0, 1).toUpperCase();
     final previewText = post.text.trim().isEmpty
-        ? 'No text content'
+        ? "No text content"
         : post.text.trim();
 
     return SafeArea(
@@ -168,7 +223,7 @@ class _PostActionsSheet extends StatelessWidget {
           children: [
             const SizedBox(height: 4),
             Text(
-              'Post actions',
+              "Post actions",
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
@@ -229,19 +284,28 @@ class _PostActionsSheet extends StatelessWidget {
             const SizedBox(height: 12),
             AppBottomSheetActionTile(
               icon: Icons.share_outlined,
-              title: 'Share post',
+              title: "Share post",
               onTap: () => onSelected(_PostMenuAction.share),
             ),
             const SizedBox(height: 8),
             AppBottomSheetActionTile(
               icon: Icons.link_rounded,
-              title: 'Copy link',
+              title: "Copy link",
               onTap: () => onSelected(_PostMenuAction.copyLink),
             ),
             const SizedBox(height: 8),
+            if (isAuthor) ...[
+              AppBottomSheetActionTile(
+                icon: Icons.delete_outline,
+                title: "Delete post",
+                isDestructive: true,
+                onTap: () => onSelected(_PostMenuAction.delete),
+              ),
+              const SizedBox(height: 8),
+            ],
             AppBottomSheetActionTile(
               icon: Icons.flag_outlined,
-              title: 'Report post',
+              title: "Report post",
               isDestructive: true,
               onTap: () => onSelected(_PostMenuAction.report),
             ),
