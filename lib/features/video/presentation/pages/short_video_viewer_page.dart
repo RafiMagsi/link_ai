@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../../core/widgets/video_progress_bar.dart';
 import '../../../feed/data/models/post_model.dart';
 import '../../../feed/presentation/providers/post_providers.dart';
 import '../../core/managers/feed_video_preload_manager.dart';
@@ -204,7 +205,21 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
   }
 
   void _handleTick() {
-    if (!mounted || !_isReady) return;
+    if (!mounted || !_isReady || _controller == null) return;
+
+    final controller = _controller!;
+    final position = controller.value.position;
+    final duration = controller.value.duration;
+    final buffered = controller.value.buffered;
+
+    // Log buffering status
+    if (buffered.isNotEmpty) {
+      final lastBufferedEnd = buffered.last.end;
+      final bufferingPercent = (lastBufferedEnd.inMilliseconds / duration.inMilliseconds * 100).toStringAsFixed(1);
+      final positionPercent = (position.inMilliseconds / duration.inMilliseconds * 100).toStringAsFixed(1);
+      debugPrint('Video buffering: $bufferingPercent% | Playing: $positionPercent% | Duration: ${duration.inSeconds}s');
+    }
+
     // Defer setState to avoid calling it during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -308,10 +323,8 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
                 top: false,
                 child: _ShortVideoCaption(
                   post: post,
+                  controller: _controller!,
                   isPlaying: _controller!.value.isPlaying,
-                  progress: progress,
-                  buffered: _controller!.value.buffered,
-                  duration: _controller!.value.duration,
                   onTogglePlayback: _togglePlayback,
                 ),
               ),
@@ -325,18 +338,14 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
 class _ShortVideoCaption extends StatelessWidget {
   const _ShortVideoCaption({
     required this.post,
+    required this.controller,
     required this.isPlaying,
-    required this.progress,
-    required this.buffered,
-    required this.duration,
     required this.onTogglePlayback,
   });
 
   final PostModel post;
+  final VideoPlayerController controller;
   final bool isPlaying;
-  final double progress;
-  final List<DurationRange> buffered;
-  final Duration duration;
   final VoidCallback onTogglePlayback;
 
   @override
@@ -453,29 +462,11 @@ class _ShortVideoCaption extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: SizedBox(
-              height: 4,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Background
-                  Container(color: Colors.white.withValues(alpha: 0.12)),
-                  // Buffered (white)
-                  if (buffered.isNotEmpty && duration.inMilliseconds > 0)
-                    FractionallySizedBox(
-                      widthFactor: (buffered.last.end.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0),
-                      child: Container(color: Colors.white.withValues(alpha: 0.4)),
-                    ),
-                  // Playing (blue)
-                  FractionallySizedBox(
-                    widthFactor: progress.clamp(0.0, 1.0),
-                    child: Container(color: const Color(0xFF3B82F6)),
-                  ),
-                ],
-              ),
-            ),
+          VideoProgressBar(
+            controller: controller,
+            onSeek: (duration) {
+              // Seeking is handled by VideoProgressBar
+            },
           ),
         ],
       ),
