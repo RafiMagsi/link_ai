@@ -149,6 +149,8 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
   @override
   void initState() {
     super.initState();
+    // Hide system UI for full screen video
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _initializeVideo();
   }
 
@@ -176,19 +178,27 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
   @override
   void didUpdateWidget(covariant _ShortVideoPageItem oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Pause/play on visibility changes (when swiping between videos)
+    // Only manage playback if isActive state changed (swiping between videos)
     if (!_isReady || _controller == null) return;
     if (oldWidget.isActive == widget.isActive) return;
 
+    // When becoming active, play the video
     if (widget.isActive && !_controller!.value.isPlaying) {
-      _controller!.play();
-    } else if (!widget.isActive && _controller!.value.isPlaying) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _controller != null && !_controller!.value.isPlaying) {
+          _controller!.play();
+        }
+      });
+    }
+    // When becoming inactive, pause the video
+    else if (!widget.isActive && _controller!.value.isPlaying) {
       _controller!.pause();
     }
   }
 
   @override
   void dispose() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _controller?.removeListener(_handleTick);
     super.dispose();
   }
@@ -267,7 +277,7 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
         if (_showHud) ...[
           Positioned(
             right: 12,
-            bottom: 116,
+            bottom: 200,
             child: _ShortVideoActions(
               liked: liked,
               saved: saved,
@@ -291,14 +301,19 @@ class _ShortVideoPageItemState extends ConsumerState<_ShortVideoPageItem> {
           ),
           if (_controller != null)
             Positioned(
-              left: 16,
-              right: 90,
-              bottom: 28,
-              child: _ShortVideoCaption(
-                post: post,
-                isPlaying: _controller!.value.isPlaying,
-                progress: progress,
-                onTogglePlayback: _togglePlayback,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(
+                top: false,
+                child: _ShortVideoCaption(
+                  post: post,
+                  isPlaying: _controller!.value.isPlaying,
+                  progress: progress,
+                  buffered: _controller!.value.buffered,
+                  duration: _controller!.value.duration,
+                  onTogglePlayback: _togglePlayback,
+                ),
               ),
             ),
         ],
@@ -312,112 +327,157 @@ class _ShortVideoCaption extends StatelessWidget {
     required this.post,
     required this.isPlaying,
     required this.progress,
+    required this.buffered,
+    required this.duration,
     required this.onTogglePlayback,
   });
 
   final PostModel post;
   final bool isPlaying;
   final double progress;
+  final List<DurationRange> buffered;
+  final Duration duration;
   final VoidCallback onTogglePlayback;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    final text = post.text.trim();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Colors.black.withValues(alpha: 0.72),
-            Colors.black.withValues(alpha: 0.38),
-          ],
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.92),
+            Colors.black.withValues(alpha: 0.55),
+            Colors.black.withValues(alpha: 0.08),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.3, 0.65, 1.0],
         ),
-        borderRadius: BorderRadius.circular(20),
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  '@${post.authorName}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              if (post.authorRole.isNotEmpty)
+                Flexible(
                   child: Text(
-                    post.authorName,
+                    post.authorRole,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.78),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                _VideoFeedPill(
-                  icon: Icons.schedule,
-                  label: post.createdAt == null
-                      ? 'Now'
-                      : _relativeTime(post.createdAt!),
-                ),
-              ],
-            ),
-            if (post.authorRole.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                post.authorRole,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.78),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
             ],
-            if (post.text.trim().isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(
-                post.text.trim(),
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  height: 1.34,
-                ),
+          ),
+          if (text.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              text,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w400,
+                height: 1.35,
               ),
-            ],
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                IconButton(
-                  onPressed: onTogglePlayback,
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.12),
-                    foregroundColor: Colors.white,
-                  ),
-                  icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 4,
-                      backgroundColor: Colors.white.withValues(alpha: 0.2),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
-        ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(
+                Icons.graphic_eq_rounded,
+                color: Colors.white.withValues(alpha: 0.92),
+                size: 15,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  post.createdAt == null
+                      ? 'Now playing'
+                      : 'Posted ${_relativeTime(post.createdAt!)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.82),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: onTogglePlayback,
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.12),
+                    ),
+                  ),
+                  child: Icon(
+                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: SizedBox(
+              height: 4,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Background
+                  Container(color: Colors.white.withValues(alpha: 0.12)),
+                  // Buffered (white)
+                  if (buffered.isNotEmpty && duration.inMilliseconds > 0)
+                    FractionallySizedBox(
+                      widthFactor: (buffered.last.end.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0),
+                      child: Container(color: Colors.white.withValues(alpha: 0.4)),
+                    ),
+                  // Playing (blue)
+                  FractionallySizedBox(
+                    widthFactor: progress.clamp(0.0, 1.0),
+                    child: Container(color: const Color(0xFF3B82F6)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -425,9 +485,9 @@ class _ShortVideoCaption extends StatelessWidget {
   String _relativeTime(DateTime createdAt) {
     final diff = DateTime.now().difference(createdAt);
     if (diff.inMinutes < 1) return 'now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m';
-    if (diff.inDays < 1) return '${diff.inHours}h';
-    return '${diff.inDays}d';
+    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inDays < 1) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 }
 
@@ -445,6 +505,7 @@ class _ShortVideoActions extends StatelessWidget {
     required this.onRepost,
     required this.onSave,
     required this.onShare,
+    this.avatarUrl,
   });
 
   final bool liked;
@@ -459,6 +520,7 @@ class _ShortVideoActions extends StatelessWidget {
   final VoidCallback onRepost;
   final VoidCallback onSave;
   final VoidCallback onShare;
+  final String? avatarUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -469,31 +531,34 @@ class _ShortVideoActions extends StatelessWidget {
           icon: liked ? Icons.favorite : Icons.favorite_border,
           label: _formatCount(likesCount),
           active: liked,
+          activeColor: const Color(0xFFFF2D55),
           onTap: onLike,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _VideoSideAction(
-          icon: Icons.chat_bubble_outline,
+          icon: Icons.chat_bubble,
           label: _formatCount(commentsCount),
           onTap: onComment,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _VideoSideAction(
-          icon: Icons.repeat,
+          icon: Icons.repeat_rounded,
           label: _formatCount(repostsCount),
           active: reposted,
+          activeColor: const Color(0xFF22C55E),
           onTap: onRepost,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _VideoSideAction(
           icon: saved ? Icons.bookmark : Icons.bookmark_border,
           label: _formatCount(savesCount),
           active: saved,
+          activeColor: const Color(0xFFFFC83D),
           onTap: onSave,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _VideoSideAction(
-          icon: Icons.share_outlined,
+          icon: Icons.share,
           label: 'Share',
           onTap: onShare,
         ),
@@ -518,17 +583,19 @@ class _VideoSideAction extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.active = false,
+    this.activeColor,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool active;
+  final Color? activeColor;
 
   @override
   Widget build(BuildContext context) {
     final accent = active
-        ? Theme.of(context).colorScheme.primary
+        ? (activeColor ?? Theme.of(context).colorScheme.primary)
         : Colors.white;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -539,23 +606,20 @@ class _VideoSideAction extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.28),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          SizedBox(
+            width: 44,
+            height: 44,
+            child: Center(
+              child: Icon(icon, color: accent, size: 24),
             ),
-            child: Icon(icon, color: accent, size: 24),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+            style: TextStyle(
+              color: accent,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

@@ -41,6 +41,7 @@ import '../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../features/onboarding/presentation/providers/onboarding_providers.dart';
 import '../features/subscription/presentation/pages/subscription_page.dart';
 import '../features/messaging/presentation/pages/snow_chat_page.dart';
+import '../core/routes/full_screen_page_route.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -304,7 +305,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   );
                 }
 
-                return NoTransitionPage(
+                return FullScreenPageRoute(
                   child: ShortVideoViewerPage(initialPost: initialPost),
                 );
               } catch (e) {

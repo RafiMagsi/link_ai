@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/app_responsive.dart';
 import '../widgets/main_bottom_nav_bar.dart';
 import '../widgets/web_nav_rail.dart';
 import '../widgets/web_right_panel.dart';
@@ -31,6 +30,21 @@ class MainShellPage extends StatelessWidget {
     }
   }
 
+  bool _isFullScreenRoute(BuildContext context) {
+    try {
+      final router = GoRouter.of(context);
+      final uri = router.routeInformationProvider.value.uri;
+      final path = uri.path;
+      debugPrint('=== DEBUG: Router path = $path');
+      final isFullScreen = path.startsWith('/videos/short/');
+      debugPrint('=== DEBUG: isFullScreen = $isFullScreen');
+      return isFullScreen;
+    } catch (e) {
+      debugPrint('=== DEBUG: Error getting router path - $e');
+      return false;
+    }
+  }
+
   void _navigateTo(BuildContext context, int index) {
     if (index < _routes.length) {
       context.replace(_routes[index]);
@@ -52,12 +66,17 @@ class MainShellPage extends StatelessWidget {
 
         if (isMobile) {
           // Mobile layout with bottom navigation
+          debugPrint('=== MOBILE BUILD: About to check full screen route');
+          final showBottomNav = !_isFullScreenRoute(context);
+          debugPrint('=== MOBILE BUILD: showBottomNav = $showBottomNav, maxWidth: ${constraints.maxWidth}');
           return Scaffold(
             body: child,
-            bottomNavigationBar: MainBottomNavBar(
-              currentIndex: currentIndex,
-              onDestinationSelected: (index) => _navigateTo(context, index),
-            ),
+            bottomNavigationBar: showBottomNav
+                ? MainBottomNavBar(
+                    currentIndex: currentIndex,
+                    onDestinationSelected: (index) => _navigateTo(context, index),
+                  )
+                : null,
           );
         }
 
