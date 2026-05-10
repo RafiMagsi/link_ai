@@ -52,6 +52,8 @@ class PostRemoteDataSource {
 
   Stream<List<PostModel>> watchLatestPosts({int limit = 50}) {
     return _posts
+        .where('deleted', isNotEqualTo: true)
+        .orderBy('deleted')
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
@@ -70,6 +72,8 @@ class PostRemoteDataSource {
     return _posts.doc(postId).snapshots().distinct().map((snapshot) {
       try {
         if (!snapshot.exists) return null;
+        final data = snapshot.data();
+        if (data != null && data['deleted'] == true) return null;
         return PostModel.fromFirestore(snapshot);
       } catch (error, stackTrace) {
         debugPrint('Error parsing post $postId: $error\n$stackTrace');
@@ -182,23 +186,22 @@ class PostRemoteDataSource {
     final normalized = tag.toLowerCase();
     return _posts
         .where('hashtags', arrayContains: normalized)
+        .where('deleted', isNotEqualTo: true)
+        .orderBy('deleted')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
         .snapshots()
         .distinct()
         .map((snapshot) {
-          final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
-          // Client-side sorting as fallback
-          posts.sort(
-            (a, b) => (b.createdAt ?? DateTime.now()).compareTo(
-              a.createdAt ?? DateTime.now(),
-            ),
-          );
-          return posts.take(limit).toList();
+          return snapshot.docs.map(PostModel.fromFirestore).toList();
         });
   }
 
   Stream<List<PostModel>> watchPostsByAuthor(String uid, {int limit = 50}) {
     return _posts
         .where('authorUid', isEqualTo: uid)
+        .where('deleted', isNotEqualTo: true)
+        .orderBy('deleted')
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
@@ -563,6 +566,7 @@ class PostRemoteDataSource {
                 'repostsCount': 0,
                 'commentsCount': 0,
                 'savesCount': 0,
+                'deleted': false,
                 'quotedPostId': originalPost.id,
                 'colorCode': PostColors.getRandomColor(),
                 'createdAt': FieldValue.serverTimestamp(),
@@ -682,6 +686,7 @@ class PostRemoteDataSource {
     try {
       final queryLower = query.toLowerCase();
       final snapshot = await _posts
+          .where('deleted', isNotEqualTo: true)
           .limit(limit + 50)
           .get()
           .timeout(const Duration(seconds: 10));
@@ -925,6 +930,7 @@ class PostRemoteDataSource {
                 'repostsCount': 0,
                 'commentsCount': 0,
                 'savesCount': 0,
+                'deleted': false,
                 'quotedCommentId': commentId,
                 'quotedCommentText': commentText,
                 'quotedCommentAuthorName': commentAuthorName,
@@ -1035,6 +1041,8 @@ class PostRemoteDataSource {
   }) async {
     try {
       var query = _posts
+          .where('deleted', isNotEqualTo: true)
+          .orderBy('deleted')
           .orderBy('createdAt', descending: true)
           .limit(limit + 1); // Fetch one extra to detect if there are more
 
@@ -1064,6 +1072,8 @@ class PostRemoteDataSource {
     try {
       var query = _posts
           .where('authorUid', isEqualTo: uid)
+          .where('deleted', isNotEqualTo: true)
+          .orderBy('deleted')
           .orderBy('createdAt', descending: true)
           .limit(limit + 1);
 
@@ -1094,32 +1104,22 @@ class PostRemoteDataSource {
       final normalized = tag.toLowerCase();
       var query = _posts
           .where('hashtags', arrayContains: normalized)
+          .where('deleted', isNotEqualTo: true)
+          .orderBy('deleted')
+          .orderBy('createdAt', descending: true)
           .limit(limit + 1);
 
       if (after != null) {
-        // Note: For hashtag queries, startAfterDocument requires the document to have
-        // a matching hashtag. This is a limitation of Firestore's query API.
-        // For now, we'll fetch from beginning and apply client-side pagination
-        final snapshot = await query.get();
-        final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
-        posts.sort(
-          (a, b) => (b.createdAt ?? DateTime.now()).compareTo(
-            a.createdAt ?? DateTime.now(),
-          ),
-        );
-        return (posts.take(limit).toList(), null);
+        query = query.startAfterDocument(after);
       }
 
       final snapshot = await query.get();
-      final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
-      posts.sort(
-        (a, b) => (b.createdAt ?? DateTime.now()).compareTo(
-          a.createdAt ?? DateTime.now(),
-        ),
-      );
-      final cursor = posts.isNotEmpty ? snapshot.docs.last : null;
+      final hasMore = snapshot.docs.length > limit;
+      final docs = hasMore ? snapshot.docs.sublist(0, limit) : snapshot.docs;
+      final posts = docs.map(PostModel.fromFirestore).toList();
+      final cursor = docs.isNotEmpty ? docs.last : null;
 
-      return (posts.take(limit).toList(), cursor);
+      return (posts, cursor);
     } catch (error, stackTrace) {
       debugPrint('Error fetching posts by hashtag page: $error\n$stackTrace');
       rethrow;

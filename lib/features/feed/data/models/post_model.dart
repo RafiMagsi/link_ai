@@ -406,6 +406,7 @@ class PostModel {
       'postType': postType.toString().split('.').last,
       'postIntent': postIntent.toString().split('.').last,
       'colorCode': colorCode,
+      'deleted': false,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
       'bestAnswerCommentId': bestAnswerCommentId,

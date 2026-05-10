@@ -27,8 +27,9 @@ service cloud.firestore {
     }
 
     function isVisiblePost(postData) {
-      return !postData.keys().hasAny(["visibility"])
-        || postData.visibility == "active";
+      return (!postData.keys().hasAny(["visibility"])
+        || postData.visibility == "active")
+        && postData.deleted == false;
     }
 
     function isBlockedPair(uidA, uidB) {
@@ -90,6 +91,12 @@ service cloud.firestore {
           && isActiveUser(request.auth.uid)
           && request.resource.data.diff(resource.data).changedKeys()
             .hasOnly(['likesCount', 'repostsCount', 'commentsCount', 'savesCount', 'updatedAt'])
+        ) || (
+          isSignedIn()
+          && isActiveUser(request.auth.uid)
+          && resource.data.authorUid == request.auth.uid
+          && request.resource.data.diff(resource.data).changedKeys()
+            .hasOnly(['deleted', 'deletedAt', 'updatedAt'])
         ) || (
           isSignedIn()
           && isActiveUser(request.auth.uid)

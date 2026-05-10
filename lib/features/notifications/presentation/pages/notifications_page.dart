@@ -102,27 +102,37 @@ class _NotificationsList extends ConsumerWidget {
                   size: 10,
                   color: Theme.of(context).colorScheme.primary,
                 ),
-          onTap: () {
+          onTap: () async {
+            // Fire-and-forget: mark as read without blocking navigation
             ref
                 .read(notificationControllerProvider.notifier)
                 .markAsRead(notification.id);
 
+            // Defer navigation to next frame to avoid widget tree conflicts
+            await Future.delayed(Duration.zero);
+
+            if (!context.mounted) return;
+
             final postId = notification.postId;
             if (postId != null && postId.isNotEmpty) {
-              context.push('/posts/$postId');
+              if (context.mounted) {
+                context.push('/posts/$postId');
+              }
               return;
             }
 
             final productId = notification.productId;
             if (productId != null && productId.isNotEmpty) {
-              context.push('/products/$productId');
+              if (context.mounted) {
+                context.push('/products/$productId');
+              }
               return;
             }
 
             if (notification.senderUid.isNotEmpty) {
               final isSelfProfile = currentUid != null &&
                   notification.senderUid == currentUid;
-              navigateToProfile(
+              await navigateToProfile(
                 context: context,
                 uid: notification.senderUid,
                 isSelfProfile: isSelfProfile,

@@ -73,9 +73,6 @@ class PostMoreMenuButton extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Post deleted.")),
     );
-
-    if (!context.mounted) return;
-    Navigator.of(context).pop();
   }
 
   Future<void> _report(BuildContext context, WidgetRef ref) async {
