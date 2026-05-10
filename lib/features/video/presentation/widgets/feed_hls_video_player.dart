@@ -153,32 +153,32 @@ class _FeedHlsVideoPlayerState extends State<FeedHlsVideoPlayer> {
       },
       child: widget.isFeedView
           ? SizedBox(
-  height: widget.maxHeight ?? 600,
-  width: double.infinity,
-  child: ClipRRect(
-    borderRadius: BorderRadius.circular(16),
-    child: Stack(
-      fit: StackFit.expand,
-      children: [
-        _buildContent(),
-        if (_isLoading)
-          Container(
-            color: Colors.black12,
-            alignment: Alignment.center,
-            child: const CircularProgressIndicator(strokeWidth: 2),
-          ),
-        Positioned(
-          right: 10,
-          bottom: 10,
-          child: _MuteBadge(
-            isMuted: _isMuted,
-            onToggle: _toggleMute,
-          ),
-        ),
-      ],
-    ),
-  ),
-)
+            height: widget.maxHeight ?? 600,
+            width: double.infinity,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildContent(),
+                  if (_isLoading)
+                    Container(
+                      color: Colors.black12,
+                      alignment: Alignment.center,
+                      child: const CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  Positioned(
+                    right: 10,
+                    bottom: 10,
+                    child: _MuteBadge(
+                      isMuted: _isMuted,
+                      onToggle: _toggleMute,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
           : AspectRatio(
               // In full view: full size, no constraint
               aspectRatio: aspectRatio,
