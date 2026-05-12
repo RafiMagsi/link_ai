@@ -99,10 +99,10 @@ class _ShortVideoViewerPageState extends ConsumerState<ShortVideoViewerPage> {
                   icon: const Icon(Icons.arrow_back),
                 ),
                 const Spacer(),
-                _VideoFeedPill(
-                  icon: Icons.video_collection_outlined,
-                  label: '${_currentIndex + 1}/${posts.length}',
-                ),
+                // _VideoFeedPill(
+                //   icon: Icons.video_collection_outlined,
+                //   label: '${_currentIndex + 1}/${posts.length}',
+                // ),
               ],
             ),
           ),
