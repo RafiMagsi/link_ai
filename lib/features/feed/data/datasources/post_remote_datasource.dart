@@ -1006,6 +1006,7 @@ class PostRemoteDataSource {
     required String s3Path,
   }) async {
     try {
+      debugPrint('🎥 Generating video thumbnail for: $s3Path');
       final bytes = await VideoThumbnail.thumbnailData(
         video: videoFile.path,
         imageFormat: ImageFormat.JPEG,
@@ -1014,17 +1015,22 @@ class PostRemoteDataSource {
         timeMs: 500,
       );
 
-      if (bytes == null || bytes.isEmpty) return null;
+      if (bytes == null || bytes.isEmpty) {
+        debugPrint('⚠️ Failed to generate thumbnail: bytes is empty');
+        return null;
+      }
 
+      debugPrint('✅ Thumbnail generated (${bytes.length} bytes)');
       final tempFile = await _writeTempThumbnail(bytes);
-      return await _s3.uploadFile(
+      final uploadedUrl = await _s3.uploadFile(
         file: tempFile,
         s3Path: '${s3Path}_thumb.jpg',
       );
+      debugPrint('✅ Thumbnail uploaded: $uploadedUrl');
+      return uploadedUrl;
     } catch (error, stackTrace) {
-      debugPrint(
-        'Error generating video thumbnail for $s3Path: $error\n$stackTrace',
-      );
+      debugPrint('❌ Error generating video thumbnail for $s3Path: $error');
+      debugPrintStack(stackTrace: stackTrace);
       return null;
     }
   }

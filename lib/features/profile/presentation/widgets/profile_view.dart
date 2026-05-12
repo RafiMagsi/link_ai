@@ -1336,6 +1336,12 @@ class _GallerySliver extends ConsumerWidget {
               final (post, mediaIndex) = mediaItems[index];
               final media = post.media[mediaIndex];
 
+              if (media.type == 'video') {
+                debugPrint(
+                  '📸 Gallery video: ID=${post.id} | Thumbnail=${media.thumbnailUrl != null ? '✅' : '❌'}'
+                );
+              }
+
               return GestureDetector(
                 onTap: () {
                   final detailPostId = post.detailPostId;
@@ -1366,18 +1372,31 @@ class _GallerySliver extends ConsumerWidget {
                         color: Theme.of(context)
                             .colorScheme
                             .surfaceContainerHighest,
-                        child: CachedNetworkImage(
-                          imageUrl: media.url,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
-                          ),
-                          errorWidget: (context, url, error) => const Icon(
-                            Icons.broken_image_outlined,
-                          ),
-                        ),
+                        child: media.thumbnailUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: media.thumbnailUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => Container(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest,
+                                ),
+                                errorWidget: (context, url, error) => Container(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest,
+                                  child: const Icon(Icons.broken_image_outlined),
+                                ),
+                              )
+                            : Container(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest,
+                                child: Icon(
+                                  Icons.video_library_outlined,
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                              ),
                       ),
                     if (media.type == 'video')
                       Positioned(
