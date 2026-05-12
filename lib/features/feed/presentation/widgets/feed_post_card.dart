@@ -31,6 +31,7 @@ class FeedPostCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    debugPrint('📝 FEED POST CARD: ${post.id} | Author: ${post.authorName}');
     final currentUid = ref.watch(currentUserProvider)?.uid;
     final isRepost = post.isPostRepost;
 

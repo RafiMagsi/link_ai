@@ -178,6 +178,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
+            path: '/notifications',
+            name: 'notifications',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: const NotificationsPage(),
+            ),
+          ),
+          GoRoute(
             path: '/posts/create',
             name: 'create-post',
             pageBuilder: (context, state) => NoTransitionPage(
@@ -192,6 +199,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 final postId = state.pathParameters['postId'];
                 if (postId == null || postId.isEmpty) {
                   return NoTransitionPage(
+                    key: ValueKey('post-invalid'),
                     child: Scaffold(
                       body: Center(child: Text('Invalid post ID.')),
                     ),
@@ -201,10 +209,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     ? state.extra as PostModel
                     : null;
                 return NoTransitionPage(
+                  key: ValueKey('post-$postId'),
                   child: PostDetailPage(postId: postId, initialPost: initialPost),
                 );
               } catch (e) {
                 return NoTransitionPage(
+                  key: ValueKey('post-error'),
                   child: Scaffold(
                     body: Center(child: Text('Error loading post: $e')),
                   ),
@@ -221,6 +231,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 final commentId = state.pathParameters['commentId'];
                 if (postId == null || postId.isEmpty || commentId == null || commentId.isEmpty) {
                   return NoTransitionPage(
+                    key: ValueKey('comment-invalid'),
                     child: Scaffold(
                       body: Center(child: Text('Invalid post or comment ID.')),
                     ),
@@ -230,6 +241,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     ? state.extra as PostCommentModel
                     : null;
                 return NoTransitionPage(
+                  key: ValueKey('comment-$postId-$commentId'),
                   child: CommentDetailPage(
                     postId: postId,
                     commentId: commentId,
@@ -238,6 +250,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 );
               } catch (e) {
                 return NoTransitionPage(
+                  key: ValueKey('comment-error'),
                   child: Scaffold(
                     body: Center(child: Text('Error loading comment: $e')),
                   ),
@@ -440,11 +453,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             );
           }
         },
-      ),
-      GoRoute(
-        path: '/notifications',
-        name: 'notifications',
-        builder: (context, state) => const NotificationsPage(),
       ),
       GoRoute(
         path: '/messages/:conversationId',

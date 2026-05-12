@@ -34,6 +34,15 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
   String? _updatingBestAnswerCommentId;
 
   @override
+  void initState() {
+    super.initState();
+    debugPrint('═══════════ POST DETAIL PAGE ═══════════');
+    debugPrint('Post ID: ${widget.postId}');
+    debugPrint('Has initial post: ${widget.initialPost != null}');
+    debugPrint('═════════════════════════════════════════');
+  }
+
+  @override
   void dispose() {
     _commentController.dispose();
     _scrollController.dispose();
@@ -242,6 +251,7 @@ class _PostDetailPageState extends ConsumerState<PostDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🔍 POST DETAIL BUILD: ${widget.postId}');
     final postState = ref.watch(postByIdProvider(widget.postId));
     final commentsState = ref.watch(postCommentsProvider(widget.postId));
     final currentUser = ref.watch(currentUserProvider);

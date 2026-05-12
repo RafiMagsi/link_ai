@@ -60,7 +60,15 @@ class PostRemoteDataSource {
         .distinct()
         .map((snapshot) {
           try {
-            return snapshot.docs.map(PostModel.fromFirestore).toList();
+            final posts = snapshot.docs.map(PostModel.fromFirestore).toList();
+            debugPrint('┌─────── FIREBASE POSTS FETCHED ───────┐');
+            debugPrint('Total posts: ${posts.length}');
+            for (int i = 0; i < posts.length; i++) {
+              final post = posts[i];
+              debugPrint('[${i + 1}] ID: ${post.id} | Author: ${post.authorName}');
+            }
+            debugPrint('└─────────────────────────────────────┘');
+            return posts;
           } catch (error, stackTrace) {
             debugPrint('Error parsing posts: $error\n$stackTrace');
             return [];
@@ -71,10 +79,18 @@ class PostRemoteDataSource {
   Stream<PostModel?> watchPost(String postId) {
     return _posts.doc(postId).snapshots().distinct().map((snapshot) {
       try {
-        if (!snapshot.exists) return null;
+        if (!snapshot.exists) {
+          debugPrint('⚠️ POST NOT FOUND: $postId');
+          return null;
+        }
         final data = snapshot.data();
-        if (data != null && data['deleted'] == true) return null;
-        return PostModel.fromFirestore(snapshot);
+        if (data != null && data['deleted'] == true) {
+          debugPrint('⚠️ POST DELETED: $postId');
+          return null;
+        }
+        final post = PostModel.fromFirestore(snapshot);
+        debugPrint('✅ POST FETCHED: $postId | Author: ${post.authorName}');
+        return post;
       } catch (error, stackTrace) {
         debugPrint('Error parsing post $postId: $error\n$stackTrace');
         return null;
